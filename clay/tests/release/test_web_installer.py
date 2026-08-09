@@ -29,6 +29,27 @@ class WebInstallerPathTest(unittest.TestCase):
         self.assertIn('Then verify: clay --version', self.script)
 
 
+class WebInstallerOrderingTest(unittest.TestCase):
+    """The venv and the launcher record absolute paths at creation time."""
+
+    def setUp(self):
+        self.script = INSTALLER.read_text(encoding='utf-8')
+
+    def test_release_reaches_its_final_directory_before_it_is_installed(self):
+        moved = self.script.index('mv "$INSTALLING" "$DESTINATION"')
+        installed = self.script.index('"$DESTINATION/install.py"')
+        self.assertLess(moved, installed)
+
+    def test_a_failed_installation_removes_the_destination(self):
+        self.assertIn('INCOMPLETE=$DESTINATION', self.script)
+        self.assertIn('rm -rf "$INCOMPLETE"', self.script)
+
+    def test_the_selected_release_is_published_by_moving_the_symlink(self):
+        installed = self.script.index('"$DESTINATION/install.py"')
+        selected = self.script.index('"$INSTALL_ROOT/current.next"')
+        self.assertLess(installed, selected)
+
+
 class InstallDocumentationPathTest(unittest.TestCase):
 
     def test_readme_verifies_path_immediately_after_install(self):

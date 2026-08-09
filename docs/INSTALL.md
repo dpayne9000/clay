@@ -37,6 +37,11 @@ creates `venv/` in the extracted release directory, installs Clay and its
 dependencies from `wheels/` without accessing a package registry, and writes
 the `./clay` launcher beside `install.py`.
 
+Run `install.py` where the release directory will stay. The virtual
+environment's script interpreters and the `./clay` launcher record absolute
+paths, so a directory that is moved or renamed afterwards must have
+`python/bin/python3 install.py` run again in its new location.
+
 This archive-local procedure does not move the release under
 `~/.local/share/clay` and does not create `~/.local/bin/clay`. Keep the extracted
 directory and invoke its `./clay` launcher. Use the HTTPS installer when the
@@ -54,10 +59,16 @@ directory approvals live separately under `$CLAY_HOME`, normally `~/.clay`.
 The installed path chain is:
 
 ```text
-~/.local/bin/clay
-→ ~/.local/share/clay/current/clay
-→ ~/.local/share/clay/current/venv/bin/clay
+~/.local/bin/clay                        symlink
+→ ~/.local/share/clay/current/clay       symlink to the selected release
+→ ~/.local/share/clay/releases/clay-<version>-<target>-<flavor>/clay
+→ ~/.local/share/clay/releases/clay-<version>-<target>-<flavor>/venv/bin/clay
 ```
+
+The release launcher records that final path literally. A POSIX shell reports
+the invoked path in `$0`, which is the `~/.local/bin/clay` symlink, so a
+launcher that derived its target from `$0` would look for the virtual
+environment beside the symlink instead of inside the release.
 
 Versioned releases remain under `~/.local/share/clay/releases/`. The `current`
 symlink selects one of them, so installing another version does not overwrite
