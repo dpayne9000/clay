@@ -1,0 +1,64 @@
+{
+  "autoContext": "Validates transformData action. Covers: method param ('parseLines' splits text into numbered dict, 'map' applies multiply-by-2 to list), source param (key in previous_data holding the input data), graceful failure when source key is absent or method is unknown.",
+
+  "workflow": {
+    "steps": ["prepare", "test_parse_lines", "test_map", "test_missing_source", "test_unknown_method"]
+  },
+
+  "actionSets": {
+
+    "prepare": [
+      {
+        "_comment": "Multi-line text for parseLines method.",
+        "id": "multi_line_text",
+        "type": "shell",
+        "command": "echo first-line",
+        "timeout": 5
+      }
+    ],
+
+    "test_parse_lines": [
+      {
+        "_comment": "PARAM: method='parseLines' — splits text on newlines into {1: line1, 2: line2, ...} dict. PARAM: source — key in previous_data holding the text.",
+        "id": "parsed_result",
+        "type": "transformData",
+        "method": "parseLines",
+        "source": "multi_line_text",
+        "includedData": ["multi_line_text"]
+      }
+    ],
+
+    "test_map": [
+      {
+        "_comment": "PARAM: method='map' — applies multiply-by-2 to each item in a list. Source must be a list. NOTE: shell output is a string; this demonstrates the handler's behaviour when given a non-list (it will process items of the string iterable).",
+        "id": "mapped_result",
+        "type": "transformData",
+        "method": "map",
+        "source": "multi_line_text",
+        "includedData": ["multi_line_text"]
+      }
+    ],
+
+    "test_missing_source": [
+      {
+        "_comment": "PARAM: source pointing to a key not in previous_data — handler prints warning and returns None. Workflow continues.",
+        "id": "missing_src_result",
+        "type": "transformData",
+        "method": "parseLines",
+        "source": "nonexistent_key"
+      }
+    ],
+
+    "test_unknown_method": [
+      {
+        "_comment": "PARAM: method with an unsupported value — handler prints warning and returns None. Workflow continues.",
+        "id": "unknown_method_result",
+        "type": "transformData",
+        "method": "sortDescending",
+        "source": "multi_line_text",
+        "includedData": ["multi_line_text"]
+      }
+    ]
+
+  }
+}

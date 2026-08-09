@@ -1,0 +1,42 @@
+{
+  "workflow": {
+    "steps": ["analyze", "tag", "remember", "assess"]
+  },
+  "actionSets": {
+    "analyze": [
+      {
+        "id": "theme_finding",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze customer feedback for {product_name} focusing on one specific theme category.\n\nIteration: {iteration}\nFeedback source: {feedback_source}\n\nPrevious iteration finding:\n{theme_finding}\n\nPrior analysis context:\n{prior_analysis}\n\nFocus this iteration on ONE of these categories (pick the one not yet covered):\n- Usability: ease of use, navigation, learning curve, UX friction\n- Features: requested features, missing capabilities, feature satisfaction\n- Bugs: user-reported bugs, broken workflows, error messages\n- Pricing: value perception, price sensitivity, plan comparisons\n- Support: response times, resolution quality, documentation gaps\n\nFor your chosen category, provide:\nCATEGORY: [which category]\nSENTIMENT: [overall positive/mixed/negative]\nKEY_THEMES: [3-5 recurring themes with frequency indicators]\nSAMPLE_QUOTES: [2-3 representative customer statements]\nACTIONABLE_INSIGHTS: [specific product improvements suggested by this feedback]\nSEVERITY: [how urgently this category needs attention - critical/important/moderate/low]",
+        "includedData": ["iteration", "product_name", "feedback_source", "theme_finding", "prior_analysis"]
+      }
+    ],
+    "tag": [
+      {
+        "id": "theme_tags",
+        "type": "deriveTags",
+        "content": "theme_finding",
+        "includedData": ["theme_finding"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_theme",
+        "type": "writeMemory",
+        "namespace": "customer-feedback",
+        "content": "theme_finding",
+        "tagsKey": "theme_tags",
+        "includedData": ["theme_finding", "theme_tags"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_themes",
+        "type": "scramda2",
+        "prompt": "We have completed iteration {iteration} of customer feedback theme analysis for {product_name}.\n\nLatest analysis:\n{theme_finding}\n\nHave we covered all five categories (usability, features, bugs, pricing, support)? If important categories remain unanalyzed, respond 'yes' to continue. If all categories are covered, respond 'done'.",
+        "includedData": ["iteration", "product_name", "theme_finding"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "autoContext": "You are an intelligence-gathering agent tracking the public whereabouts of a named individual. Use only publicly available sources — news articles, official social media, event listings, venue announcements, tour schedules. Be factual and cite your sources. Accumulate findings across iterations. Stop only when you have a confident, well-sourced picture of their current location and near-future schedule.",
+
+  "workflow": {
+    "steps": ["load_goal", "init", "track", "consolidate"]
+  },
+
+  "actionSets": {
+
+    "load_goal": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+
+    "init": [
+      {
+        "id": "prior_intel",
+        "type": "searchMemory",
+        "namespace": "celeb-tracker",
+        "queryKey": "target_name",
+        "maxResults": 10
+      },
+      {
+        "id": "known_skills",
+        "type": "listSkills",
+        "skillset": "celeb-tracker"
+      },
+      {
+        "id": "memory_count",
+        "type": "listMemory",
+        "namespace": "celeb-tracker"
+      },
+      {
+        "id": "run_timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      },
+      {
+        "id": "briefing",
+        "type": "scramda2",
+        "prompt": "You are starting a new tracking run.\n\nTarget: {target_name}\nMission: {mission}\n\nPrior intelligence from memory:\n{prior_intel}\n\nAvailable skills:\n{known_skills}\n\nWrite a one-paragraph operational briefing: what is already known, what is still unknown, and what sources should be prioritised first.",
+        "includedData": ["target_name", "mission", "prior_intel", "known_skills"]
+      }
+    ],
+
+    "track": [
+      {
+        "id": "intel_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "continueKey": "should_continue",
+        "outputKey": "iteration_summary",
+        "includedData": ["target_name", "mission", "output_dir", "briefing"]
+      }
+    ],
+
+    "consolidate": [
+      {
+        "id": "final_memory",
+        "type": "searchMemory",
+        "namespace": "celeb-tracker",
+        "queryKey": "target_name",
+        "maxResults": 20
+      },
+      {
+        "id": "all_skills",
+        "type": "listSkills",
+        "skillset": "celeb-tracker"
+      },
+      {
+        "id": "final_report",
+        "type": "scramda2",
+        "prompt": "Write a final consolidated intelligence report on {target_name}.\n\nMission: {mission}\n\nAll intelligence gathered:\n{final_memory}\n\nIteration log:\n{intel_log}\n\nThe report must cover:\n1. Current confirmed location (with confidence level)\n2. Recent confirmed appearances (last 30 days)\n3. Upcoming confirmed appearances (next 30 days)\n4. Travel patterns and known bases\n5. Sources used and their reliability\n6. Remaining intelligence gaps\n7. Recommended next sources to check",
+        "includedData": ["target_name", "mission", "final_memory", "intel_log=intel_log.iteration_summary"]
+      },
+      {
+        "id": "report_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/final-report-{run_timestamp}.md",
+        "content": "final_report",
+        "includedData": ["output_dir", "run_timestamp", "final_report"]
+      },
+      {
+        "id": "skills_tally",
+        "type": "runCode",
+        "language": "python",
+        "source": "import sys\nskills = sys.stdin.read().strip()\ncount = len([s for s in skills.splitlines() if s.strip()])\nprint(f'Skills in celeb-tracker library: {count}')\nif skills.strip():\n    for s in skills.splitlines():\n        print(f'  - {s.strip()}')",
+        "stdin": "all_skills",
+        "includedData": ["all_skills"]
+      }
+    ]
+
+  }
+}

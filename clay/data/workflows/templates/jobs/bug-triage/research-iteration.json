@@ -1,0 +1,53 @@
+{
+  "workflow": {
+    "steps": ["investigate", "tag", "remember", "assess"]
+  },
+  "actionSets": {
+    "investigate": [
+      {
+        "id": "git_log",
+        "type": "shell",
+        "command": "git -C \"{project_path}\" log --oneline -20",
+        "includedData": ["project_path"]
+      },
+      {
+        "id": "git_diff",
+        "type": "shell",
+        "command": "git -C \"{project_path}\" diff --stat HEAD~5",
+        "includedData": ["project_path"]
+      },
+      {
+        "id": "finding",
+        "type": "scramda2",
+        "prompt": "Analyze the following git data for bugs, errors, and issues in this project.\n\nIteration: {iteration}\nBug source context: {bug_source}\n\nRecent commits:\n{git_log}\n\nRecent file changes:\n{git_diff}\n\nPrevious findings from this triage:\n{finding}\n\nFocus this iteration on ONE of these aspects (pick the one not yet covered):\n- Recent code changes that could introduce bugs\n- Error patterns visible in commit messages\n- Test failures or untested areas\n- Suspicious file changes (large diffs, unusual files)\n- Regression risk from recent merges\n\nProvide:\nASPECT: [which aspect you focused on]\nFINDINGS: [detailed findings with file names and line references where possible]\nSEVERITY: [P0-critical, P1-high, P2-medium, P3-low]\nEVIDENCE: [specific commit hashes or diff data supporting the finding]",
+        "includedData": ["iteration", "bug_source", "git_log", "git_diff"]
+      }
+    ],
+    "tag": [
+      {
+        "id": "finding_tags",
+        "type": "deriveTags",
+        "content": "finding",
+        "includedData": ["finding"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_finding",
+        "type": "writeMemory",
+        "namespace": "bug-triage",
+        "content": "finding",
+        "tagsKey": "finding_tags",
+        "includedData": ["finding", "finding_tags"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_research",
+        "type": "scramda2",
+        "prompt": "We have completed iteration {iteration} of bug triage research.\n\nLatest finding:\n{finding}\n\nHave we covered all key aspects (recent changes, error patterns, test failures, suspicious changes, regression risks)? If important aspects remain uninvestigated, respond 'yes' to continue. If we have sufficient coverage, respond 'done'.",
+        "includedData": ["iteration", "finding"]
+      }
+    ]
+  }
+}

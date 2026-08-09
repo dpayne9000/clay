@@ -1,0 +1,81 @@
+{
+  "workflow": {
+    "steps": ["projectDetails", "scopeInput", "draftProposal", "humanApproval", "finalProposal"]
+  },
+  "actionSets": {
+    "projectDetails": [
+      {
+        "id": "project_name",
+        "type": "humanDecision",
+        "prompt": "Project name"
+      },
+      {
+        "id": "client",
+        "type": "humanDecision",
+        "prompt": "Client or stakeholder name"
+      },
+      {
+        "id": "budget",
+        "type": "humanDecision",
+        "prompt": "Estimated budget (e.g. £40,000)"
+      },
+      {
+        "id": "timeline",
+        "type": "humanDecision",
+        "prompt": "Estimated timeline (e.g. 10 weeks)"
+      }
+    ],
+    "scopeInput": [
+      {
+        "id": "objective",
+        "type": "humanDecision",
+        "prompt": "Main objective in one sentence"
+      },
+      {
+        "id": "deliverables",
+        "type": "humanDecision",
+        "prompt": "Key deliverables (comma-separated)"
+      },
+      {
+        "id": "out_of_scope",
+        "type": "humanDecision",
+        "prompt": "Anything explicitly out of scope (or press Enter to skip)"
+      }
+    ],
+    "draftProposal": [
+      {
+        "id": "proposal",
+        "type": "scramda2",
+        "prompt": "Write a formal project proposal document with these details:\n\nProject: {project_name}\nClient: {client}\nBudget: {budget}\nTimeline: {timeline}\nObjective: {objective}\nDeliverables: {deliverables}\nOut of scope: {out_of_scope}\n\nInclude these sections: Executive Summary, Objectives, Scope, Deliverables, Timeline Overview, Budget Summary. Use professional business language.",
+        "examples": [
+          {
+            "question": "Write a project proposal.\nProject: Customer Portal Redesign\nClient: NorthBridge Financial\nBudget: £55,000\nTimeline: 12 weeks\nObjective: Redesign the customer-facing portal to reduce support calls and improve self-service rates.\nDeliverables: UX audit report, new design system, rebuilt frontend, user testing report\nOut of scope: Backend API changes, mobile app",
+            "answer": "PROJECT PROPOSAL\nProject: Customer Portal Redesign\nClient: NorthBridge Financial\nPrepared: March 2026\n\nEXECUTIVE SUMMARY\nThis proposal outlines the redesign of NorthBridge Financial's customer portal with the goal of reducing inbound support volume and increasing self-service completion rates. The project will deliver a modern, accessible frontend built on a new design system, backed by user research and testing.\n\nOBJECTIVES\n- Reduce support call volume by improving task discoverability\n- Increase self-service completion rate by 30%\n- Establish a reusable design system for future development\n\nSCOPE\nThe project covers UX audit, design, and frontend development only. Backend API changes and the mobile app are explicitly out of scope.\n\nDELIVERABLES\n1. UX audit report with prioritised findings\n2. Component-level design system (Figma)\n3. Rebuilt portal frontend\n4. User testing report (2 rounds)\n\nTIMELINE OVERVIEW\nWeeks 1-2:   Discovery and UX audit\nWeeks 3-5:   Design and stakeholder review\nWeeks 6-10:  Frontend development\nWeeks 11-12: User testing and handover\n\nBUDGET SUMMARY\nTotal: £55,000\n30% on project start | 40% at design sign-off | 30% on delivery"
+          }
+        ],
+        "includedData": ["project_name", "client", "budget", "timeline", "objective", "deliverables", "out_of_scope"]
+      }
+    ],
+    "humanApproval": [
+      {
+        "id": "approval_notes",
+        "type": "humanDecision",
+        "prompt": "Review the proposal. Type APPROVE or enter changes needed"
+      }
+    ],
+    "finalProposal": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "prompt": "Revise this project proposal based on the review notes. If the note is APPROVE, return it unchanged.\n\nReview notes: {approval_notes}\n\nProposal:\n{proposal}",
+        "examples": [
+          {
+            "question": "Review notes: Add a risk section highlighting the dependency on client feedback turnaround. Proposal: PROJECT PROPOSAL\nProject: Customer Portal Redesign...",
+            "answer": "PROJECT PROPOSAL\nProject: Customer Portal Redesign\n...\n\nRISKS\n1. Client feedback turnaround — Design sign-off and user testing rounds require timely input from NorthBridge stakeholders. Delays of more than 3 business days at review gates may impact the overall timeline. Mitigation: agree review SLAs at project kick-off."
+          }
+        ],
+        "includedData": ["proposal", "approval_notes"]
+      }
+    ]
+  }
+}

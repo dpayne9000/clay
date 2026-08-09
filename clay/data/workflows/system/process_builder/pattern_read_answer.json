@@ -1,0 +1,3 @@
+{
+  "selected_pattern": "PATTERN: READ_AND_ANSWER\nSHAPE:\nhumanDecision(user_request)\nserveFileReads(file_request)\nscramda2(answer_reply: user_request + file_context)"
+}

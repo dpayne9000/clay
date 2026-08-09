@@ -1,0 +1,81 @@
+{
+  "training_generate_queries": [
+    {
+      "question":"Generate 5-6 research queries for a comprehensive research report about: the rise of remote work. Target audience: corporate real estate investors.",
+      "answer":"1. What percentage of office workers are now permanently remote vs hybrid post-2023?\n2. How has remote work affected commercial office vacancy rates in major cities?\n3. What are leading companies' stated long-term policies on office attendance?\n4. How has demand for co-working and flexible office space changed since 2020?\n5. What does the research say about productivity differences between remote and in-office work?"
+    }
+  ],
+  "training_simulate_sources": [
+    {
+      "question":"Queries about remote work: 1. Office vacancy rates post-2023. 2. Permanent vs hybrid worker split. Provide research content.",
+      "answer":"OFFICE VACANCY RATES: Major US cities saw commercial vacancy rates reach 19.6% in Q3 2024 (CBRE), with San Francisco peaking at 34%. London saw vacancy rise to 9.2%, higher than pre-pandemic but cushioned by stronger return-to-office mandates in finance. Sub-let space as a share of total availability doubled between 2020-2024.\n\nWORKER SPLIT: McKinsey (2024) found 35% of knowledge workers are fully remote, 45% hybrid, and 20% fully in-office. Finance and law skew heavily toward office; tech and creative industries toward remote. Hybrid has become the dominant model in organisations with 500+ employees."
+    }
+  ],
+  "training_extract_facts": [
+    {
+      "question":"Extract facts from: US office vacancy reached 19.6% in Q3 2024. San Francisco peaked at 34%. 35% of knowledge workers are fully remote.",
+      "answer":"F: US commercial office vacancy reached 19.6% in Q3 2024 (CBRE)\nF: San Francisco office vacancy peaked at 34% post-pandemic\nF: London office vacancy rose to 9.2%, above pre-pandemic levels\nF: 35% of knowledge workers are now fully remote (McKinsey 2024)\nF: 45% of knowledge workers operate on a hybrid model\nF: Sub-let office space as a share of total availability doubled between 2020-2024"
+    }
+  ],
+  "training_extract_themes": [
+    {
+      "question":"Identify themes from research about remote work and office vacancy rates.",
+      "answer":"THEME 1: Structural Shift, Not Cyclical\nOffice vacancy increases are not reverting as economies recover, suggesting a permanent redistribution of where work happens. This has long-term implications for asset valuations that short-term recovery models do not capture.\n\nTHEME 2: Geographic Polarisation\nImpact is highly uneven — tech-heavy cities like San Francisco face systemic vacancy while finance-dominated cities like London show resilience. Investor strategy must now be city-specific rather than sector-wide."
+    }
+  ],
+  "training_synthesise": [
+    {
+      "question":"Synthesise research about remote work for corporate real estate investors. Facts: office vacancy 19.6%, SF at 34%, 35% fully remote. Themes: structural shift, geographic polarisation.",
+      "answer":"RESEARCH BRIEF: The Rise of Remote Work\n\nOVERVIEW\nRemote and hybrid work has fundamentally restructured demand for commercial office space since 2020. Vacancy rates have reached historic highs in major markets and show no sign of mean-reversion, signalling a structural rather than cyclical shift.\n\nKEY FACTS\n- US commercial office vacancy: 19.6% (Q3 2024, CBRE)\n- San Francisco vacancy: 34% — highest of any major US market\n- 35% of knowledge workers now fully remote; 45% hybrid (McKinsey 2024)\n- Sub-let space doubled as a share of total availability 2020-2024\n\nKEY THEMES\n- Structural shift: vacancy is not recovering with economic growth\n- Geographic polarisation: tech cities hardest hit, finance cities more resilient\n\nIMPLICATIONS FOR CORPORATE REAL ESTATE INVESTORS\nPortfolios heavy in US tech-city office exposure face sustained valuation pressure. Flight-to-quality dynamics are concentrating occupancy in premium, amenity-rich buildings. Conversion opportunities and mixed-use repositioning are emerging as viable exit strategies for distressed assets."
+    }
+  ],
+  "training_outline": [
+    {
+      "question":"Outline a research report about remote work for corporate real estate investors. Research brief covers vacancy rates, hybrid models, geographic polarisation.",
+      "answer":"DOCUMENT OUTLINE: The Rise of Remote Work\n\n1. EXECUTIVE SUMMARY\nHigh-level findings and investment implications for time-pressed readers.\n- Current state of office vacancy nationally and in key markets\n- The structural vs cyclical debate resolved\n- Top 2 investment implications\n\n2. BACKGROUND & CONTEXT\nHow we got here — the conditions that created the current landscape.\n- Pre-pandemic office demand baseline\n- COVID-19 as accelerant, not cause\n- Policy and employer response timeline\n\n3. KEY FINDINGS\nThe data and evidence at the core of the report.\n- Vacancy rate analysis by city and asset class\n- Worker preference data and employer policy trends\n- Flight-to-quality dynamics and sub-let market\n\n4. IMPLICATIONS & RECOMMENDATIONS\nWhat investors should do with this information.\n- Portfolio risk assessment framework\n- Opportunities: conversion, repositioning, selective acquisition\n- Markets to avoid vs markets with resilience"
+    }
+  ],
+  "training_exec_summary": [
+    {
+      "question":"Write executive summary for a report on remote work for real estate investors. Key finding: structural shift, 19.6% vacancy, geographic polarisation.",
+      "answer":"EXECUTIVE SUMMARY\n\nCommercial office markets are undergoing a structural reset, not a cyclical correction. US vacancy has reached 19.6% nationally with technology-concentrated markets such as San Francisco exceeding 34% — levels from which historical precedent offers little guidance on recovery timelines.\n\nThe dominant driver is a permanent redistribution of knowledge work across remote, hybrid, and in-office models. With 80% of knowledge workers now operating outside a traditional five-day office week, aggregate space demand has repriced downward.\n\nFor investors, the key distinctions are geographic and quality-based. Finance-dominated cities show meaningful resilience; premium, amenity-rich assets are capturing disproportionate occupancy. The opportunity set lies in selective repositioning and conversion, not broad recovery plays."
+    }
+  ],
+  "training_background": [
+    {
+      "question":"Write background section for a remote work report. Cover pre-pandemic baseline, COVID as accelerant, policy timeline.",
+      "answer":"BACKGROUND & CONTEXT\n\nCommercial office demand in the decade preceding 2020 was characterised by steady growth, driven by expanding knowledge-economy employment and densification trends that increased occupancy per square foot. Major markets operated near full occupancy, and investors priced long-duration leases accordingly.\n\nThe COVID-19 pandemic did not create remote work — it accelerated a shift that cloud infrastructure and collaboration tooling had been enabling for years. What changed was the forced proof-of-concept at scale: organisations that had resisted remote work discovered operational continuity was achievable, and a significant portion of the workforce recalibrated its expectations permanently.\n\nEmployer responses have diverged sharply. Financial services and professional services firms have largely enforced return-to-office mandates. Technology companies, facing talent market pressure and prior cultural investment in remote infrastructure, have maintained more flexible policies. This divergence explains the geographic polarisation now visible in vacancy data."
+    }
+  ],
+  "training_findings": [
+    {
+      "question":"Write findings section on remote work. Data: 19.6% US vacancy, SF 34%, London 9.2%, 35% fully remote, 45% hybrid, sub-let doubled.",
+      "answer":"KEY FINDINGS\n\nVacancy & Absorption\nUS commercial office vacancy reached 19.6% in Q3 2024 (CBRE), the highest recorded level in the modern era. San Francisco leads at 34%; Chicago and Houston follow at 22-25%. London, at 9.2%, reflects the stronger return-to-office norms in European finance but remains above its pre-pandemic baseline of 5.8%.\n\nSub-let space — space listed by tenants rather than landlords — has doubled as a share of total available space since 2020, indicating that occupiers are carrying more space than they need and are unwilling or unable to commit to long-term reductions.\n\nWorker Behaviour & Employer Policy\n35% of knowledge workers are now fully remote; 45% operate on a hybrid schedule (McKinsey, 2024). Only 20% are in-office five days per week. Employer mandates have had limited effect on actual attendance — badge data from major office buildings consistently shows 50-60% utilisation on peak days even where full attendance is required.\n\nFlight to Quality\nOccupancy and rental growth are concentrated in the top 10-15% of the asset class — buildings with premium amenities, strong ESG credentials, and central locations. Class B and C assets are experiencing accelerated obsolescence."
+    }
+  ],
+  "training_recommendations": [
+    {
+      "question":"Write recommendations for real estate investors based on remote work findings. Key themes: structural shift, geographic polarisation, flight to quality.",
+      "answer":" IMPLICATIONS & RECOMMENDATIONS\n\nPortfolio Risk Assessment\nOffice exposure in technology-concentrated markets (San Francisco, Seattle, Austin) warrants immediate review. Vacancy at these levels has historically preceded sustained valuation decline. Weighting toward finance-dominated markets (New York Midtown, London City, Singapore) provides relative defensiveness.\n\nOpportunities\nConversion to residential, life sciences, or mixed-use is the most viable exit for distressed Class B assets in oversupplied markets. Early movers are achieving better regulatory treatment and construction cost terms. Selective acquisition of distressed prime assets — where vacancy reflects market conditions rather than asset quality — offers return potential as flight-to-quality demand concentrates.\n\nCapital Allocation\nNew development commitments should be confined to premium, amenity-led assets in resilient markets with demonstrable pre-leasing. Speculative development in technology markets should be suspended until absorption data stabilises.\n\nTimeline\nWe do not anticipate meaningful recovery in aggregate vacancy before 2027. Investors with liquidity and patience are better positioned than those requiring near-term income recovery."
+    }
+  ],
+  "training_assemble": [
+    {
+      "question":"Assemble a research report for investors. Sections: executive summary about office vacancy, background on remote work, findings with data, recommendations on portfolio strategy.",
+      "answer":"THE RISE OF REMOTE WORK: IMPLICATIONS FOR COMMERCIAL REAL ESTATE\nA Research Report for Institutional Investors\n\n─────────────────────────────\nEXECUTIVE SUMMARY\n─────────────────────────────\nCommercial office markets are undergoing a structural reset...\n\n─────────────────────────────\nBACKGROUND & CONTEXT\n─────────────────────────────\nCommercial office demand in the decade preceding 2020 [continue onward integrating facts from included summaries]"
+    }
+  ],
+
+  "training_critique": [
+    {
+      "question":"Review a research report on remote work for real estate investors. The report covers vacancy rates, worker behaviour, and investment recommendations.",
+      "answer":"STRENGTHS\n- Data is specific and well-sourced, giving the report credibility with a sophisticated audience\n- The geographic polarisation framing is clear and actionable\n- Recommendations are concrete and follow logically from findings\n\nWEAKNESSES\n- The background section over-explains pre-pandemic context; investors in this audience already know the baseline\n- The 2027 recovery timeline in recommendations is stated without supporting evidence\n- No mention of interest rate environment, which significantly affects real estate investor calculus\n\nTONE CHECK\nAppropriate overall. Some passages lean slightly academic; institutional investors prefer crisper sentences.\n\nSUGGESTED IMPROVEMENTS\n1. Cut background section by 30% — trim the pre-pandemic history and start closer to the inflection point\n2. Add a brief note on interest rate context in the recommendations section\n3. Add a data table summarising vacancy rates by city for quick reference\n\nOVERALL VERDICT\n[needs revision|no revision needed]"
+    }
+  ],
+  "training_apply_feedback": [
+    {
+      "question":"Revise document. AI critique: cut background by 30%, add interest rate context, add data table. Human feedback: APPROVE. Document: THE RISE OF REMOTE WORK...",
+      "answer":"THE RISE OF REMOTE WORK: IMPLICATIONS FOR COMMERCIAL REAL ESTATE\n\n[Revised version with trimmed background, interest rate paragraph added to recommendations, and vacancy data table inserted after findings header]"
+    }
+  ]
+}

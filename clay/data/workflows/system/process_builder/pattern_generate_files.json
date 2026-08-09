@@ -1,0 +1,3 @@
+{
+  "selected_pattern": "PATTERN: GENERATE_FILES_FROM_PROMPT\nSHAPE:\nhumanDecision(user_request)\nscramda2(agent_reply: user_request + file_protocol)\napplyFileWrites(agent_reply)\nOPTIONAL runReplyCommands(agent_reply)"
+}

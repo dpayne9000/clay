@@ -1,0 +1,85 @@
+{
+  "defaults": {
+    "doc_type": "research report",
+    "audience": "general readers"
+  },
+  "workflow": {
+    "steps": ["load_training", "generateOutline", "draftExecSummary", "draftBackground", "draftFindings", "draftRecommendations", "assemble"]
+  },
+  "actionSets": {
+    "load_training": [
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "../training.json"
+      }
+    ],
+    "generateOutline": [
+      {
+        "id": "outline",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_outline"
+        },
+        "modelProfile":"default",
+        "prompt": "Create a detailed section-by-section outline for a {doc_type} about '{topic}' for {audience}. Use the research brief to ensure accuracy.\n\nFor each section provide: section name, one sentence describing its purpose, and 3-4 bullet points of what it should cover.\n\nResearch brief:\n{research_brief}\n\n{training_outline}",
+        "includedData": ["topic", "doc_type", "audience", "research_brief"]
+      }
+    ],
+    "draftExecSummary": [
+      {
+        "id": "exec_summary",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_exec_summary"
+        },
+        "prompt": "Write the Executive Summary section of a {doc_type} about '{topic}' for {audience}. Use the outline and research brief as your source. Be concise — this section should be readable in under 2 minutes. Lead with the most important finding.\n\nOutline:\n{outline}\n\nResearch brief:\n{research_brief}\n\n{training_exec_summary}",
+        "includedData": ["topic", "doc_type", "audience", "outline", "research_brief"]
+      }
+    ],
+    "draftBackground": [
+      {
+        "id": "background",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_background"
+        },
+        "prompt": "Write the Background & Context section of a {doc_type} about '{topic}' for {audience}. Cover the conditions and history that explain the current situation. Use the outline to stay on scope.\n\nOutline:\n{outline}\n\nResearch brief:\n{research_brief}\n\n{training_background}",
+        "includedData": ["topic", "doc_type", "audience", "outline", "research_brief"]
+      }
+    ],
+    "draftFindings": [
+      {
+        "id": "findings",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_findings"
+        },
+        "prompt": "Write the Key Findings section of a {doc_type} about '{topic}' for {audience}. This is the evidence core of the document — be specific, cite data from the research brief, and organise findings clearly.\n\nOutline:\n{outline}\n\nResearch brief:\n{research_brief}\n\n{training_findings}",
+        "includedData": ["topic", "doc_type", "audience", "outline", "research_brief"]
+      }
+    ],
+    "draftRecommendations": [
+      {
+        "id": "recommendations",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_recommendations"
+        },
+        "prompt": "Write the Implications & Recommendations section of a {doc_type} about '{topic}' for {audience}. Be actionable and specific. Recommendations should follow directly from the findings.\n\nOutline:\n{outline}\n\nResearch brief:\n{research_brief}\n\n{training_recommendations}",
+        "includedData": ["topic", "doc_type", "audience", "outline", "research_brief"]
+      }
+    ],
+    "assemble": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_assemble"
+        },
+        "prompt": "Assemble these sections into a complete, polished {doc_type} for {audience}. Add a title, ensure consistent tone and tense throughout, smooth transitions between sections, and add a one-line section header before each. Do not add new content — only assemble and polish.\n\nEXECUTIVE SUMMARY:\n{exec_summary}\n\nBACKGROUND & CONTEXT:\n{background}\n\nKEY FINDINGS:\n{findings}\n\nIMPLICATIONS & RECOMMENDATIONS:\n{recommendations}\n\n{training_assemble}",
+        "includedData": ["topic", "doc_type", "audience", "exec_summary", "background", "findings", "recommendations"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "workflow": {
+    "steps": ["work", "decide"]
+  },
+  "actionSets": {
+    "work": [
+      {
+        "id": "iteration_output",
+        "type": "shell",
+        "command": "echo iteration-{iteration}",
+        "includedData": ["iteration"],
+        "timeout": 5
+      }
+    ],
+    "decide": [
+      {
+        "id": "should_continue",
+        "type": "shell",
+        "command": "echo NO",
+        "timeout": 5
+      }
+    ]
+  }
+}

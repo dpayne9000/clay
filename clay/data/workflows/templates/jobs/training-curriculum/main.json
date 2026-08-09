@@ -1,0 +1,131 @@
+{
+  "autoContext": "You are an instructional designer creating a comprehensive training curriculum. Design for progressive skill building with practical exercises and clear assessments.",
+  "defaults": {
+    "memory_namespace": "training",
+    "output_dir": "output/training-curriculum"
+  },
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+  "actionSets": {
+    "init": [
+      {
+        "id": "subject",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "skill_level",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "duration_weeks",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "learning_objectives",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "memory_namespace",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "output_dir",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+    "recall": [
+      {
+        "id": "prior_curricula",
+        "type": "searchMemory",
+        "namespace": "training",
+        "query": "curriculum modules learning objectives exercises assessment",
+        "includedData": ["memory_namespace", "subject"]
+      },
+      {
+        "id": "existing_skills",
+        "type": "listSkills",
+        "skillset": "training",
+        "includedData": []
+      }
+    ],
+    "research_loop": [
+      {
+        "id": "topic_research",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_topics",
+        "outputKey": "topic_finding",
+        "includedData": ["subject", "skill_level", "duration_weeks", "learning_objectives", "memory_namespace", "prior_curricula"]
+      }
+    ],
+    "outline": [
+      {
+        "id": "curriculum_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a structured curriculum outline for a {duration_weeks}-week {skill_level} course on {subject}.\n\nLearning objectives: {learning_objectives}\n\nTopic research findings:\n{topic_research}\n\nPrior curriculum context:\n{prior_curricula}\n\nCreate an outline with:\n1. Course Overview (goals, prerequisites, outcomes)\n2. Week-by-week module breakdown ({duration_weeks} weeks)\n   - Each week: title, learning objectives, key topics\n3. Progressive skill path (how modules build on each other)\n4. Assessment strategy (per-module and final)\n5. Resource list (tools, references, supplementary materials)\n\nEnsure the progression is appropriate for {skill_level} learners. Each week should have 2-3 focused topics with practical exercises.",
+        "includedData": ["subject", "skill_level", "duration_weeks", "learning_objectives", "topic_research=topic_research.topic_finding", "prior_curricula"]
+      }
+    ],
+    "draft_loop": [
+      {
+        "id": "module_drafts",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 10,
+        "continueKey": "more_modules",
+        "outputKey": "module_draft",
+        "includedData": ["subject", "skill_level", "duration_weeks", "memory_namespace", "curriculum_outline", "topic_research=topic_research.topic_finding"]
+      }
+    ],
+    "finalize": [
+      {
+        "id": "final_curriculum",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Assemble the final training curriculum for {subject} ({skill_level} level, {duration_weeks} weeks).\n\nCurriculum outline:\n{curriculum_outline}\n\nDrafted modules:\n{module_drafts}\n\nCombine into a polished, complete curriculum document. Ensure:\n- Course overview clearly states prerequisites and outcomes\n- Each module has: title, objectives, topics, detailed exercises, assessment criteria\n- Exercises are practical and progressively challenging\n- Assessment rubrics are clear and measurable\n- Resources and tools are specific and accessible\n- Format as clean Markdown with proper headings and structure",
+        "includedData": ["subject", "skill_level", "duration_weeks", "curriculum_outline", "module_drafts=module_drafts.module_draft"]
+      },
+      {
+        "id": "final_tags",
+        "type": "deriveTags",
+        "content": "final_curriculum",
+        "includedData": ["final_curriculum"]
+      },
+      {
+        "id": "save_curriculum_memory",
+        "type": "writeMemory",
+        "namespace": "training",
+        "entryId": "final-curriculum",
+        "content": "final_curriculum",
+        "tagsKey": "final_tags",
+        "includedData": ["final_curriculum", "final_tags"]
+      },
+      {
+        "id": "save_template",
+        "type": "writeSkill",
+        "skillset": "training",
+        "name": "curriculum-template",
+        "content": "curriculum_outline",
+        "includedData": ["curriculum_outline"]
+      }
+    ],
+    "deliver": [
+      {
+        "id": "saved_file",
+        "type": "writeFile",
+        "file": "{output_dir}/curriculum-{subject}.md",
+        "content": "final_curriculum",
+        "includedData": ["final_curriculum", "output_dir", "subject"]
+      }
+    ]
+  }
+}

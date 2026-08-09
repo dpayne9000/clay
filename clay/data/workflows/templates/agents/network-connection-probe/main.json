@@ -1,0 +1,87 @@
+{
+  "autoContext": "You are an autonomous network connection probe agent running on a macOS developer machine. Your mission is to systematically discover and document all active network connections and reachable devices. You have access to standard Unix networking tools: ifconfig, netstat, arp, ping, dig, lsof, nmap, curl. Make specific, executable decisions. When writing scripts, produce working Python 3 code only. Build up a skill library so future runs skip what you already know.",
+
+  "defaults": {
+    "max_iterations": "8"
+  },
+
+  "workflow": {
+    "steps": ["init", "plan", "probe_loop", "synthesise"]
+  },
+
+  "actionSets": {
+    "init": [
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M",
+        "timeout": 5
+      },
+      {
+        "id": "skills_index",
+        "type": "listSkills",
+        "skillset": "network-connection-probe"
+      },
+      {
+        "id": "interfaces_raw",
+        "type": "shell",
+        "command": "ifconfig",
+        "timeout": 10
+      },
+      {
+        "id": "arp_raw",
+        "type": "shell",
+        "command": "arp -a",
+        "timeout": 10
+      },
+      {
+        "id": "connections_raw",
+        "type": "shell",
+        "command": "netstat -an",
+        "timeout": 15
+      }
+    ],
+
+    "plan": [
+      {
+        "id": "mission_plan",
+        "type": "scramda2",
+        "prompt": "You are a network probe agent starting a new exploration run.\n\nExisting skills already built:\n{skills_index}\n\nNetwork interfaces:\n{interfaces_raw}\n\nARP table:\n{arp_raw}\n\nActive connections (netstat):\n{connections_raw}\n\nBased on this context, list 8 specific probing tasks you will do this run — one per line. Focus on areas not covered by existing skills. Be concrete: name the command, the target, and what you expect to learn.",
+        "includedData": ["skills_index", "interfaces_raw", "arp_raw", "connections_raw"]
+      }
+    ],
+
+    "probe_loop": [
+      {
+        "id": "exploration_log",
+        "type": "loop",
+        "file": "./probe-iteration.json",
+        "iterations": 8,
+        "continueKey": "should_continue",
+        "outputKey": "summary",
+        "includedData": ["skills_index", "mission_plan", "interfaces_raw", "arp_raw"]
+      }
+    ],
+
+    "synthesise": [
+      {
+        "id": "final_skills",
+        "type": "listSkills",
+        "skillset": "network-connection-probe"
+      },
+      {
+        "id": "report",
+        "type": "scramda2",
+        "prompt": "You are a network probe agent that has just completed an exploration run.\n\nOriginal mission plan:\n{mission_plan}\n\nIteration summaries (loop history):\n{exploration_log}\n\nSkills built this run:\n{final_skills}\n\nWrite a full network topology report. Include:\n- Interfaces found (names, addresses, states)\n- Hosts discovered (IPs, hostnames)\n- Open ports per host\n- Protocol coverage (what was probed)\n- Skills written\n- Recommended next steps for future runs",
+        "includedData": ["mission_plan", "exploration_log=exploration_log.summary", "final_skills"]
+      },
+      {
+        "id": "report_saved",
+        "type": "writeFile",
+        "file": "output/connection-report-{timestamp}.txt",
+        "content": "report",
+        "includedData": ["report", "timestamp"]
+      }
+    ]
+  }
+}

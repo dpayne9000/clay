@@ -1,0 +1,80 @@
+{
+  "defaults": {
+    "depth": "comprehensive",
+    "doc_type": "research report",
+    "audience": "general readers"
+  },
+  "autoContext": "you are a technical writer writing a paper about counterfeit academic papers",
+  "workflow": {
+    "steps": ["intake", "runResearch", "runDraft", "runReview", "saveDocument"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "topic",
+        "type": "humanDecision",
+        "prompt": "What topic should this document cover?"
+      },
+      {
+        "id": "doc_type",
+        "type": "humanDecision",
+        "prompt": "What type of document? (e.g. research report, executive briefing, white paper, technical overview)"
+      },
+      {
+        "id": "audience",
+        "type": "humanDecision",
+        "prompt": "Who is the target audience?"
+      },
+      {
+        "id": "depth",
+        "type": "humanDecision",
+        "prompt": "Research depth — quick / standard / comprehensive (press Enter for comprehensive)"
+      }
+    ],
+    "runResearch": [
+      {
+        "id": "research_brief",
+        "type": "workflow",
+        "file": "./pipelines/research.json",
+        "outputKey": "final",
+        "includedData": ["topic", "doc_type", "audience", "depth"]
+      }
+    ],
+    "runDraft": [
+      {
+        "id": "draft",
+        "type": "workflow",
+        "file": "./pipelines/draft-document.json",
+        "outputKey": "final",
+        "includedData": ["research_brief=research_brief.final", "topic", "doc_type", "audience"]
+      }
+    ],
+    "runReview": [
+      {
+        "id": "final_document",
+        "type": "workflow",
+        "file": "./pipelines/review.json",
+        "outputKey": "final",
+        "includedData": ["draft=draft.final", "topic", "doc_type", "audience"]
+      }
+    ],
+    "saveDocument": [
+      {
+        "id": "revision",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_apply_feedback"
+        },
+        "prompt": "Revise this document with the power to update the following document: {draft} with the following feedback: {final_document}",
+        "includedData": ["draft=draft.final", "final_document"]
+      },
+      {
+        "id": "saved_path",
+        "type": "writeFile",
+        "file": "output/FINAL-RESEARCH-{doc_type}.txt",
+        "content": "revision",
+        "includedData": ["topic", "doc_type", "revision=revision"]
+      }
+    ]
+  }
+}

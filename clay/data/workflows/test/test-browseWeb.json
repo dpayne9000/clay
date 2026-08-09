@@ -1,0 +1,74 @@
+{
+  "autoContext": "Validates browseWeb action. Covers: url param (string, supports {variable} template), urlsKey param (context key holding newline-separated URLs — each is fetched and returned as its own '=== url ===' block), maxPages param (int cap on how many of those URLs are read), and maxChars param (int truncation limit on extracted text, per page). siteKey is NOT covered here: it writes a profile file under webactions/ and is ignored when urlsKey is set, so it belongs with the listSites/loadSite tests rather than this one. NOTE: requires internet access.",
+
+  "defaults": {
+    "target_url": "https://example.com",
+    "target_urls": "https://example.com\nhttps://example.org\nhttps://example.net"
+  },
+
+  "workflow": {
+    "steps": [
+      "test_basic_url",
+      "test_url_template",
+      "test_max_chars",
+      "test_urls_key",
+      "verify_results"
+    ]
+  },
+
+  "actionSets": {
+
+    "test_basic_url": [
+      {
+        "_comment": "PARAM: url — full URL string to fetch and extract text from. HTML is parsed; scripts, styles, and noscript tags are stripped.",
+        "id": "page_content",
+        "type": "browseWeb",
+        "url": "https://example.com"
+      }
+    ],
+
+    "test_url_template": [
+      {
+        "_comment": "PARAM: url with {variable} — resolved from includedData before fetching. Allows dynamic URL construction from previous step outputs.",
+        "id": "template_content",
+        "type": "browseWeb",
+        "url": "{target_url}",
+        "includedData": ["target_url"]
+      }
+    ],
+
+    "test_max_chars": [
+      {
+        "_comment": "PARAM: maxChars — int limit on extracted text length. Truncates the returned string. Useful for large pages to avoid overwhelming downstream prompts.",
+        "id": "truncated_content",
+        "type": "browseWeb",
+        "url": "https://example.com",
+        "maxChars": 200
+      }
+    ],
+
+    "test_urls_key": [
+      {
+        "_comment": "PARAM: urlsKey — names a context key holding one URL per line. Every URL is fetched in this one action and returned as '=== <url> ===' followed by that page's text. PARAM: maxPages — caps the list at 2 here, so the third default URL must NOT appear in the output. A URL that is refused or fails comes back as its own block rather than ending the action.",
+        "id": "multi_content",
+        "type": "browseWeb",
+        "urlsKey": "target_urls",
+        "maxPages": 2,
+        "maxChars": 500,
+        "includedData": ["target_urls"]
+      }
+    ],
+
+    "verify_results": [
+      {
+        "_comment": "Confirm all browse results are stored in previous_data.",
+        "id": "browse_verify",
+        "type": "shell",
+        "command": "echo browse-results-stored",
+        "includedData": ["page_content", "template_content", "truncated_content", "multi_content"],
+        "timeout": 5
+      }
+    ]
+
+  }
+}

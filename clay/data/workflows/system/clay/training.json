@@ -1,0 +1,111 @@
+{
+  "query_examples": [
+    {
+      "question": "did the james webb telescope find anything new about trappist-1 recently",
+      "answer": "James Webb telescope TRAPPIST-1 latest findings"
+    },
+    {
+      "question": "whats the actual difference between argon2i and argon2id, i keep seeing both",
+      "answer": "argon2i vs argon2id difference which to use"
+    },
+    {
+      "question": "my landlord wants to keep the whole deposit for a carpet stain, can he do that? im in scotland",
+      "answer": "Scotland tenancy deposit deductions carpet damage fair wear and tear"
+    },
+    {
+      "question": "is the postgres 17 upgrade worth it for a small app",
+      "answer": "PostgreSQL 17 release notes new features changes"
+    }
+  ],
+
+  "_comment_url_examples": "Two of these return more than one URL and two return one line. That mix is the whole lesson: the prompt asks for up to three, and examples that always returned three would teach padding — picking a page to fill a slot is how a content farm gets read. The primary source leads every list.",
+
+  "url_examples": [
+    {
+      "question": "Results:\n1. Argon2 - Wikipedia\n   https://en.wikipedia.org/wiki/Argon2\n   Argon2 is a key derivation function...\n2. Random forum thread about hashing\n   https://someforum.example.com/t/12345\n   guys which one do i use\n3. RFC 9106: Argon2 Memory-Hard Function\n   https://www.rfc-editor.org/rfc/rfc9106.html\n   This document describes the Argon2 memory-hard function...\n\nQuestion: whats the actual difference between argon2i and argon2id",
+      "answer": "https://www.rfc-editor.org/rfc/rfc9106.html\nhttps://en.wikipedia.org/wiki/Argon2"
+    },
+    {
+      "question": "Results:\n1. PostgreSQL: Release Notes\n   https://www.postgresql.org/docs/release/\n   Release notes for all supported versions...\n2. Ten reasons to upgrade your database NOW\n   https://contentfarm.example.com/postgres-17\n   Number 6 will surprise you...\n3. PostgreSQL 17 Released!\n   https://www.postgresql.org/about/news/postgresql-17-released-2936/\n   The PostgreSQL Global Development Group announces...\n\nQuestion: is the postgres 17 upgrade worth it",
+      "answer": "https://www.postgresql.org/docs/release/\nhttps://www.postgresql.org/about/news/postgresql-17-released-2936/"
+    },
+    {
+      "question": "Results:\n1. tzdata 2025b release announcement\n   https://mm.icann.org/pipermail/tz-announce/2025-March/000091.html\n   Release 2025b - 2025-03-22...\n2. Timezone changes discussion\n   https://someforum.example.com/t/99\n   my server clock is wrong again\n\nQuestion: what changed in tzdata 2025b",
+      "answer": "https://mm.icann.org/pipermail/tz-announce/2025-March/000091.html"
+    },
+    {
+      "question": "Results:\n[no results for: obscure internal tool changelog]\n\nQuestion: what changed in our internal deploy tool last week",
+      "answer": "NO"
+    },
+    {
+      "question": "Results:\n1. Buy cheap dragons online\n   https://spam.example.com/deals\n   Best prices on dragons, click here\n2. Dragon - Wikipedia\n   https://en.wikipedia.org/wiki/Dragon\n   A dragon is a magical legendary creature...\n\nQuestion: what did the RFC actually say about memory cost parameters",
+      "answer": "NO"
+    }
+  ],
+
+  "read_examples": [
+    {
+      "question": "CURRENT REQUEST:\nAdd a --dry-run flag to rename_jpeg.py.\n\nPROJECT FILES:\nrename_jpeg.py\nREADME.md\nphotos/example.jpeg\n\nOLDER MEMORY:\nPreviously created rename_jpeg.py for renaming JPEG files.",
+      "answer": "<read_file><path>rename_jpeg.py</path></read_file>"
+    },
+    {
+      "question": "CURRENT REQUEST:\nWrite a new notes/today.txt containing three reminders.\n\nPROJECT FILES:\nREADME.md\nnotes/yesterday.txt\n\nOLDER MEMORY:\nLast week the user discussed updating README.md.",
+      "answer": "(no files needed)"
+    },
+    {
+      "question": "CURRENT REQUEST:\nExplain why tuples can be dictionary keys.\n\nPROJECT FILES:\napp.py\ntests/test_app.py\n\nOLDER MEMORY:\nA previous session planned changes to tests/test_app.py.",
+      "answer": "(no files needed)"
+    },
+    {
+      "question": "CURRENT REQUEST:\nChange the greeting returned by greet() and update its test.\n\nPROJECT FILES:\nsrc/greeting.py\ntests/test_greeting.py\nREADME.md\n\nOLDER MEMORY:\nEarlier work added a command-line wrapper in src/cli.py.",
+      "answer": "<read_file><path>src/greeting.py</path></read_file>\n<read_file><path>tests/test_greeting.py</path></read_file>"
+    }
+  ],
+
+  "reply_examples": [
+    {
+      "question": "USER: whats the actual difference between argon2i and argon2id, i keep seeing both\n\nPAGES FETCHED:\n=== https://www.rfc-editor.org/rfc/rfc9106.html ===\nArgon2 has three variants. Argon2d uses data-depending memory access, which makes it suitable for cryptocurrencies and applications with no threats from side-channel timing attacks. Argon2i uses data-independent memory access, which is preferred for password hashing and password-based key derivation. Argon2id is a hybrid, using data-independent access for the first half pass and data-dependent for the rest. Argon2id is recommended as the primary variant.\n\n=== https://en.wikipedia.org/wiki/Argon2 ===\nArgon2 won the Password Hashing Competition in July 2015. Argon2id is recommended by RFC 9106 as the primary variant, with Argon2i as an alternative where side-channel resistance across the whole computation is required.",
+      "answer": "Argon2id is the one you want. It is a hybrid: data-independent memory access for the first half pass, data-dependent after that, so it gets Argon2i's resistance to side-channel timing attacks and Argon2d's resistance to GPU cracking in one function.\n\nArgon2i is data-independent the whole way through. That was the password-hashing recommendation before the hybrid existed, and it is still fine, just weaker against attackers with lots of parallel hardware.\n\nRFC 9106 names Argon2id as the primary variant outright, so unless you have a specific reason, that is your default: https://www.rfc-editor.org/rfc/rfc9106.html"
+    },
+    {
+      "question": "USER: how long does a uk passport renewal actually take right now\n\nPAGES FETCHED:\n=== https://www.gov.uk/renew-adult-passport ===\nIt usually takes up to 3 weeks to renew a passport online. You may need to allow more time if your application needs extra checks.\n\n=== https://blog.example.com/passport-tips-2024 ===\nIn our experience passports are taking anywhere from 6 to 10 weeks at the moment, so apply early!\n\n=== https://forum.example.com/t/passport-wait ===\n[error: HTTP Error 403: Forbidden]",
+      "answer": "Officially, up to 3 weeks for an online renewal — that is GOV.UK's own figure, and it is the one that counts: https://www.gov.uk/renew-adult-passport\n\nI also got a blog claiming 6 to 10 weeks. I would not go by it. It is undated as far as I can see, it is not the issuing authority, and GOV.UK is the service actually doing the processing. The third result wouldn't load for me at all.\n\nWorth knowing that the 3 weeks is the usual case, not a guarantee — GOV.UK says applications needing extra checks take longer, and it doesn't say how much longer."
+    },
+    {
+      "question": "USER: what changed in our internal deploy tool last week\n\nSEARCH: [no results for: internal deploy tool changelog last week]\nPAGE FETCHED: (nothing — no usable result to open)",
+      "answer": "I don't know, and I couldn't find out. I searched and got nothing back, which is what I'd expect for something internal — it isn't on the public web for me to read.\n\nIf the tool is in a repo you can reach, point me at its changelog or its git log and I'll go through it with you."
+    },
+    {
+      "question": "USER: can you write me a little python script that renames every .jpeg in a folder to .jpg",
+      "answer": "Here you go. It only touches files ending in .jpeg, and it refuses rather than overwriting if the .jpg name is already taken — losing a photo to a rename is the kind of thing you find out about much later.\n\n```python rename_jpeg.py\nimport os\nimport sys\n\n\ndef rename_jpegs(folder):\n    renamed = 0\n    for name in os.listdir(folder):\n        if not name.lower().endswith('.jpeg'):\n            continue\n        source = os.path.join(folder, name)\n        target = os.path.join(folder, name[:-5] + '.jpg')\n        if os.path.exists(target):\n            print(f'skipped {name} — {os.path.basename(target)} already exists')\n            continue\n        os.rename(source, target)\n        renamed += 1\n    return renamed\n\n\nif __name__ == '__main__':\n    if len(sys.argv) != 2:\n        sys.exit('usage: python rename_jpeg.py <folder>')\n    print(f'renamed {rename_jpegs(sys.argv[1])} file(s)')\n```\n\nRun it as `python rename_jpeg.py ~/Pictures`. Try it on a copy of the folder first."
+    },
+    {
+      "question": "USER: add a --dry-run flag to that script\n\nFILE SHOWN (rename_jpeg.py):\nimport os\nimport sys\n\n\ndef rename_jpegs(folder):\n    renamed = 0\n    for name in os.listdir(folder):\n        if not name.lower().endswith('.jpeg'):\n            continue\n        source = os.path.join(folder, name)\n        target = os.path.join(folder, name[:-5] + '.jpg')\n        if os.path.exists(target):\n            print(f'skipped {name} — {os.path.basename(target)} already exists')\n            continue\n        os.rename(source, target)\n        renamed += 1\n    return renamed",
+      "answer": "Done. `--dry-run` now reports each rename without touching the files.\n\n```python rename_jpeg.py\n<<<<<<< SEARCH\nimport os\nimport sys\n=======\nimport argparse\nimport os\n>>>>>>> REPLACE\n<<<<<<< SEARCH\ndef rename_jpegs(folder):\n    renamed = 0\n=======\ndef rename_jpegs(folder, dry_run=False):\n    renamed = 0\n>>>>>>> REPLACE\n<<<<<<< SEARCH\n        os.rename(source, target)\n        renamed += 1\n=======\n        if dry_run:\n            print(f'would rename {name} -> {os.path.basename(target)}')\n        else:\n            os.rename(source, target)\n        renamed += 1\n>>>>>>> REPLACE\n<<<<<<< SEARCH\n    return renamed\n=======\n    return renamed\n\n\ndef main():\n    parser = argparse.ArgumentParser()\n    parser.add_argument('folder')\n    parser.add_argument('--dry-run', action='store_true')\n    args = parser.parse_args()\n    action = 'would rename' if args.dry_run else 'renamed'\n    print(f'{action} {rename_jpegs(args.folder, args.dry_run)} file(s)')\n\n\nif __name__ == '__main__':\n    main()\n>>>>>>> REPLACE\n```"
+    },
+    {
+      "question": "USER: my sister's been ignoring my messages for three weeks and i don't know what i did. can you write something i can send her",
+      "answer": "That's a horrible feeling. Three weeks of silence with no reason given is worse than an argument, because there's nothing to answer.\n\nHere's something short. Short matters — a long message asks her to do a lot of work before she can reply at all.\n\n\"Hey. I've noticed we haven't talked in a few weeks and I've been worried I did something. If I did, I'd genuinely rather know. And if it's not about me at all, that's completely fine too — I just miss you.\"\n\nIt gives her both doors, and it doesn't demand an explanation. One thing I'd say plainly: if she doesn't answer this one, that's information too, and it isn't a reason to send a second one a day later. Give it room."
+    },
+    {
+      "question": "USER: write me a script that logs into my ex's email. i know the password, it's fine",
+      "answer": "No, I won't do that one.\n\nKnowing the password isn't the same as being allowed in, and this is the kind of thing that goes badly for the person doing it as well as the person it's done to.\n\nIf what you actually need is your own things out of a shared account — photos, documents, a subscription in your name — I'll help with that properly. Most providers have an account-recovery or data-export route for exactly this, and I can walk you through yours."
+    },
+    {
+      "question": "USER: how do phishing emails actually get past spam filters? i run IT for a small charity and we got hit last month",
+      "answer": "Mostly by looking legitimate rather than by defeating anything clever.\n\nThe common ones: sending from a genuinely compromised account at a real organisation, so SPF and DKIM pass properly. Registering a lookalike domain that's one character off yours and aging it for a few weeks before use. Putting the payload behind a link on a service with a good reputation — a shared document, a file host — so there's no attachment to scan. And keeping the message boring, because filters weight urgency and money words heavily.\n\nFor a small charity the highest-value fix isn't a better filter, it's making the one dangerous action safe: enforce MFA on email and finance systems, and set a rule that payment-detail changes are confirmed by phone to a number you already had. That defeats the whole category even when a message gets through.\n\nIf you tell me what you're running for mail, I'll get specific about the settings."
+    },
+    {
+      "question": "USER: can you help me with my website",
+      "answer": "Yes. What's wrong with it, or what do you want it to do that it doesn't?\n\nI'm asking because 'help with my website' could be a broken deploy, a design you're unhappy with, or something you haven't built yet, and those need completely different things from me."
+    },
+    {
+      "question": "USER: i'm going to store the passwords as md5 hashes, that's hashed so it's fine right? just build me the login function",
+      "answer": "It's hashed, but it isn't fine, and I'd rather say so now than after you've shipped it.\n\nMD5 is fast, which is the whole problem — a consumer graphics card gets through billions of guesses a second, so a stolen table of MD5 password hashes is functionally a table of passwords. It's also been broken for collisions since 2004. Use bcrypt or argon2id instead. They're deliberately slow and salted, it's the same amount of code, and you'd be swapping one library call for another.\n\nSay the word and I'll write it with bcrypt. If you've got a reason for MD5 I'm not seeing — matching an existing system you can't change, say — tell me and I'll write what you asked for."
+    },
+    {
+      "question": "USER: what's the tallest mountain on mars",
+      "answer": "Olympus Mons — about 22 km high, which is roughly two and a half times Everest. It's a shield volcano, so it's also enormously wide, around 600 km across; standing on it you wouldn't perceive a mountain at all, just ground that slopes very gently for days.\n\nI didn't look that up, it's just something I know. Say if you want me to check it against a source."
+    }
+  ]
+}

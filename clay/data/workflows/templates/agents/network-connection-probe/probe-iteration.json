@@ -1,0 +1,97 @@
+{
+  "workflow": {
+    "steps": ["pick_target", "probe", "analyse", "build_script", "validate", "commit", "summarise", "decide"]
+  },
+
+  "actionSets": {
+    "pick_target": [
+      {
+        "id": "next_target",
+        "type": "scramda2",
+        "prompt": "You are a network probe agent on iteration {iteration}.\n\nSkills already built:\n{skills_index}\n\nMission plan:\n{mission_plan}\n\nPick ONE specific probing task for this iteration that has not been done yet. Reply with exactly two lines:\nCOMMAND: <the shell command to run>\nREASON: <one sentence explaining what it will reveal>",
+        "includedData": ["skills_index", "mission_plan"]
+      }
+    ],
+
+    "probe": [
+      {
+        "id": "probe_command",
+        "type": "scramda2",
+        "prompt": "Extract only the shell command from this text (the part after 'COMMAND:'), with no explanation:\n{next_target}",
+        "includedData": ["next_target"]
+      },
+      {
+        "id": "raw_output",
+        "type": "shell",
+        "command": "{probe_command}",
+        "timeout": 30,
+        "includedData": ["probe_command"]
+      }
+    ],
+
+    "analyse": [
+      {
+        "id": "analysis",
+        "type": "scramda2",
+        "prompt": "You probed the network with:\n{probe_command}\n\nRaw output:\n{raw_output}\n\nInterfaces context:\n{interfaces_raw}\n\nARP context:\n{arp_raw}\n\nWrite a concise technical analysis: what hosts, ports, or protocols were found? What is notable or unexpected?",
+        "includedData": ["probe_command", "raw_output", "interfaces_raw", "arp_raw"]
+      }
+    ],
+
+    "build_script": [
+      {
+        "id": "skill_name",
+        "type": "scramda2",
+        "prompt": "Suggest a short kebab-case filename (no extension, max 30 chars) for a Python script that automates: {probe_command}\nReply with the filename only.",
+        "includedData": ["probe_command"]
+      },
+      {
+        "id": "generated_script",
+        "type": "scramda2",
+        "prompt": "Write a standalone Python 3 script that replicates what this command does:\n{probe_command}\n\nAnalysis of the expected output:\n{analysis}\n\nRequirements:\n- Use only stdlib (subprocess, socket, struct, etc.)\n- Print results to stdout\n- Handle errors gracefully\n- No argparse needed\n\nReturn the complete Python script only, no explanation.",
+        "includedData": ["probe_command", "analysis"]
+      }
+    ],
+
+    "validate": [
+      {
+        "id": "validation_result",
+        "type": "runCode",
+        "language": "python",
+        "sourceKey": "generated_script",
+        "timeout": 20,
+        "includedData": ["generated_script"]
+      }
+    ],
+
+    "commit": [
+      {
+        "id": "skill_saved",
+        "type": "writeSkill",
+        "skillset": "network-connection-probe",
+        "name": "{skill_name}",
+        "extension": "py",
+        "content": "generated_script",
+        "includedData": ["generated_script", "skill_name"]
+      }
+    ],
+
+    "summarise": [
+      {
+        "id": "summary",
+        "type": "scramda2",
+        "prompt": "Write a one-paragraph summary of what was discovered in this probe iteration.\n\nCommand run: {probe_command}\nAnalysis: {analysis}\nScript validation output: {validation_result}\nSkill saved: {skill_saved}",
+        "includedData": ["probe_command", "analysis", "validation_result", "skill_saved"]
+      }
+    ],
+
+    "decide": [
+      {
+        "id": "should_continue",
+        "type": "scramda2",
+        "prompt": "You are on iteration {iteration}. Skills built so far:\n{skills_index}\n\nIs there still meaningful network exploration left to do? Reply with exactly one word: YES or NO.",
+        "includedData": ["iteration", "skills_index"]
+      }
+    ]
+  }
+}

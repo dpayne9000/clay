@@ -1,0 +1,68 @@
+{
+  "autoContext": "You are a workflow architect. You know the clay action schema and can design complete, valid, runnable workflows. Be creative but practical — each workflow should solve a real problem.",
+
+  "defaults": {
+    "max_iterations": "5"
+  },
+
+  "workflow": {
+    "steps": ["init", "generation_loop", "report"]
+  },
+
+  "actionSets": {
+    "init": [
+      {
+        "id": "existing_ideas",
+        "type": "listMemory",
+        "namespace": "workflow-ideas"
+      },
+      {
+        "id": "existing_templates",
+        "type": "listSkills",
+        "skillset": "workflow-templates"
+      },
+      {
+        "id": "past_ideas",
+        "type": "searchMemory",
+        "namespace": "workflow-ideas",
+        "query": "generated validated",
+        "maxResults": 10
+      }
+    ],
+
+    "generation_loop": [
+      {
+        "id": "generation_log",
+        "type": "loop",
+        "file": "./generate-iteration.json",
+        "iterations": 5,
+        "continueKey": "should_continue",
+        "outputKey": "generation_summary",
+        "includedData": ["existing_ideas", "past_ideas", "existing_templates"]
+      }
+    ],
+
+    "report": [
+      {
+        "id": "all_generated",
+        "type": "searchMemory",
+        "namespace": "workflow-ideas",
+        "query": "generated",
+        "maxResults": 20
+      },
+      {
+        "id": "session_report",
+        "type": "scramda2",
+        "prompt": "Summarize what workflows were generated in this session. List each with: name, purpose, number of actions, whether it passed validation.\n\nGenerated workflows:\n{all_generated}",
+        "includedData": ["all_generated"]
+      },
+      {
+        "id": "_index_saved",
+        "type": "writeFile",
+        "file": "output/generated-workflows/index.md",
+        "content": "session_report",
+        "includedData": ["session_report"]
+      }
+    ]
+  }
+}

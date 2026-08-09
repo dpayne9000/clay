@@ -1,0 +1,129 @@
+{
+  "autoContext": "You are an autonomous product requirements agent. Your job is to research similar products, analyze competitive positioning, gather user research patterns, and produce a comprehensive Product Requirements Document (PRD). Structure the PRD with clear user stories, functional and non-functional requirements, and milestone planning. Ground everything in research data stored in memory.",
+
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+
+  "actionSets": {
+
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      }
+    ],
+
+    "recall": [
+      {
+        "id": "prior_research",
+        "type": "searchMemory",
+        "namespace": "product-reqs",
+        "queryKey": "product_name",
+        "maxResults": 10
+      },
+      {
+        "id": "existing_skills",
+        "type": "listSkills",
+        "skillset": "product-reqs"
+      },
+      {
+        "id": "recall_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Summarize any prior research for {product_name}. If no prior data exists, say 'No prior research found — starting fresh.'\n\nProblem statement: {problem_statement}\n\nPrior research:\n{prior_research}\n\nExisting skills:\n{existing_skills}",
+        "includedData": ["product_name", "problem_statement", "prior_research", "existing_skills"]
+      }
+    ],
+
+    "research_loop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 5,
+        "continueKey": "research_continue",
+        "outputKey": "research_findings",
+        "includedData": ["product_name", "problem_statement", "user_personas", "constraints", "recall_summary"]
+      }
+    ],
+
+    "outline": [
+      {
+        "id": "all_findings",
+        "type": "searchMemory",
+        "namespace": "product-reqs",
+        "queryKey": "product_name",
+        "maxResults": 20
+      },
+      {
+        "id": "prd_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate the structure for a Product Requirements Document for {product_name}.\n\nProblem: {problem_statement}\nPersonas: {user_personas}\nConstraints: {constraints}\n\nResearch findings:\n{all_findings}\n\nResearch log:\n{research_log}\n\nCreate a PRD outline with these sections:\n1. Product Overview & Vision\n2. Problem Statement & Opportunity\n3. User Personas & Journey Maps\n4. User Stories (grouped by persona)\n5. Functional Requirements (prioritized MoSCoW)\n6. Non-Functional Requirements (performance, security, scalability)\n7. Technical Architecture Constraints\n8. Milestones & Phasing\n9. Success Metrics & KPIs\n10. Risks & Mitigations\n\nFor each section, list the specific content items and reference relevant research.",
+        "includedData": ["product_name", "problem_statement", "user_personas", "constraints", "all_findings", "research_log=research_log.research_findings"]
+      }
+    ],
+
+    "draft_loop": [
+      {
+        "id": "draft_log",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "draft_continue",
+        "outputKey": "draft_section",
+        "includedData": ["product_name", "problem_statement", "user_personas", "constraints", "prd_outline"]
+      }
+    ],
+
+    "finalize": [
+      {
+        "id": "draft_memory",
+        "type": "searchMemory",
+        "namespace": "product-reqs",
+        "queryKey": "product_name",
+        "maxResults": 25
+      },
+      {
+        "id": "final_prd",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Produce the complete Product Requirements Document for {product_name}.\n\nOutline:\n{prd_outline}\n\nDraft sections:\n{draft_log}\n\nAll stored research:\n{draft_memory}\n\nCombine all draft sections into a polished, cohesive PRD. Ensure:\n- User stories follow 'As a [persona], I want [goal], so that [benefit]' format\n- Functional requirements are numbered and prioritized (Must/Should/Could/Won't)\n- Non-functional requirements have measurable acceptance criteria\n- Milestones have clear scope boundaries and estimated timelines\n- Constraints from {constraints} are reflected throughout\n- Success metrics are quantifiable with targets",
+        "includedData": ["product_name", "constraints", "prd_outline", "draft_log=draft_log.draft_section", "draft_memory"]
+      }
+    ],
+
+    "deliver": [
+      {
+        "id": "prd_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/prd-{product_name}-{timestamp}.md",
+        "content": "final_prd",
+        "includedData": ["final_prd", "output_dir", "product_name", "timestamp"]
+      },
+      {
+        "id": "prd_memory",
+        "type": "writeMemory",
+        "namespace": "product-reqs",
+        "entryId": "latest-prd",
+        "content": "final_prd",
+        "includedData": ["final_prd"]
+      },
+      {
+        "id": "prd_skill",
+        "type": "writeSkill",
+        "skillset": "product-reqs",
+        "name": "prd-template",
+        "content": "prd_outline",
+        "includedData": ["prd_outline"]
+      }
+    ]
+  }
+}

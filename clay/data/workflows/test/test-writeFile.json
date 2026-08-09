@@ -1,0 +1,65 @@
+{
+  "autoContext": "Validates writeFile action. Covers: file param (output path, supports {variable} template), content param (key name whose value is written), auto-mkdir for nested paths, and return value (the resolved output path stored under action id).",
+
+  "defaults": {
+    "run_label": "testrun"
+  },
+
+  "workflow": {
+    "steps": ["prepare", "write_plain", "write_templated_path", "verify"]
+  },
+
+  "actionSets": {
+
+    "prepare": [
+      {
+        "_comment": "Produce content to write — stored under id 'report_content'.",
+        "id": "report_content",
+        "type": "shell",
+        "command": "echo this-is-the-file-content",
+        "timeout": 5
+      },
+      {
+        "_comment": "Produce a timestamp for use in the templated filename.",
+        "id": "ts",
+        "type": "shell",
+        "command": "date +%Y%m%d",
+        "timeout": 5
+      }
+    ],
+
+    "write_plain": [
+      {
+        "_comment": "PARAM: file — plain output path. Parent dirs are created automatically (makedirs). PARAM: content — key name of the value to write (must be in previous_data).",
+        "id": "write_result",
+        "type": "writeFile",
+        "file": "output/test/plain-output.txt",
+        "content": "report_content",
+        "includedData": ["report_content"]
+      }
+    ],
+
+    "write_templated_path": [
+      {
+        "_comment": "PARAM: file with {variable} template — resolved via _SafeMap before writing. Allows dynamic filenames incorporating timestamps, labels, etc.",
+        "id": "write_result_templated",
+        "type": "writeFile",
+        "file": "output/test/report-{ts}-{run_label}.txt",
+        "content": "report_content",
+        "includedData": ["report_content", "ts", "run_label"]
+      }
+    ],
+
+    "verify": [
+      {
+        "_comment": "writeFile returns the resolved file path under its action id. Confirm it is available.",
+        "id": "path_check",
+        "type": "shell",
+        "command": "echo write-result-path-stored",
+        "includedData": ["write_result", "write_result_templated"],
+        "timeout": 5
+      }
+    ]
+
+  }
+}

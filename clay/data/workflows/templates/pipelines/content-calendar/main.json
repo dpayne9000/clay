@@ -1,0 +1,72 @@
+{
+  "workflow": {
+    "steps": ["intake", "plan", "postLoop", "assemble", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "brand",
+        "type": "humanDecision",
+        "prompt": "Brand or company name:"
+      },
+      {
+        "id": "brand_voice",
+        "type": "humanDecision",
+        "prompt": "Describe the brand voice (e.g., professional but approachable, bold and edgy, warm and educational):"
+      },
+      {
+        "id": "topics",
+        "type": "humanDecision",
+        "prompt": "List 3-5 content themes or topics (comma-separated):"
+      },
+      {
+        "id": "num_posts",
+        "type": "humanDecision",
+        "prompt": "How many posts to generate? (default: 8)"
+      },
+      {
+        "id": "platforms",
+        "type": "humanDecision",
+        "prompt": "Target platforms (e.g., LinkedIn, Twitter, Blog, Instagram — or press Enter for all):"
+      }
+    ],
+    "plan": [
+      {
+        "id": "calendar_plan",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a content calendar plan for {brand}.\n\nBrand voice: {brand_voice}\nContent themes: {topics}\nTarget platforms: {platforms}\nNumber of posts: {num_posts}\n\nFor each planned post, specify:\n- Post number\n- Theme (from the topics list)\n- Platform\n- Content type (thought leadership, how-to, listicle, case study, hot take, question)\n- One-line hook/angle\n\nDistribute themes evenly. Vary content types for engagement. Sequence for narrative momentum.",
+        "includedData": ["brand", "brand_voice", "topics", "num_posts", "platforms"]
+      }
+    ],
+    "postLoop": [
+      {
+        "id": "posts",
+        "type": "loop",
+        "file": "./post-iteration.json",
+        "iterations": 12,
+        "continueKey": "more_posts",
+        "outputKey": "post_content",
+        "includedData": ["brand", "brand_voice", "calendar_plan", "num_posts"]
+      }
+    ],
+    "assemble": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Assemble these individual posts into a clean, formatted content calendar for {brand}.\n\nCalendar plan:\n{calendar_plan}\n\nGenerated posts:\n{posts}\n\nFormat as:\n\n# {brand} Content Calendar\n\nFor each post:\n---\n**Post #N** | Platform | Theme | Type\n[Full post content]\nHashtags: [...]\n---\n\nAdd a summary table at the top showing the posting schedule.",
+        "includedData": ["brand", "calendar_plan", "posts=posts.post_content"]
+      }
+    ],
+    "save": [
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/content-calendar-{brand}.md",
+        "content": "final",
+        "includedData": ["final", "brand"]
+      }
+    ]
+  }
+}

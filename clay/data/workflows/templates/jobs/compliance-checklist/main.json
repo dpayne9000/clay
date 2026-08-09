@@ -1,0 +1,126 @@
+{
+  "autoContext": "You are a compliance specialist creating a thorough compliance gap analysis and remediation checklist. Be precise about requirements and practical about remediation steps.",
+  "defaults": {
+    "memory_namespace": "compliance",
+    "output_dir": "output/compliance-checklist"
+  },
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+  "actionSets": {
+    "init": [
+      {
+        "id": "framework",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "scope",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "current_state",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "memory_namespace",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "output_dir",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+    "recall": [
+      {
+        "id": "prior_compliance",
+        "type": "searchMemory",
+        "namespace": "compliance",
+        "query": "compliance requirements gaps remediation controls audit",
+        "includedData": ["memory_namespace", "framework"]
+      },
+      {
+        "id": "prior_entries",
+        "type": "listMemory",
+        "namespace": "compliance",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "research_loop": [
+      {
+        "id": "requirement_research",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_requirements",
+        "outputKey": "requirement_finding",
+        "includedData": ["framework", "scope", "current_state", "memory_namespace", "prior_compliance"]
+      }
+    ],
+    "outline": [
+      {
+        "id": "checklist_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a structured outline for the {framework} compliance checklist.\n\nFramework: {framework}\nScope: {scope}\nCurrent state: {current_state}\n\nRequirement research findings:\n{requirement_research}\n\nPrior compliance context:\n{prior_compliance}\n\nCreate an outline with these sections:\n1. Executive Summary (compliance posture overview)\n2. Access Control Requirements\n3. Data Protection and Encryption\n4. Audit Logging and Monitoring\n5. Incident Response Procedures\n6. Vendor and Third-Party Management\n7. Policy and Documentation Requirements\n8. Gap Analysis Summary (requirements vs current state)\n9. Remediation Roadmap (prioritized by risk)\n\nFor each section, note the specific {framework} controls or articles that apply.",
+        "includedData": ["framework", "scope", "current_state", "requirement_research=requirement_research.requirement_finding", "prior_compliance"]
+      }
+    ],
+    "draft_loop": [
+      {
+        "id": "draft_sections",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_sections",
+        "outputKey": "section_draft",
+        "includedData": ["framework", "scope", "current_state", "memory_namespace", "checklist_outline", "requirement_research=requirement_research.requirement_finding"]
+      }
+    ],
+    "finalize": [
+      {
+        "id": "final_checklist",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Assemble the final {framework} compliance checklist for scope: {scope}.\n\nChecklist outline:\n{checklist_outline}\n\nDrafted sections:\n{draft_sections}\n\nCurrent state: {current_state}\n\nCombine into a polished compliance checklist. Ensure:\n- Each requirement has: control ID, description, current status (compliant/partial/non-compliant), gap description, remediation steps, priority, estimated effort\n- Executive summary shows overall compliance percentage estimate\n- Remediation roadmap is ordered by risk level (critical gaps first)\n- Include specific policy templates or controls needed\n- Format as clean Markdown with tables where appropriate",
+        "includedData": ["framework", "scope", "current_state", "checklist_outline", "draft_sections=draft_sections.section_draft"]
+      },
+      {
+        "id": "final_tags",
+        "type": "deriveTags",
+        "content": "final_checklist",
+        "includedData": ["final_checklist"]
+      },
+      {
+        "id": "save_checklist_memory",
+        "type": "writeMemory",
+        "namespace": "compliance",
+        "entryId": "final-checklist",
+        "content": "final_checklist",
+        "tagsKey": "final_tags",
+        "includedData": ["final_checklist", "final_tags"]
+      },
+      {
+        "id": "save_template",
+        "type": "writeSkill",
+        "skillset": "compliance",
+        "name": "compliance-checklist-template",
+        "content": "checklist_outline",
+        "includedData": ["checklist_outline"]
+      }
+    ],
+    "deliver": [
+      {
+        "id": "saved_file",
+        "type": "writeFile",
+        "file": "{output_dir}/compliance-{framework}-checklist.md",
+        "content": "final_checklist",
+        "includedData": ["final_checklist", "output_dir", "framework"]
+      }
+    ]
+  }
+}

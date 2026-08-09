@@ -1,0 +1,61 @@
+{
+  "workflow": {
+    "steps": ["recall_findings", "write_week", "store_draft"]
+  },
+
+  "actionSets": {
+
+    "recall_findings": [
+      {
+        "id": "week_findings",
+        "type": "searchMemory",
+        "namespace": "content-calendar",
+        "queryKey": "calendar_outline",
+        "maxResults": 10
+      },
+      {
+        "id": "week_pick",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of {duration_weeks}. You are generating one week of content calendar entries for {brand}.\n\nFull outline:\n{calendar_outline}\n\nThis is week {iteration} of {duration_weeks}. Reply with ONLY 'Week {iteration}' as the section name.",
+        "includedData": ["iteration", "duration_weeks", "brand", "calendar_outline"]
+      }
+    ],
+
+    "write_week": [
+      {
+        "id": "draft_section",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate the content calendar entries for {week_pick} of {duration_weeks} weeks for {brand}.\n\nChannels: {channels}\nTopics: {topics}\nCadence: {cadence}\nStart date: {start_date}\n\nCalendar outline:\n{calendar_outline}\n\nResearch findings:\n{week_findings}\n\nFor each entry, provide:\n- **Date:** (calculate from start_date + week offset)\n- **Channel:** (one of: {channels})\n- **Content Type:** (blog post, social update, email newsletter, etc.)\n- **Title:** (specific, compelling title)\n- **Brief:** (2-3 sentences describing the content)\n- **Keywords:** (3-5 relevant keywords)\n- **CTA:** (specific call to action)\n\nEnsure variety across topics and channels. Each channel should have at least one entry per week based on the {cadence} cadence.",
+        "includedData": ["week_pick", "duration_weeks", "brand", "channels", "topics", "cadence", "start_date", "calendar_outline", "week_findings"]
+      }
+    ],
+
+    "store_draft": [
+      {
+        "id": "draft_tags",
+        "type": "deriveTags",
+        "contentKey": "draft_section",
+        "contextKey": "week_pick",
+        "maxTags": 4,
+        "includedData": ["draft_section", "week_pick"]
+      },
+      {
+        "id": "draft_saved",
+        "type": "writeMemory",
+        "namespace": "content-calendar",
+        "content": "draft_section",
+        "tagsKey": "draft_tags",
+        "includedData": ["draft_section", "draft_tags"]
+      },
+      {
+        "id": "draft_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of {duration_weeks} complete. Generated: {week_pick}\n\nIf iteration is less than {duration_weeks}, reply YES to continue. If iteration equals {duration_weeks}, reply NO — all weeks are drafted.",
+        "includedData": ["iteration", "duration_weeks", "week_pick"]
+      }
+    ]
+  }
+}

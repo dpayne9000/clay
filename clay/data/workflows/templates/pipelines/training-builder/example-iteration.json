@@ -1,0 +1,39 @@
+{
+  "workflow": {
+    "steps": ["generate", "review", "decide"]
+  },
+  "actionSets": {
+    "generate": [
+      {
+        "id": "candidate",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate training example #{iteration} for this task: {task_description}\n\nQuality criteria: {quality_criteria}\n\nPrevious example for variety reference:\n{approved_example}\n\nCreate a NEW, DIVERSE example that is different from previous ones. Vary the:\n- Input complexity (simple, medium, complex)\n- Domain or subject matter\n- Edge cases covered\n\nFormat:\nINPUT: [a realistic input for this task]\nOUTPUT: [the ideal output demonstrating quality criteria]",
+        "includedData": ["iteration", "task_description", "quality_criteria", "approved_example"]
+      }
+    ],
+    "review": [
+      {
+        "id": "human_verdict",
+        "type": "humanDecision",
+        "prompt": "Example #{iteration}:\n\n{candidate}\n\nRate: APPROVE (keep), REJECT (discard), or enter specific changes:"
+      }
+    ],
+    "decide": [
+      {
+        "id": "approved_example",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Human verdict: {human_verdict}\nCandidate example:\n{candidate}\n\nIf verdict is APPROVE, return the candidate example exactly as-is.\nIf verdict is REJECT, return 'REJECTED'.\nIf verdict contains specific changes, apply them and return the revised example.",
+        "includedData": ["human_verdict", "candidate"]
+      },
+      {
+        "id": "more_examples",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Iteration: {iteration}\nTarget examples: {num_examples}\n\nIf {iteration} is less than {num_examples}, respond 'yes'. Otherwise respond 'done'.",
+        "includedData": ["iteration", "num_examples"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "steps": ["intake", "loadTraining", "decompose", "findAnalogies", "writeExplanation", "humanReview"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "concept",
+        "type": "humanDecision",
+        "prompt": "What concept do you want explained? (e.g., 'Kubernetes orchestration', 'neural networks', 'supply chain logistics')"
+      },
+      {
+        "id": "source_domain",
+        "type": "humanDecision",
+        "prompt": "What domain is this concept from? (e.g., 'software engineering', 'machine learning', 'business')"
+      },
+      {
+        "id": "target_domain",
+        "type": "humanDecision",
+        "prompt": "Explain it using what domain? (e.g., 'a restaurant kitchen', 'a medieval kingdom', 'a sports team', 'a jazz band')"
+      }
+    ],
+    "loadTraining": [
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "./training.json"
+      }
+    ],
+    "decompose": [
+      {
+        "id": "components",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Decompose this concept into its fundamental components.\n\nConcept: {concept} (from {source_domain})\n\nList 5-8 core components or sub-concepts, each with:\n- COMPONENT: name\n- ROLE: what it does in the system (one sentence)\n- RELATIONSHIPS: how it connects to other components\n\nThink about what someone needs to understand to grasp {concept} — the building blocks.\n\n{training_decompose}",
+        "includedData": ["concept", "source_domain", "training_decompose"]
+      }
+    ],
+    "findAnalogies": [
+      {
+        "id": "analogies",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Find 1:1 analogies in {target_domain} for each component of {concept}.\n\nComponents:\n{components}\n\nFor each component, find an analogy in {target_domain} that:\n- Plays the same ROLE as the original component\n- Has similar RELATIONSHIPS to other analogies\n- Would be immediately recognizable to someone familiar with {target_domain}\n\nFormat:\n- ORIGINAL: [component from {source_domain}]\n- ANALOGY: [equivalent in {target_domain}]\n- WHY IT WORKS: [what makes this analogy accurate]\n\n{training_analogies}",
+        "includedData": ["concept", "source_domain", "target_domain", "components", "training_analogies"]
+      }
+    ],
+    "writeExplanation": [
+      {
+        "id": "explanation",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Write a complete explanation of {concept} using ONLY the language and concepts of {target_domain}.\n\nAnalogy mapping:\n{analogies}\n\nRules:\n- Never use jargon from {source_domain} — translate everything\n- Tell it as a story or scenario in {target_domain}\n- Build up from simple parts to the full system\n- End with 'Back in {source_domain} terms...' — a one-paragraph bridge that maps back\n\nMake it vivid, memorable, and fun to read. Someone who knows {target_domain} but nothing about {source_domain} should understand {concept} after reading this.\n\n{training_explanation}",
+        "includedData": ["concept", "source_domain", "target_domain", "analogies", "training_explanation"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "final",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\n{concept} explained as {target_domain}\n─────────────────────────────────────────────────────\n\n{explanation}\n\n─────────────────────────────────────────────────────\nHow was that? (feedback for improvement, or press Enter to keep)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "_comment": "Clay — a helpful dragon who answers questions, looks things up, and writes files when asked. No action in this workflow sets a 'root'. That is deliberate: an omitted root is DEFAULT_ROOT ('.'), which clay/run/workspaces.py resolves against the project directory — the one --project-dir names, or the shell's cwd. Naming a root here would either duplicate that or quietly point somewhere else.",
+
+  "workflow": {
+    "steps": ["boot", "session"]
+  },
+
+  "actionSets": {
+
+    "boot": [
+      {
+        "id": "_goal",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./goal.json"
+      },
+      {
+        "id": "_character",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./character.json"
+      },
+      {
+        "id": "_abilities",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./abilities.json"
+      },
+      {
+        "_comment": "Separate from the rest of the context because it is the one file a user is expected to edit before running. Blank values are not papered over — searchWeb's google engine refuses loudly, which is the correct behaviour for a missing credential.",
+        "id": "_search_keys",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./search-keys.json"
+      },
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./training.json"
+      }
+    ],
+
+    "session": [
+      {
+        "id": "session_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0,
+        "continueKey": "keep_going",
+        "outputKey": "turn_summary",
+        "includedData": [
+          "mission",
+          "voice",
+          "boundaries",
+          "abilities",
+          "google_api_key",
+          "google_cx",
+          "query_examples",
+          "url_examples",
+          "read_examples",
+          "reply_examples"
+        ]
+      }
+    ]
+  }
+}

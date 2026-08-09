@@ -1,0 +1,53 @@
+{
+  "autoContext": "You are a telegram bot server.",
+  "_setup": {
+    "purpose": "The Telegram control channel fails closed. It will not start until a bot token and at least one numeric user/chat allowlist are present in the process environment.",
+    "instructions": [
+      "Create the bot with Telegram's @BotFather and export its token: export TELEGRAM_BOT_TOKEN='123456:token'",
+      "Before starting this workflow, send /start to the new bot in Telegram.",
+      "With the bot workflow stopped, inspect the update using: curl -fsSL \"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates\"",
+      "In result.message, copy from.id for your user ID and chat.id for the chat ID. A private chat ID is normally positive; a group/supergroup chat ID is normally negative.",
+      "Authorize specific people with a comma- or space-separated list: export TELEGRAM_ALLOWED_USERS='123456789'",
+      "Or authorize specific chats: export TELEGRAM_ALLOWED_CHATS='-1001234567890'",
+      "You may set both variables. When both are set, the incoming sender ID and chat ID must both be listed.",
+      "Run this workflow from the same environment: clay run system messaging telegram. If clayd itself is launched as a persistent service and must read these variables, configure them in that service environment before restarting it.",
+      "Never commit the bot token to this workflow, config.json, or any other repository file."
+    ]
+  },
+
+  "workflow": {
+    "steps": ["boot"]
+  },
+  "actionSets": {
+    "boot": [
+      {
+        "id": "boot",
+        "type": "telegram",
+        "workflows": [
+          {"label": "Clay", "path": "workflows/system/clay/main.json"},
+          {"label": "System editor", "path": "workflows/system/editor/main.json"},
+          {"label": "Coding 2", "path": "workflows/system/coding2/main.json"},
+          {"label": "Coding 3", "path": "workflows/system/coding3/main.json"},
+          {"label": "Coding 4", "path": "workflows/system/coding4/main.json"},
+
+
+          {"label": "Chatbot", "path": "workflows/templates/agents/chatbot/main.json"},
+          {"label": "Web researcher", "path": "workflows/templates/agents/web-researcher/main.json"},
+          {"label": "Research", "path": "workflows/templates/research/main.json"},
+
+          {"label": "Debate arena", "path": "workflows/templates/skunkworks/debate-arena/main.json"},
+          {"label": "Socratic tutor", "path": "workflows/templates/skunkworks/socratic-tutor/main.json"},
+          {"label": "Persona lab", "path": "workflows/templates/skunkworks/persona-lab/main.json"},
+          {"label": "Meeting simulator", "path": "workflows/templates/skunkworks/meeting-simulator/main.json"},
+          {"label": "Decision journal", "path": "workflows/templates/skunkworks/decision-journal/main.json"},
+          {"label": "Domain translator", "path": "workflows/templates/skunkworks/domain-translator/main.json"},
+          {"label": "Red team prompt", "path": "workflows/templates/skunkworks/red-team-prompt/main.json"},
+          {"label": "Retro facilitator", "path": "workflows/templates/skunkworks/retro-facilitator/main.json"},
+          {"label": "Contract red-liner", "path": "workflows/templates/skunkworks/contract-red-liner/main.json"},
+          {"label": "Workflow builder", "path": "workflows/templates/skunkworks/workflow-builder/main.json"}
+        ]
+      }
+    ]
+
+  }
+}

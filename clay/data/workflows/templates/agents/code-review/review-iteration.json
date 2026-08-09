@@ -1,0 +1,25 @@
+{
+  "workflow": {
+    "steps": ["deepDive", "decide"]
+  },
+  "actionSets": {
+    "deepDive": [
+      {
+        "id": "concern_analysis",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "prompt": "Deep-dive on concern #{iteration} from this code review.\n\nFull concern list:\n{concern_list}\n\nCode diff:\n{diff}\n\nPrevious analysis:\n{concern_analysis}\n\nFor concern #{iteration}:\n1. Reproduce the issue — show the exact problematic code\n2. Explain the impact — what could go wrong?\n3. Suggest a fix — show the corrected code\n4. Note any related issues this fix might create\n\nIf concern #{iteration} doesn't exist (we've covered them all), respond with 'ALL_CONCERNS_REVIEWED'.",
+        "includedData": ["iteration", "concern_list", "diff", "concern_analysis"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "more_concerns",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Concern analysis result: {concern_analysis}\n\nIf the analysis says 'ALL_CONCERNS_REVIEWED', respond 'done'. Otherwise respond 'yes'.",
+        "includedData": ["concern_analysis"]
+      }
+    ]
+  }
+}

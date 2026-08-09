@@ -1,0 +1,134 @@
+{
+  "autoContext": "You are an autonomous content calendar agent. Your job is to research trending topics, analyze competitor content strategies, and produce a structured content calendar. Each calendar entry includes title, channel, scheduled date, brief, and keywords. Organize by week and channel. Store all research in memory and build reusable content planning skills.",
+
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+
+  "actionSets": {
+
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      },
+      {
+        "id": "start_date",
+        "type": "shell",
+        "command": "date +%Y-%m-%d"
+      }
+    ],
+
+    "recall": [
+      {
+        "id": "prior_calendars",
+        "type": "searchMemory",
+        "namespace": "content-calendar",
+        "queryKey": "brand",
+        "maxResults": 10
+      },
+      {
+        "id": "existing_skills",
+        "type": "listSkills",
+        "skillset": "content-calendar"
+      },
+      {
+        "id": "recall_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Summarize any prior content calendar data for {brand}. If no prior data exists, say 'No prior calendar data found — starting fresh.'\n\nChannels: {channels}\nTopics: {topics}\nCadence: {cadence}\n\nPrior data:\n{prior_calendars}\n\nExisting skills:\n{existing_skills}",
+        "includedData": ["brand", "channels", "topics", "cadence", "prior_calendars", "existing_skills"]
+      }
+    ],
+
+    "research_loop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 4,
+        "continueKey": "research_continue",
+        "outputKey": "research_findings",
+        "includedData": ["brand", "channels", "topics", "cadence", "recall_summary"]
+      }
+    ],
+
+    "outline": [
+      {
+        "id": "all_findings",
+        "type": "searchMemory",
+        "namespace": "content-calendar",
+        "queryKey": "topics",
+        "maxResults": 15
+      },
+      {
+        "id": "calendar_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate the structure for a {duration_weeks}-week content calendar for {brand}.\n\nChannels: {channels}\nTopics: {topics}\nCadence: {cadence}\nStart date: {start_date}\n\nResearch findings:\n{all_findings}\n\nResearch log:\n{research_log}\n\nCreate an outline that specifies:\n1. Content themes per week (aligned to topics and trending angles)\n2. Number of posts per channel per week based on cadence\n3. Content mix strategy (educational, promotional, engagement, storytelling)\n4. Keyword clusters per topic area\n5. Cross-channel coordination plan\n\nBe specific about dates and content types for each channel.",
+        "includedData": ["brand", "channels", "topics", "cadence", "duration_weeks", "start_date", "all_findings", "research_log=research_log.research_findings"]
+      }
+    ],
+
+    "draft_loop": [
+      {
+        "id": "draft_log",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 4,
+        "continueKey": "draft_continue",
+        "outputKey": "draft_section",
+        "includedData": ["brand", "channels", "topics", "cadence", "start_date", "duration_weeks", "calendar_outline"]
+      }
+    ],
+
+    "finalize": [
+      {
+        "id": "draft_memory",
+        "type": "searchMemory",
+        "namespace": "content-calendar",
+        "queryKey": "brand",
+        "maxResults": 20
+      },
+      {
+        "id": "final_calendar",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Produce the complete {duration_weeks}-week content calendar for {brand}.\n\nOutline:\n{calendar_outline}\n\nWeekly drafts:\n{draft_log}\n\nAll stored research:\n{draft_memory}\n\nCombine all weekly drafts into a cohesive calendar document. Format each entry as:\n\n### [Date] — [Channel] — [Content Type]\n**Title:** [title]\n**Brief:** [2-3 sentence description]\n**Keywords:** [comma-separated]\n**CTA:** [call to action]\n\nEnsure:\n- Dates are sequential starting from {start_date}\n- Every channel gets content each week per the cadence\n- Topics are distributed evenly across weeks\n- No two consecutive posts on the same topic for the same channel\n- Include a summary table at the top showing post counts by week and channel",
+        "includedData": ["brand", "channels", "duration_weeks", "start_date", "calendar_outline", "draft_log=draft_log.draft_section", "draft_memory"]
+      }
+    ],
+
+    "deliver": [
+      {
+        "id": "calendar_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/content-calendar-{timestamp}.md",
+        "content": "final_calendar",
+        "includedData": ["final_calendar", "output_dir", "timestamp"]
+      },
+      {
+        "id": "calendar_memory",
+        "type": "writeMemory",
+        "namespace": "content-calendar",
+        "entryId": "latest-calendar",
+        "content": "final_calendar",
+        "includedData": ["final_calendar"]
+      },
+      {
+        "id": "calendar_skill",
+        "type": "writeSkill",
+        "skillset": "content-calendar",
+        "name": "content-calendar-template",
+        "content": "calendar_outline",
+        "includedData": ["calendar_outline"]
+      }
+    ]
+  }
+}

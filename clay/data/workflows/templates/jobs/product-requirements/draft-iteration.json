@@ -1,0 +1,61 @@
+{
+  "workflow": {
+    "steps": ["recall_findings", "write_section", "store_draft"]
+  },
+
+  "actionSets": {
+
+    "recall_findings": [
+      {
+        "id": "section_findings",
+        "type": "searchMemory",
+        "namespace": "product-reqs",
+        "queryKey": "prd_outline",
+        "maxResults": 10
+      },
+      {
+        "id": "section_pick",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of 6. You are writing sections of a PRD for {product_name}.\n\nFull outline:\n{prd_outline}\n\nSections to draft in order:\n1. Product Overview & Vision + Problem Statement\n2. User Personas & Journey Maps\n3. User Stories (grouped by persona)\n4. Functional Requirements (MoSCoW prioritized)\n5. Non-Functional Requirements + Technical Architecture Constraints\n6. Milestones + Success Metrics + Risks\n\nReply with ONLY the section name for iteration {iteration}.",
+        "includedData": ["iteration", "product_name", "prd_outline"]
+      }
+    ],
+
+    "write_section": [
+      {
+        "id": "draft_section",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the following section of the PRD for {product_name}:\n\nSection: {section_pick}\n\nProblem: {problem_statement}\nPersonas: {user_personas}\nConstraints: {constraints}\n\nPRD outline:\n{prd_outline}\n\nRelevant findings from memory:\n{section_findings}\n\nWrite a complete, polished draft of this section. Follow PRD best practices:\n- User stories: 'As a [persona], I want [goal], so that [benefit]'\n- Requirements: numbered, with priority (Must/Should/Could/Won't)\n- Non-functional: measurable acceptance criteria\n- Milestones: clear scope and timeline\n\nUse markdown formatting.",
+        "includedData": ["product_name", "problem_statement", "user_personas", "constraints", "section_pick", "prd_outline", "section_findings"]
+      }
+    ],
+
+    "store_draft": [
+      {
+        "id": "draft_tags",
+        "type": "deriveTags",
+        "contentKey": "draft_section",
+        "contextKey": "section_pick",
+        "maxTags": 4,
+        "includedData": ["draft_section", "section_pick"]
+      },
+      {
+        "id": "draft_saved",
+        "type": "writeMemory",
+        "namespace": "product-reqs",
+        "content": "draft_section",
+        "tagsKey": "draft_tags",
+        "includedData": ["draft_section", "draft_tags"]
+      },
+      {
+        "id": "draft_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of 6 complete. Section written: {section_pick}\n\nIf iteration is less than 6, reply YES to continue. If iteration is 6, reply NO — all sections are drafted.",
+        "includedData": ["iteration", "section_pick"]
+      }
+    ]
+  }
+}

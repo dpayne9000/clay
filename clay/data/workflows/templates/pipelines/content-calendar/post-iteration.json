@@ -1,0 +1,25 @@
+{
+  "workflow": {
+    "steps": ["writePost", "decide"]
+  },
+  "actionSets": {
+    "writePost": [
+      {
+        "id": "post_content",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Write post #{iteration} from this content calendar plan for {brand}.\n\nBrand voice: {brand_voice}\nCalendar plan:\n{calendar_plan}\n\nPrevious post for context:\n{post_content}\n\nWrite the complete post content for post #{iteration}. Include:\n- The full post text (ready to publish)\n- 3-5 relevant hashtags\n- A one-line internal note on optimal posting time\n\nMatch the brand voice exactly. Be specific and substantive — no filler.",
+        "includedData": ["iteration", "brand", "brand_voice", "calendar_plan", "post_content"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "more_posts",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Current post number: {iteration}\nTotal posts needed: {num_posts}\n\nIf {iteration} is less than {num_posts}, respond 'yes'. Otherwise respond 'done'.",
+        "includedData": ["iteration", "num_posts"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "product_name": "TaskFlow",
+  "problem_statement": "Teams waste hours switching between chat, docs, and project boards to coordinate work",
+  "user_personas": "Engineering lead, Product manager, Individual contributor",
+  "constraints": "Must integrate with Slack and GitHub, MVP in 8 weeks, team of 4 engineers",
+  "memory_namespace": "product-reqs",
+  "output_dir": "output/product-requirements"
+}

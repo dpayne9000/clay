@@ -1,0 +1,45 @@
+{
+  "workflow": {
+    "steps": ["collect", "decide"]
+  },
+  "actionSets": {
+    "collect": [
+      {
+        "id": "member_name",
+        "type": "humanDecision",
+        "prompt": "Team member #{iteration} — name:"
+      },
+      {
+        "id": "went_well",
+        "type": "humanDecision",
+        "prompt": "{member_name}: What went WELL this sprint?"
+      },
+      {
+        "id": "didnt_go_well",
+        "type": "humanDecision",
+        "prompt": "{member_name}: What DIDN'T go well?"
+      },
+      {
+        "id": "suggestions",
+        "type": "humanDecision",
+        "prompt": "{member_name}: Any SUGGESTIONS for next sprint?"
+      },
+      {
+        "id": "member_feedback",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Format this team member's retro feedback:\n\nName: {member_name}\nWent well: {went_well}\nDidn't go well: {didnt_go_well}\nSuggestions: {suggestions}\n\nPrevious members' feedback:\n{member_feedback}\n\nAppend this member's feedback to the running list. Format each entry as:\n--- {member_name} ---\nWENT WELL: {went_well}\nDIDN'T GO WELL: {didnt_go_well}\nSUGGESTIONS: {suggestions}",
+        "includedData": ["member_name", "went_well", "didnt_go_well", "suggestions", "member_feedback"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "more_members",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Team member #{iteration} of {team_size} has given their input.\n\nIf {iteration} is less than {team_size}, respond 'yes'. Otherwise respond 'done'.",
+        "includedData": ["iteration", "team_size"]
+      }
+    ]
+  }
+}

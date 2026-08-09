@@ -1,0 +1,69 @@
+{
+  "autoContext": "Validates deriveTags action. Covers: contentKey param (key in previous_data for main text), contextKey param (optional secondary text at reduced weight), inline content param (fallback when contentKey absent), maxTags param (int, default 6), return format (comma-separated lowercase tags stored under id).",
+
+  "workflow": {
+    "steps": ["prepare_content", "tags_from_content_key", "tags_with_context", "tags_inline", "tags_max_limited"]
+  },
+
+  "actionSets": {
+
+    "prepare_content": [
+      {
+        "_comment": "Produce a content string to derive tags from.",
+        "id": "article_text",
+        "type": "shell",
+        "command": "echo machine learning neural network training dataset Python tensorflow",
+        "timeout": 5
+      },
+      {
+        "_comment": "Secondary context text to boost certain tags.",
+        "id": "context_text",
+        "type": "shell",
+        "command": "echo Python tensorflow model evaluation",
+        "timeout": 5
+      }
+    ],
+
+    "tags_from_content_key": [
+      {
+        "_comment": "PARAM: contentKey — key in previous_data holding the main text to analyse. PARAM: maxTags defaults to 6. Returns comma-separated tag string.",
+        "id": "tags_basic",
+        "type": "deriveTags",
+        "contentKey": "article_text",
+        "includedData": ["article_text"]
+      }
+    ],
+
+    "tags_with_context": [
+      {
+        "_comment": "PARAM: contextKey — optional secondary text. Tokens from contextKey are weighted at 0.4× relative to contentKey, biasing tags toward shared terms.",
+        "id": "tags_with_ctx",
+        "type": "deriveTags",
+        "contentKey": "article_text",
+        "contextKey": "context_text",
+        "includedData": ["article_text", "context_text"]
+      }
+    ],
+
+    "tags_inline": [
+      {
+        "_comment": "PARAM: content — inline text fallback used when contentKey is absent or returns empty. No previous_data key needed.",
+        "id": "tags_inline_result",
+        "type": "deriveTags",
+        "content": "docker container kubernetes orchestration deployment pipeline"
+      }
+    ],
+
+    "tags_max_limited": [
+      {
+        "_comment": "PARAM: maxTags — int controlling how many tags to return. Here limited to 3 instead of default 6.",
+        "id": "tags_limited",
+        "type": "deriveTags",
+        "contentKey": "article_text",
+        "maxTags": 3,
+        "includedData": ["article_text"]
+      }
+    ]
+
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "autoContext": "Persistent instructions shown to the AI on every scramda2 and humanDecision call in this workflow. Describe the agent's role and behavior here.",
+  "workflow": {
+    "steps": [
+      "setup",
+      "run_loop"
+    ]
+  },
+  "actionSets": {
+    "setup": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "context",
+        "type": "loadContext",
+        "file": "./context.json"
+      },
+      {
+        "id": "training",
+        "type": "loadContext",
+        "file": "./training.json"
+      },
+      {
+        "id": "focus",
+        "type": "humanDecision",
+        "prompt": "Enter the prompt to show a human, or to send to the AI when running in --auto mode."
+      }
+    ],
+    "run_loop": [
+      {
+        "id": "session_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0,
+        "continueKey": "<string>",
+        "outputKey": "final",
+        "merge": false,
+        "includedData": [
+          "topic",
+          "reference",
+          "training_example",
+          "focus"
+        ]
+      }
+    ]
+  }
+}

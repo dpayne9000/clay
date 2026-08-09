@@ -1,0 +1,57 @@
+# Python
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+CLAUDE.md
+# Virtual environments
+.venv/
+
+# workflow output
+output
+
+
+# Distribution / packaging
+build/
+dist/
+web/
+.release-cache/
+.clay-deploy.json
+*release-signing-private*.pem
+!scripts/build/
+!scripts/build/**
+scripts/deploy/**
+**__pycache__**
+*.egg-info/
+*.egg
+.eggs/
+output/
+memory/
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+workflow.log
+logs
+
+# Private / internal notes (never committed)
+skip-*
+
+# Local dev
+api
+api2/
+clay/data/workflows/dev/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log

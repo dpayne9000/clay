@@ -1,0 +1,77 @@
+{
+  "workflow": {
+    "steps": [
+      "read_input",
+      "scramda2_actions",
+      "write_output",
+      "human_decision",
+      "workflow_actions"
+    ]
+  },
+  "actionSets": {
+    "read_input": [
+      {
+        "id": "input_read",
+        "type": "readFile",
+        "file": "<string>",
+        "root": ".",
+        "encoding": "utf-8",
+        "maxBytes": "<integer>"
+      }
+    ],
+    "scramda2_actions": [
+      {
+        "id": "scramda2_actions_result",
+        "type": "scramda2",
+        "prompt": "<string> {topic} {focus} {input_read}",
+        "model": "<string>",
+        "modelProfile": "<string>",
+        "max_tokens": "<integer>",
+        "examples": {
+          "override": "training_example"
+        },
+        "includedData": [
+          "topic",
+          "focus",
+          "input_read"
+        ]
+      }
+    ],
+    "write_output": [
+      {
+        "id": "output_write",
+        "type": "writeFile",
+        "file": "<string>",
+        "content": "scramda2_actions_result",
+        "root": ".",
+        "encoding": "utf-8",
+        "append": false,
+        "createParent": true,
+        "stripCodeFence": true,
+        "requireCodeFence": false,
+        "ensureFinalNewline": false,
+        "includedData": [
+          "scramda2_actions_result"
+        ]
+      }
+    ],
+    "human_decision": [
+      {
+        "id": "human_decision_response",
+        "type": "humanDecision",
+        "prompt": "Enter the prompt to show a human, or to send to the AI when running in --auto mode. (iteration {iteration})",
+        "includedData": [
+          "iteration"
+        ]
+      }
+    ],
+    "workflow_actions": [
+      {
+        "id": "workflow_actions_result",
+        "type": "workflow",
+        "file": "<string>",
+        "outputKey": "final"
+      }
+    ]
+  }
+}

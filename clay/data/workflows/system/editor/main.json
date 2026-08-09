@@ -1,0 +1,73 @@
+{
+  "autoContext": "You are a workflow-building assistant for the clay platform. You help users design, generate, and write workflow JSON files and Python action handlers. You know the full action reference and workflow schema. When building, always generate complete, working files with no placeholders. Ask clarifying questions before building if the request is ambiguous.",
+
+  "workflow": {
+    "steps": ["load_goal", "boot", "chat"]
+  },
+
+  "actionSets": {
+    "load_goal": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "tutorial",
+        "type": "loadContext",
+        "file": "./workflow/training.txt"
+      }
+    ],
+
+    "boot": [
+      {
+        "id": "cwd",
+        "type": "shell",
+        "command": "printenv PWD"
+      },
+      {
+        "id": "current_user",
+        "type": "shell",
+        "command": "whoami"
+      },
+      {
+        "id": "current_date",
+        "type": "shell",
+        "command": "date"
+      },
+      {
+        "id": "existing_workflows",
+        "type": "shell",
+        "command": "ls workflows/"
+      },
+      {
+        "id": "existing_skills",
+        "type": "shell",
+        "command": "ls skills/"
+      },
+      {
+        "id": "editor_memory",
+        "type": "listMemory",
+        "namespace": "system-editor"
+      },
+      {
+        "id": "editor_skills",
+        "type": "listSkills",
+        "skillset": "system-editor"
+      }
+    ],
+
+    "chat": [
+      {
+        "id": "session_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0,
+        "continueKey": "keep_going",
+        "outputKey": "turn_summary",
+        "includedData": ["cwd", "workspace=cwd", "current_user", "current_date", "existing_workflows", "existing_skills", "editor_memory", "editor_skills", "tutorial"]
+      }
+    ]
+
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "workflow": {
+    "steps": ["intake", "collectLoop", "analyze", "vote", "commitments"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "sprint_name",
+        "type": "humanDecision",
+        "prompt": "Sprint or period name (e.g., 'Sprint 14', 'March 2026'):"
+      },
+      {
+        "id": "team_size",
+        "type": "humanDecision",
+        "prompt": "How many team members will give input?"
+      }
+    ],
+    "collectLoop": [
+      {
+        "id": "all_feedback",
+        "type": "loop",
+        "file": "./collect-iteration.json",
+        "iterations": 15,
+        "continueKey": "more_members",
+        "outputKey": "member_feedback",
+        "includedData": ["sprint_name", "team_size"]
+      }
+    ],
+    "analyze": [
+      {
+        "id": "themes",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze all team retrospective feedback from {sprint_name}.\n\nAll feedback collected:\n{all_feedback}\n\nExtract:\n\n## Themes\nFor each theme:\n- THEME: descriptive name\n- TYPE: what went well / what didn't / suggestion\n- MENTIONS: how many team members raised this\n- QUOTES: representative quotes from team members\n- PATTERN: the underlying dynamic\n\n## Sentiment Summary\n- Overall team morale: High / Medium / Low\n- Energy level: Energized / Stable / Tired\n- Most positive area\n- Most concerning area\n\nRank themes by frequency and impact.",
+        "includedData": ["sprint_name", "all_feedback=all_feedback.member_feedback"]
+      },
+      {
+        "id": "action_items",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate specific action items from these retrospective themes.\n\nThemes:\n{themes}\n\nFor each theme that needs action, create:\n- ACTION: specific, measurable action (not vague)\n- OWNER: suggest who should own it (based on the theme)\n- DEADLINE: suggest a timeframe\n- SUCCESS METRIC: how we know it's done\n\nGenerate 5-8 action items. Prioritize by impact.",
+        "includedData": ["themes"]
+      }
+    ],
+    "vote": [
+      {
+        "id": "priorities",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nTHEMES & PROPOSED ACTIONS\n─────────────────────────────────────────────────────\n\n{themes}\n\nProposed action items:\n{action_items}\n\n─────────────────────────────────────────────────────\nPick the top 3 action items by number (e.g., '1, 3, 5'):"
+      }
+    ],
+    "commitments": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Create the final retrospective summary for {sprint_name}.\n\nThemes: {themes}\nAll action items: {action_items}\nTeam voted priorities: {priorities}\n\nFormat:\n\n# Retrospective: {sprint_name}\n\n## What Went Well\n(Celebrate the positives)\n\n## What Needs Improvement\n(Key concerns)\n\n## Commitments (Top 3)\nFor each priority the team voted on:\n- **Action**: what specifically will change\n- **Owner**: who is responsible\n- **By when**: deadline\n- **How we'll know**: success metric\n\n## Full Theme Analysis\n(All themes for the record)\n\n## Next Steps\n(How we'll track these commitments)",
+        "includedData": ["sprint_name", "themes", "action_items", "priorities"]
+      },
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/retro-{sprint_name}.md",
+        "content": "final",
+        "includedData": ["final", "sprint_name"]
+      }
+    ]
+  }
+}

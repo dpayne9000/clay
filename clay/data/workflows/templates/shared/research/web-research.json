@@ -1,0 +1,54 @@
+{
+  "defaults": {
+    "depth": "standard",
+    "num_queries": "5"
+  },
+  "workflow": {
+    "steps": ["loadTraining", "generateQueries", "browseLoop", "extractFacts", "synthesize"]
+  },
+  "actionSets": {
+    "loadTraining": [
+      {
+        "id": "_research_training",
+        "type": "loadContext",
+        "file": "./training.json"
+      }
+    ],
+    "generateQueries": [
+      {
+        "id": "search_queries",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate {num_queries} specific, targeted search queries to research: {topic}\n\nDepth level: {depth}\nWrite queries that would return concrete data, statistics, and expert analysis — not vague questions.\n\n{training_generate_queries}",
+        "includedData": ["topic", "depth", "num_queries", "training_generate_queries"]
+      }
+    ],
+    "browseLoop": [
+      {
+        "id": "browse_results",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "You are a research assistant. Based on these search queries, provide detailed research content with specific data points, statistics, expert perspectives, and concrete examples. Cover each query thoroughly.\n\nQueries:\n{search_queries}\n\nTopic: {topic}",
+        "includedData": ["search_queries", "topic"]
+      }
+    ],
+    "extractFacts": [
+      {
+        "id": "key_facts",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Extract 8-12 specific, concrete, data-driven facts from this research content. Prefix each with F: on its own line. Be specific — include numbers, dates, sources where available.\n\nContent:\n{browse_results}\n\n{training_extract_facts}",
+        "includedData": ["browse_results", "training_extract_facts"]
+      }
+    ],
+    "synthesize": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Synthesise this research into a comprehensive, structured brief about '{topic}'.\n\nKEY FACTS:\n{key_facts}\n\nFULL RESEARCH CONTENT:\n{browse_results}\n\nProduce a Research Brief with these sections:\n- OVERVIEW (2-3 sentences framing the topic)\n- KEY FACTS (the most important data points, bulleted)\n- KEY THEMES (3-5 dominant patterns with 1-2 sentence explanations)\n- IMPLICATIONS (what this means for stakeholders)\n\n{training_synthesise}",
+        "includedData": ["topic", "key_facts", "browse_results", "training_synthesise"]
+      }
+    ]
+  }
+}

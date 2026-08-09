@@ -1,0 +1,26 @@
+{
+  "workflow": {
+    "steps": ["mainLoop"]
+  },
+  "actionSets": {
+    "mainLoop": [
+      {
+        "id": "context",
+        "type": "loadContext",
+        "file": "./context.json"
+      },
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "./training.json"
+      },
+      {
+        "id": "intel_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0,
+        "outputKey": "iteration_summary"
+      }
+    ]
+  }
+}

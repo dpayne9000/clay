@@ -1,0 +1,63 @@
+{
+  "autoContext": "Validates loadContext action. Covers: file param (path to JSON file), merge=True behaviour (all keys unpack directly into workflow context), key availability in subsequent steps via includedData, and graceful failure when file is missing.",
+
+  "workflow": {
+    "steps": ["load_valid", "verify_keys", "load_missing"]
+  },
+
+  "actionSets": {
+
+    "load_valid": [
+      {
+        "_comment": "PARAM: file — path to a JSON object file. All top-level keys merge into workflow context.",
+        "id": "_ctx",
+        "type": "loadContext",
+        "file": "./fixtures/sample-context.json"
+      }
+    ],
+
+    "verify_keys": [
+      {
+        "_comment": "Confirms test_string was loaded and is available via includedData.",
+        "id": "verify_string",
+        "type": "shell",
+        "command": "echo loaded-string-ok",
+        "includedData": ["test_string"],
+        "timeout": 5
+      },
+      {
+        "_comment": "Confirms test_number was loaded and is available via includedData.",
+        "id": "verify_number",
+        "type": "shell",
+        "command": "echo loaded-number-ok",
+        "includedData": ["test_number"],
+        "timeout": 5
+      },
+      {
+        "_comment": "Confirms test_multiline was loaded (multi-line values are preserved as strings).",
+        "id": "verify_multiline",
+        "type": "shell",
+        "command": "echo loaded-multiline-ok",
+        "includedData": ["test_multiline"],
+        "timeout": 5
+      }
+    ],
+
+    "load_missing": [
+      {
+        "_comment": "PARAM: file pointing to nonexistent path — handler must return None gracefully, not crash.",
+        "id": "_missing",
+        "type": "loadContext",
+        "file": "./fixtures/does-not-exist.json"
+      },
+      {
+        "_comment": "Workflow continues even after a failed loadContext.",
+        "id": "continue_after_missing",
+        "type": "shell",
+        "command": "echo workflow-continued-after-missing-file",
+        "timeout": 5
+      }
+    ]
+
+  }
+}

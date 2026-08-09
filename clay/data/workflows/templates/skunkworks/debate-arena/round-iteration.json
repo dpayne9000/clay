@@ -1,0 +1,34 @@
+{
+  "workflow": {
+    "steps": ["sideA", "sideB", "decide"]
+  },
+  "actionSets": {
+    "sideA": [
+      {
+        "id": "argument_a",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "DEBATE ROUND {iteration} — You are arguing FOR: {side_a}\nTopic: {topic}\n\nYour opening: {opening_a}\nOpponent's last argument:\n{round_transcript}\n\nWrite a 150-word argument or rebuttal. Counter their specific points. Introduce new evidence if available. Be persuasive and specific.",
+        "includedData": ["iteration", "side_a", "topic", "opening_a", "round_transcript"]
+      }
+    ],
+    "sideB": [
+      {
+        "id": "round_transcript",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "DEBATE ROUND {iteration} — You are arguing FOR: {side_b}\nTopic: {topic}\n\nYour opening: {opening_b}\nOpponent just said:\n{argument_a}\n\nWrite a 150-word rebuttal. Address their specific claims. Present counter-evidence. Be persuasive and specific.\n\nThen format the full round transcript:\n\n--- ROUND {iteration} ---\nSIDE A ({side_a}): {argument_a}\nSIDE B ({side_b}): [your rebuttal]",
+        "includedData": ["iteration", "side_b", "topic", "opening_b", "argument_a", "side_a"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "more_rounds",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Current round: {iteration}\nTarget rounds: {num_rounds}\n\nIf {iteration} is less than {num_rounds}, respond 'yes'. Otherwise respond 'done'.",
+        "includedData": ["iteration", "num_rounds"]
+      }
+    ]
+  }
+}

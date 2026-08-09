@@ -1,0 +1,37 @@
+{
+  "workflow": {
+    "steps": ["intake", "parse", "summarize"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "team_name",
+        "type": "humanDecision",
+        "prompt": "Team name:"
+      },
+      {
+        "id": "raw_notes",
+        "type": "humanDecision",
+        "prompt": "Paste the raw standup notes (messy is fine — bullet points, chat messages, whatever you have):"
+      }
+    ],
+    "parse": [
+      {
+        "id": "parsed",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Parse these raw standup notes from the {team_name} team into a structured format.\n\nRaw notes:\n{raw_notes}\n\nExtract for each person mentioned:\n- NAME: their name\n- YESTERDAY: what they completed\n- TODAY: what they plan to do\n- BLOCKERS: anything blocking them (or 'None')\n\nIf names aren't clear, use whatever identifier is available. Preserve the substance — don't embellish.",
+        "includedData": ["team_name", "raw_notes"]
+      }
+    ],
+    "summarize": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Create a clean daily standup digest from this parsed data.\n\nTeam: {team_name}\nParsed updates:\n{parsed}\n\nFormat as:\n\n# {team_name} Standup Digest\n\n## Per-Person Updates\n(each person's yesterday/today/blockers in clean bullets)\n\n## Active Blockers\n(consolidated list of all blockers across the team — skip if none)\n\n## Action Items\n(anything that needs follow-up, cross-team coordination, or escalation)\n\nKeep it concise. A manager should be able to scan this in 30 seconds.",
+        "includedData": ["team_name", "parsed"]
+      }
+    ]
+  }
+}

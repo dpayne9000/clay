@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "steps": ["collectBackground", "collectAchievements", "draft"]
+  },
+  "actionSets": {
+    "collectBackground": [
+      {
+        "id": "candidate_name",
+        "type": "humanDecision",
+        "prompt": "Your full name"
+      },
+      {
+        "id": "current_role",
+        "type": "humanDecision",
+        "prompt": "Your current or most recent job title"
+      },
+      {
+        "id": "years_exp",
+        "type": "humanDecision",
+        "prompt": "Years of experience in your field"
+      },
+      {
+        "id": "skills",
+        "type": "humanDecision",
+        "prompt": "Your strongest skills (comma-separated)"
+      },
+      {
+        "id": "work_style",
+        "type": "humanDecision",
+        "prompt": "How do you work best? (e.g. remote, collaborative, autonomous, fast-paced)"
+      }
+    ],
+    "collectAchievements": [
+      {
+        "id": "achievement_1",
+        "type": "humanDecision",
+        "prompt": "Your biggest professional achievement (one sentence)"
+      },
+      {
+        "id": "achievement_2",
+        "type": "humanDecision",
+        "prompt": "Second strong achievement (one sentence)"
+      },
+      {
+        "id": "achievement_3",
+        "type": "humanDecision",
+        "prompt": "Third achievement or a project you are proud of (one sentence)"
+      }
+    ],
+    "draft": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "prompt": "Write a professional self-assessment for {candidate_name}, a {current_role} with {years_exp} years of experience.\n\nSkills: {skills}\nWork style: {work_style}\nAchievements:\n- {achievement_1}\n- {achievement_2}\n- {achievement_3}\n\nProduce:\n1. PROFESSIONAL SUMMARY — 3 sentences capturing who they are and what they bring\n2. CORE STRENGTHS — 4 bullet points\n3. NOTABLE ACHIEVEMENTS — the 3 achievements rewritten as punchy, metric-driven bullets\n4. WORK STYLE — 2 sentences on how they operate",
+        "examples": [
+          {
+            "question": "Write a professional self-assessment for Jane Smith, a Senior Product Manager with 8 years of experience. Skills: product strategy, stakeholder management, data analysis, roadmapping. Work style: collaborative, remote-first. Achievements: Led redesign of checkout flow increasing conversion by 22%. Built and shipped a new analytics dashboard used by 300 enterprise clients. Grew the product team from 3 to 11 people over 2 years.",
+            "answer": "PROFESSIONAL SUMMARY\nJane Smith is a Senior Product Manager with 8 years of experience turning complex business problems into products people actually use. She combines rigorous data analysis with strong stakeholder relationships to build and ship at speed. Jane thrives in remote-first environments and has a track record of scaling both products and teams.\n\nCORE STRENGTHS\n- Product strategy and long-range roadmapping\n- Stakeholder management across engineering, design, and commercial teams\n- Data-driven decision making and experimentation\n- Team building and cross-functional leadership\n\nNOTABLE ACHIEVEMENTS\n- Redesigned checkout flow, delivering a 22% uplift in conversion rate\n- Shipped an analytics dashboard now used by 300+ enterprise clients\n- Scaled product team from 3 to 11, establishing hiring and onboarding processes\n\nWORK STYLE\nJane does her best work in collaborative, remote-first settings where autonomy is matched with accountability. She brings structure to ambiguity and communicates clearly across technical and non-technical audiences."
+          }
+        ],
+        "includedData": ["candidate_name", "current_role", "years_exp", "skills", "work_style", "achievement_1", "achievement_2", "achievement_3"]
+      }
+    ]
+  }
+}

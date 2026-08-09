@@ -1,0 +1,43 @@
+{
+  "workflow": {
+    "steps": ["pickCompany", "research", "analyze", "decide"]
+  },
+  "actionSets": {
+    "pickCompany": [
+      {
+        "id": "current_company",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "From this list of companies: {companies}\n\nIteration: {iteration}\nPrevious analysis covered: {company_analysis}\n\nPick the next company to analyze that hasn't been covered yet. Return ONLY the company name, nothing else. If all companies have been analyzed, return 'ALL_DONE'.",
+        "includedData": ["companies", "iteration", "company_analysis"]
+      }
+    ],
+    "research": [
+      {
+        "id": "company_intel",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Research {current_company} in the {industry} market.\n\nCover:\n- What they do and their value proposition\n- Target customer segment\n- Pricing model and approximate pricing\n- Key product features and capabilities\n- Known strengths and weaknesses\n- Recent news, funding, or strategic moves\n- Market positioning relative to {your_company}\n\nBe specific and data-driven where possible.",
+        "includedData": ["current_company", "industry", "your_company"]
+      }
+    ],
+    "analyze": [
+      {
+        "id": "company_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Summarize the competitive analysis of {current_company}:\n\n{company_intel}\n\nProduce a structured summary:\n- COMPANY: {current_company}\n- POSITIONING: one sentence\n- STRENGTHS: 2-3 bullets\n- WEAKNESSES: 2-3 bullets\n- THREAT LEVEL: High/Medium/Low (relative to {your_company})\n- KEY INSIGHT: one sentence — the most important thing to know",
+        "includedData": ["current_company", "company_intel", "your_company"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "more_companies",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Companies list: {companies}\nIteration: {iteration}\nCompany just analyzed: {current_company}\n\nAre there more companies from the list that haven't been analyzed yet? If yes, respond 'yes'. If all are done or {current_company} was 'ALL_DONE', respond 'done'.",
+        "includedData": ["companies", "iteration", "current_company"]
+      }
+    ]
+  }
+}

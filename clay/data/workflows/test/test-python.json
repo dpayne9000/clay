@@ -1,0 +1,72 @@
+{
+  "autoContext": "Validates python action. Covers: code param (Python 3 string executed in sandboxed exec with __builtins__={}), stdout capture (output captured via redirect_stdout), error return format ([error: msg] when exception raised), and empty/missing code returns None.",
+
+  "workflow": {
+    "steps": ["test_basic_code", "test_arithmetic", "test_error_handling", "test_empty_code"]
+  },
+
+  "actionSets": {
+
+    "test_basic_code": [
+      {
+        "_comment": "PARAM: code — Python 3 string. Executed in sandbox (no builtins). stdout is captured as the return value. Note: print() is unavailable in sandbox; any output must come from non-builtin mechanisms.",
+        "id": "py_result",
+        "type": "python",
+        "code": "x = 2 + 2"
+      },
+      {
+        "_comment": "Assert-style check using only the statement keyword (assert works without builtins). A failing assert returns [error: AssertionError].",
+        "id": "py_assert",
+        "type": "python",
+        "code": "x = 10; assert x == 10"
+      }
+    ],
+
+    "test_arithmetic": [
+      {
+        "_comment": "Arithmetic and variable assignment work in the sandbox.",
+        "id": "py_math",
+        "type": "python",
+        "code": "result = 6 * 7; assert result == 42"
+      },
+      {
+        "_comment": "String operations work without builtins.",
+        "id": "py_string",
+        "type": "python",
+        "code": "s = 'hello world'; assert 'world' in s"
+      }
+    ],
+
+    "test_error_handling": [
+      {
+        "_comment": "When code raises an exception, handler returns {id, data: '[error: <msg>]'} — not None. Workflow continues.",
+        "id": "py_error",
+        "type": "python",
+        "code": "assert False, 'intentional failure'"
+      },
+      {
+        "_comment": "SyntaxError also returns [error: ...] — not None.",
+        "id": "py_syntax_error",
+        "type": "python",
+        "code": "def broken("
+      }
+    ],
+
+    "test_empty_code": [
+      {
+        "_comment": "PARAM: code — empty string. Handler returns None (no result stored). Workflow continues.",
+        "id": "py_empty",
+        "type": "python",
+        "code": ""
+      },
+      {
+        "_comment": "Verify workflow is still running after empty code action.",
+        "id": "after_empty",
+        "type": "shell",
+        "command": "echo workflow-continued",
+        "timeout": 5
+      }
+    ]
+
+  }
+}

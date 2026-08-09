@@ -1,0 +1,86 @@
+{
+  "workflow": {
+    "steps": ["incidentDetails", "timeline", "aiDraft", "humanReview", "finalReport"]
+  },
+  "actionSets": {
+    "incidentDetails": [
+      {
+        "id": "incident_title",
+        "type": "humanDecision",
+        "prompt": "Incident title (e.g. 'API Outage — 7 March 2026')"
+      },
+      {
+        "id": "severity",
+        "type": "humanDecision",
+        "prompt": "Severity (P1 / P2 / P3)"
+      },
+      {
+        "id": "affected",
+        "type": "humanDecision",
+        "prompt": "What was affected? (services, users, or regions)"
+      },
+      {
+        "id": "duration",
+        "type": "humanDecision",
+        "prompt": "Duration of the incident (e.g. 47 minutes)"
+      }
+    ],
+    "timeline": [
+      {
+        "id": "what_happened",
+        "type": "humanDecision",
+        "prompt": "What happened? (brief summary of the incident cause)"
+      },
+      {
+        "id": "detection",
+        "type": "humanDecision",
+        "prompt": "How was it detected? (e.g. alert fired, customer report, engineer noticed)"
+      },
+      {
+        "id": "resolution",
+        "type": "humanDecision",
+        "prompt": "How was it resolved?"
+      },
+      {
+        "id": "root_cause",
+        "type": "humanDecision",
+        "prompt": "Root cause (as much as you know)"
+      }
+    ],
+    "aiDraft": [
+      {
+        "id": "report",
+        "type": "scramda2",
+        "prompt": "Write a professional post-incident report (postmortem) with these details:\n\nTitle: {incident_title}\nSeverity: {severity}\nDuration: {duration}\nAffected: {affected}\nWhat happened: {what_happened}\nDetection: {detection}\nResolution: {resolution}\nRoot cause: {root_cause}\n\nSections to include:\n1. Summary\n2. Impact\n3. Timeline (reconstruct from the details above, use approximate times if needed)\n4. Root Cause Analysis\n5. What Went Well\n6. What Could Be Improved\n7. Action Items (use [Owner TBD] and [Due TBD] as placeholders)\n\nTone: factual, blameless, constructive.",
+        "examples": [
+          {
+            "question": "Write a postmortem.\nTitle: Database connection pool exhaustion — 4 March 2026\nSeverity: P1\nDuration: 32 minutes\nAffected: All users unable to log in\nWhat happened: A deploy introduced an unclosed database connection in the auth service. Under load connections were not returned to the pool and it exhausted.\nDetection: PagerDuty alert on login error rate spike\nResolution: Rolled back the deploy\nRoot cause: Missing connection cleanup in error path of new auth middleware",
+            "answer": "POST-INCIDENT REPORT\nIncident: Database connection pool exhaustion — 4 March 2026\nSeverity: P1 | Duration: 32 minutes\n\n1. SUMMARY\nA deployment to the auth service introduced a connection leak that caused the database connection pool to exhaust under normal load, making login unavailable for all users for 32 minutes.\n\n2. IMPACT\n- All users unable to log in for 32 minutes\n- Estimated sessions affected: [X]\n- No data loss or corruption\n\n3. TIMELINE\n14:05 — Deploy to auth service completed\n14:23 — PagerDuty alert fires: login error rate > 10%\n14:26 — On-call engineer begins investigation\n14:34 — Connection pool exhaustion identified in logs\n14:37 — Decision to roll back deploy\n14:43 — Rollback complete, error rate returns to baseline\n\n4. ROOT CAUSE ANALYSIS\nThe new auth middleware did not close the database connection in its error handling path. Under normal traffic, connections leaked slowly. Within 18 minutes of deployment the pool was exhausted and all new auth requests failed immediately.\n\n5. WHAT WENT WELL\n- Alerting fired quickly (within 2 minutes of user impact)\n- On-call response was fast\n- Rollback procedure was well-practised and completed in 6 minutes\n\n6. WHAT COULD BE IMPROVED\n- The error path was not covered by integration tests\n- No connection pool utilisation metric was being monitored\n- Deploy review did not include a database resource checklist\n\n7. ACTION ITEMS\n1. [Owner TBD] — Add integration test for auth middleware error paths — Due: [TBD]\n2. [Owner TBD] — Add connection pool utilisation to dashboards and alerts — Due: [TBD]\n3. [Owner TBD] — Add DB connection hygiene to deploy review checklist — Due: [TBD]"
+          }
+        ],
+        "includedData": ["incident_title", "severity", "duration", "affected", "what_happened", "detection", "resolution", "root_cause"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "review_notes",
+        "type": "humanDecision",
+        "prompt": "Review the report. Fill in owners/dates, or add missing details (press Enter to skip)"
+      }
+    ],
+    "finalReport": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "prompt": "Update this incident report with the following notes. Incorporate any owners, dates, or corrections provided. If notes are empty, return the report unchanged.\n\nNotes: {review_notes}\n\nReport:\n{report}",
+        "examples": [
+          {
+            "question": "Notes: Action item 1 is owned by Priya, due March 14th. Action item 3 is owned by Dev, due March 10th. Report: ...7. ACTION ITEMS\n1. [Owner TBD] — Add integration test...",
+            "answer": "...7. ACTION ITEMS\n1. Priya — Add integration test for auth middleware error paths — Due: March 14th\n2. [Owner TBD] — Add connection pool utilisation to dashboards and alerts — Due: [TBD]\n3. Dev — Add DB connection hygiene to deploy review checklist — Due: March 10th"
+          }
+        ],
+        "includedData": ["report", "review_notes"]
+      }
+    ]
+  }
+}

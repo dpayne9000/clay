@@ -1,0 +1,39 @@
+{
+  "workflow": {
+    "steps": ["topicInput", "audienceInput", "generate"]
+  },
+  "actionSets": {
+    "topicInput": [
+      {
+        "id": "topic",
+        "type": "humanDecision",
+        "prompt": "What concept or topic do you want explained?"
+      }
+    ],
+    "audienceInput": [
+      {
+        "id": "audience",
+        "type": "humanDecision",
+        "prompt": "Who is this explanation for? (e.g. a 10-year-old, a non-technical manager, a junior developer)"
+      }
+    ],
+    "generate": [
+      {
+        "id": "explainer",
+        "type": "scramda2",
+        "prompt": "Explain '{topic}' to {audience}. Use plain language, a real-world analogy, and one concrete example. Keep it under 200 words.",
+        "examples": [
+          {
+            "question": "Explain 'database indexing' to a non-technical manager.",
+            "answer": "Imagine a library with thousands of books but no catalogue. To find a book about 'climate change' you would have to check every shelf one by one. That takes forever.\n\nA database index is like the library catalogue. Instead of searching every row in a table, the database looks up a small, pre-sorted index to find exactly where the data is — and jumps straight there.\n\nIn practice: if your website is slow when searching customer records, adding an index on the 'email' column can cut that lookup from several seconds to milliseconds. The trade-off is that the index takes up a small amount of extra storage and slows down writes slightly — like updating the catalogue every time you add a new book."
+          },
+          {
+            "question": "Explain 'machine learning' to a 10-year-old.",
+            "answer": "You know how you got really good at catching a ball by practising lots of times? Machine learning is the same idea, but for computers.\n\nInstead of a programmer writing rules like 'if the ball goes left, move left', the computer looks at thousands of examples — photos of cats, spam emails, songs you like — and figures out the pattern on its own. The more examples it sees, the better it gets.\n\nFor example, the app that recognises your face to unlock your phone learned what your face looks like by studying millions of photos until it could spot you every time."
+          }
+        ],
+        "includedData": ["topic", "audience"]
+      }
+    ]
+  }
+}

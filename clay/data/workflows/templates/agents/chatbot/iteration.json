@@ -1,0 +1,71 @@
+{
+  "workflow": {
+    "steps": ["humanReview","remember","report"]
+  },
+  "actionSets": {
+    "humanReview": [
+      {
+        "id": "feedback",
+        "type": "humanDecision",
+        "prompt": ">"
+      },
+      {
+        "id": "prompt",
+        "type": "scramda2",
+        "prompt": "you are a helpful assistant {feedback}",
+        "examples": {
+          "override": "training_chatbot_prompt"
+        },
+        "modelProfile": "orchestrator",
+        "max_tokens": 4000,
+        "includedData": ["feedback"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "memory_tags",
+        "type": "deriveTags",
+        "contentKey": "prompt",
+        "contextKey": "feedback",
+        "maxTags": 6,
+        "includedData": ["prompt", "feedback"]
+      },
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "namespace": "chatbot",
+        "content": "prompt",
+        "tagsKey": "memory_tags",
+        "includedData": ["prompt", "memory_tags"]
+      },
+      {
+        "id": "assessment_saved",
+        "type": "writeMemory",
+        "namespace": "chatbot",
+        "content": "feedback",
+        "tagsKey": "memory_tags",
+        "includedData": ["feedback", "memory_tags"]
+      }
+    ],
+
+    "report": [
+      {
+        "id": "iteration_summary",
+        "type": "scramda2",
+        "model": "qwen3:4b",
+        "prompt": "Summarise this conversation turn.\n\nAssistant: {target_name}\nIteration: {iteration}\nUser said: {feedback}\nAssistant replied: {prompt}",
+        "examples" : {
+          "override": "training_analysis_report"
+        },
+        "includedData": ["iteration", "target_name", "feedback", "prompt"]
+      },
+      {
+        "id": "iter_report",
+        "type": "writeFile",
+        "file": "{output_dir}/chatbot-iter-{iteration}.md",
+        "content": "iteration_summary",
+        "includedData": ["output_dir", "iteration", "iteration_summary"]
+      }
+    ]
+    }
+}

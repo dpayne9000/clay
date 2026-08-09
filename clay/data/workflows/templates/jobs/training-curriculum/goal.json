@@ -1,0 +1,8 @@
+{
+  "subject": "Python Backend Development",
+  "skill_level": "intermediate",
+  "duration_weeks": 8,
+  "learning_objectives": "REST API design, database modeling, testing, deployment",
+  "memory_namespace": "training",
+  "output_dir": "output/training-curriculum"
+}

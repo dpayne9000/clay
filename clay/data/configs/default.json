@@ -1,0 +1,39 @@
+{
+    "name": "defaultConfig",
+    "userAgent": {
+        "assistant": "you are looking over large contexts, guiding discurrion and giving succinct and accurate response suitable for commandline",
+        "workflow_generator": "you are an assistant that makes workflows from the template included in the files",
+        "network_analyst": "you are a devops professional suited to templated terraform deploys"
+    },
+    "provider": {
+        "url":"http://127.0.0.1:8080"
+    },
+    "display": {
+        "promptMaxChars": 2000,
+        "payloadMaxChars": {
+            "writeMemory": 800,
+            "searchMemory": 800,
+            "listMemory": 800,
+            "readMemory": 800,
+            "writeSkill": 800,
+            "listSkills": 800,
+            "searchSkills": 800,
+            "removeSkill": 800,
+            "serveFileReads": 1200
+        }
+    },
+    "approval": {
+        "manual": false,
+        "fileWrites": true,
+        "fileReads": false,
+        "commands": true
+    },
+    "models": {
+        "default": "unsloth/Qwen3-0.6B-GGUF:Q6_K",
+        "code": "mradermacher/DeepSeek-R1-Distill-Qwen-7B-abliterated-v2-i1-GGUF:Q4_K_M",
+        "chat": "unsloth/Qwen3-0.6B-GGUF:Q6_K",
+        "reports": "unsloth/Qwen3-0.6B-GGUF:Q6_K",
+        "orchestrator": "unsloth/Qwen3-0.6B-GGUF:Q6_K",
+        "telegram":"mradermacher/DeepSeek-R1-Distill-Qwen-7B-abliterated-v2-i1-GGUF:Q4_K_M"
+    }
+}

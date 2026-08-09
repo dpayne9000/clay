@@ -1,0 +1,39 @@
+{
+  "workflow": {
+    "steps": ["personaQuestion", "userResponds", "personaReacts"]
+  },
+  "actionSets": {
+    "personaQuestion": [
+      {
+        "id": "stakeholder_question",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Meeting simulation round {iteration}.\n\nTopic: {meeting_agenda}\nPresenter's goal: {your_goal}\n\nPersonas:\n{personas}\n\nPrevious exchange:\n{exchange}\n\nPick the persona who hasn't spoken yet or whose concern hasn't been addressed. Stay in character — ask ONE pointed question or raise ONE concern about the proposal. Be realistic and challenging but fair.\n\nFormat:\n[PERSONA NAME] (ROLE): their question or concern",
+        "includedData": ["iteration", "meeting_agenda", "your_goal", "personas", "exchange"]
+      }
+    ],
+    "userResponds": [
+      {
+        "id": "user_response",
+        "type": "humanDecision",
+        "prompt": "{stakeholder_question}\n\n─────────────────────────────────────────────────────\nYour response (or type 'end meeting' to wrap up):"
+      }
+    ],
+    "personaReacts": [
+      {
+        "id": "exchange",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "The stakeholder asked:\n{stakeholder_question}\n\nThe presenter responded:\n{user_response}\n\nPersonas:\n{personas}\n\nAs the same stakeholder, briefly react (1-2 sentences): Are you satisfied with this response? Follow up if needed.\n\nThen format the full exchange:\n--- Round {iteration} ---\nSTAKEHOLDER: {stakeholder_question}\nPRESENTER: {user_response}\nREACTION: [your reaction]",
+        "includedData": ["stakeholder_question", "user_response", "personas", "iteration"]
+      },
+      {
+        "id": "meeting_continues",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "User response: {user_response}\n\nIf the user said 'end meeting' or 'done' or 'wrap up', respond 'done'. Otherwise respond 'yes'.",
+        "includedData": ["user_response"]
+      }
+    ]
+  }
+}

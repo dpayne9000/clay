@@ -1,0 +1,80 @@
+{
+  "workflow": {
+    "steps": ["select", "search", "browse", "store", "summarize"]
+  },
+
+  "actionSets": {
+    "select": [
+      {
+        "id": "current_topic",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "From this interests list, pick the topic for iteration {iteration} (0-indexed). Just return the topic name, nothing else.\n\nInterests: {interests}",
+        "includedData": ["interests", "iteration"]
+      }
+    ],
+
+    "search": [
+      {
+        "id": "search_results",
+        "type": "searchWeb",
+        "query": "{current_topic} latest developments 2026",
+        "maxResults": 5,
+        "includedData": ["current_topic"]
+      }
+    ],
+
+    "browse": [
+      {
+        "id": "best_url",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "From these search results, pick the most substantive URL (not a listicle, not marketing). Return ONLY the URL, nothing else.\n\nSearch results:\n{search_results}",
+        "includedData": ["search_results"]
+      },
+      {
+        "id": "article_text",
+        "type": "browseWeb",
+        "url": "{best_url}",
+        "maxChars": 3000,
+        "includedData": ["best_url"]
+      }
+    ],
+
+    "store": [
+      {
+        "id": "article_tags",
+        "type": "deriveTags",
+        "contentKey": "article_text",
+        "contextKey": "current_topic",
+        "maxTags": 6,
+        "includedData": ["article_text", "current_topic"]
+      },
+      {
+        "id": "related_past",
+        "type": "searchMemory",
+        "namespace": "{memory_namespace}",
+        "queryKey": "article_tags",
+        "maxResults": 3
+      },
+      {
+        "id": "_article_saved",
+        "type": "writeMemory",
+        "namespace": "{memory_namespace}",
+        "content": "article_text",
+        "tagsKey": "article_tags",
+        "includedData": ["article_text", "article_tags", "memory_namespace"]
+      }
+    ],
+
+    "summarize": [
+      {
+        "id": "topic_digest",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Summarize this article on {current_topic} in 3-4 sentences. Note what's genuinely new vs. what you've seen in related past entries.\n\nArticle:\n{article_text}\n\nRelated past:\n{related_past}",
+        "includedData": ["article_text", "current_topic", "related_past"]
+      }
+    ]
+  }
+}

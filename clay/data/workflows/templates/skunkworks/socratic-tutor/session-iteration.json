@@ -1,0 +1,48 @@
+{
+  "workflow": {
+    "steps": ["askQuestion", "studentResponds", "evaluate", "remember"]
+  },
+  "actionSets": {
+    "askQuestion": [
+      {
+        "id": "question",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "You are a Socratic tutor teaching about: {topic}\nStudent level: {skill_level}\nIteration: {iteration}\n\nPrevious knowledge state:\n{knowledge_state}\n\nAsk ONE probing question that:\n- Builds on what the student has demonstrated so far\n- Targets a concept they haven't shown understanding of yet\n- Is calibrated to their level (not too easy, not too hard)\n- Cannot be answered with just 'yes' or 'no'\n\nDO NOT explain or give hints. Just ask the question.\n\nQuestion:",
+        "includedData": ["topic", "skill_level", "iteration", "knowledge_state"]
+      }
+    ],
+    "studentResponds": [
+      {
+        "id": "student_answer",
+        "type": "humanDecision",
+        "prompt": "{question}\n\n(Type your answer, or 'done' to end the session)"
+      }
+    ],
+    "evaluate": [
+      {
+        "id": "knowledge_state",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Evaluate this student's response about {topic}.\n\nQuestion asked: {question}\nStudent answer: {student_answer}\n\nPrevious knowledge state:\n{knowledge_state}\n\nProvide:\n1. ASSESSMENT: Was their answer correct / partially correct / incorrect?\n2. FOLLOW-UP: A brief Socratic response (NOT the answer — ask a follow-up that helps them refine their thinking, or acknowledge their insight and guide them to the next concept)\n3. KNOWLEDGE STATE UPDATE: Updated list of concepts they understand well, partially understand, and haven't covered\n\nRemember: NEVER give the direct answer. Guide them to discover it.",
+        "includedData": ["topic", "question", "student_answer", "knowledge_state"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "namespace": "socratic-tutor",
+        "content": "knowledge_state",
+        "includedData": ["knowledge_state"]
+      },
+      {
+        "id": "keep_going",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Student answer: {student_answer}\n\nIf the student said 'done', 'quit', 'stop', or 'exit', respond 'done'. Otherwise respond 'yes'.",
+        "includedData": ["student_answer"]
+      }
+    ]
+  }
+}

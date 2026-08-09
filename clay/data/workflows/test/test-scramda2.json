@@ -1,0 +1,49 @@
+{
+  "autoContext": "Validates scramda2 action. Covers: prompt param (string with {variable} template substitution via _SafeMap), includedData param (controls which keys are available for substitution), examples param (array of {question, answer} training pairs passed to service — empty array is valid), model param (optional model override string). NOTE: this workflow requires the SCRAMDA service to be running. Run with: clay run workflows/test/test-scramda2.json",
+
+  "defaults": {
+    "topic": "unit testing",
+    "audience": "software engineers"
+  },
+
+  "workflow": {
+    "steps": ["test_prompt_substitution", "test_empty_examples", "test_model_override"]
+  },
+
+  "actionSets": {
+
+    "test_prompt_substitution": [
+      {
+        "_comment": "PARAM: prompt — string template. {topic} and {audience} are substituted from includedData. Unknown {vars} are preserved literally (SafeMap). PARAM: includedData — filters which previous_data keys are passed to the handler.",
+        "id": "basic_result",
+        "type": "scramda2",
+        "prompt": "In one sentence, describe what {topic} means to {audience}.",
+        "includedData": ["topic", "audience"]
+      }
+    ],
+
+    "test_empty_examples": [
+      {
+        "_comment": "PARAM: examples — array of {question, answer} objects. Empty array is valid and sends no training signal. Omitting 'examples' entirely is also valid (defaults to []).",
+        "id": "no_examples_result",
+        "type": "scramda2",
+        "prompt": "List three benefits of {topic} in one sentence each.",
+        "examples": [],
+        "includedData": ["topic"]
+      }
+    ],
+
+    "test_model_override": [
+      {
+        "_comment": "PARAM: model — optional string to override the model used for this specific action. When omitted, the workflow-level model or caller's model is used.",
+        "id": "model_override_result",
+        "type": "scramda2",
+        "prompt": "Briefly explain {topic}.",
+        "max_tokens": 10000,
+        "model": "hf.co/yamatazen/SnowElf-12B-Q4_K_M-GGUF:Q4_K_M",
+        "includedData": ["topic"]
+      }
+    ]
+
+  }
+}

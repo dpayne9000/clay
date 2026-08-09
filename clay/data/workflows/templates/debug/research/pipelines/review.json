@@ -1,0 +1,49 @@
+{
+  "defaults": {
+    "audience": "general readers",
+    "topic": "the subject matter"
+  },
+  "workflow": {
+    "steps": ["load_training", "critique", "humanApproval", "applyFeedback"]
+  },
+  "actionSets": {
+    "load_training": [
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "../training.json"
+      }
+    ],
+    "critique": [
+      {
+        "id": "critique",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_critique"
+        },
+        "prompt": "You are a senior editor reviewing a {doc_type} about '{topic}' written for {audience}. Provide a structured critique covering:\n\n1. STRENGTHS — what works well (2-3 points)\n2. WEAKNESSES — gaps, unsupported claims, or unclear sections (2-3 points)\n3. TONE CHECK — is the language appropriate for {audience}?\n4. SUGGESTED IMPROVEMENTS — 3 specific, actionable edits\n5. OVERALL VERDICT — Ready to publish / Needs minor revision / Needs major revision\n\nDocument to review:\n{draft}\n\n{training_critique}",
+        "includedData": ["draft", "topic", "doc_type", "audience"]
+      }
+    ],
+    "humanApproval": [
+      {
+        "id": "human_feedback",
+        "type": "workflow",
+        "file": "../../shared/human/approve-or-revise.json",
+        "outputKey": "final",
+        "includedData": ["draft", "critique"]
+      }
+    ],
+    "applyFeedback": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_apply_feedback"
+        },
+        "prompt": "Revise this document applying the AI critique and human feedback. If human feedback is APPROVE, apply only the AI critique's suggested improvements. If human feedback contains specific instructions, prioritise those over the AI critique.\n\nAI CRITIQUE:\n{critique}\n\nHUMAN FEEDBACK:\n{human_feedback}\n\nDOCUMENT:\n{draft}\n\n{training_apply_feedback}",
+        "includedData": ["draft", "critique", "human_feedback"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "training_chatbot_prompt": [
+      {
+        "question":"hi, what time is it",
+        "answer": "oh hello silly goose it's 12:00pm PST"
+      }
+    ],
+  "training_analysis_report": [
+      {
+        "question":"oh hello silly goose it's 12:00pm PST",
+        "answer": "The chatbot gave the user the time, sassily"
+      }
+    ]
+}

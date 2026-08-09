@@ -1,0 +1,61 @@
+{
+  "workflow": {
+    "steps": ["recall_findings", "write_section", "store_draft"]
+  },
+
+  "actionSets": {
+
+    "recall_findings": [
+      {
+        "id": "section_findings",
+        "type": "searchMemory",
+        "namespace": "tech-docs",
+        "queryKey": "doc_outline",
+        "maxResults": 10
+      },
+      {
+        "id": "section_pick",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of 6. You are writing {doc_type} documentation.\n\nFull outline:\n{doc_outline}\n\nPick the section to write for iteration {iteration}. The outline has 6 major sections — write them in order. Reply with ONLY the section name.",
+        "includedData": ["iteration", "doc_type", "doc_outline"]
+      }
+    ],
+
+    "write_section": [
+      {
+        "id": "draft_section",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the following section of {doc_type} documentation for {project_path}:\n\nSection: {section_pick}\n\nDocumentation outline:\n{doc_outline}\n\nRelevant code analysis from memory:\n{section_findings}\n\nWrite a complete, polished draft of this section. Follow technical documentation best practices:\n- Use code blocks with language hints for all code examples\n- Include function signatures with parameter types and return types\n- Add inline comments explaining non-obvious behavior\n- Use tables for configuration options and parameters\n- Cross-reference related sections\n\nUse markdown formatting.",
+        "includedData": ["doc_type", "project_path", "section_pick", "doc_outline", "section_findings"]
+      }
+    ],
+
+    "store_draft": [
+      {
+        "id": "draft_tags",
+        "type": "deriveTags",
+        "contentKey": "draft_section",
+        "contextKey": "section_pick",
+        "maxTags": 4,
+        "includedData": ["draft_section", "section_pick"]
+      },
+      {
+        "id": "draft_saved",
+        "type": "writeMemory",
+        "namespace": "tech-docs",
+        "content": "draft_section",
+        "tagsKey": "draft_tags",
+        "includedData": ["draft_section", "draft_tags"]
+      },
+      {
+        "id": "draft_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of 6 complete. Section written: {section_pick}\n\nIf iteration is less than 6, reply YES to continue. If iteration is 6, reply NO — all sections are drafted.",
+        "includedData": ["iteration", "section_pick"]
+      }
+    ]
+  }
+}

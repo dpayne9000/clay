@@ -1,0 +1,60 @@
+{
+  "workflow": {
+    "steps": ["intake", "categorize", "themes", "executiveSummary", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "product_name",
+        "type": "humanDecision",
+        "prompt": "Product or service name:"
+      },
+      {
+        "id": "raw_feedback",
+        "type": "humanDecision",
+        "prompt": "Paste the raw customer feedback (reviews, support tickets, survey responses — any format):"
+      },
+      {
+        "id": "time_period",
+        "type": "humanDecision",
+        "prompt": "Time period this feedback covers (e.g., March 2026, Q1 2026):"
+      }
+    ],
+    "categorize": [
+      {
+        "id": "categorized",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Categorize each piece of feedback about {product_name}.\n\nRaw feedback:\n{raw_feedback}\n\nFor each distinct piece of feedback, classify:\n- CATEGORY: Bug Report / Feature Request / Praise / Complaint / Question / Suggestion\n- SENTIMENT: Positive / Neutral / Negative\n- SEVERITY: Critical / High / Medium / Low (for bugs/complaints) or Impact: High / Medium / Low (for requests)\n- SUMMARY: one sentence\n- QUOTE: the key customer quote\n\nNumber each item. Preserve every piece of feedback — don't merge or skip any.",
+        "includedData": ["product_name", "raw_feedback"]
+      }
+    ],
+    "themes": [
+      {
+        "id": "theme_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Extract themes from this categorized customer feedback about {product_name}.\n\n{categorized}\n\nIdentify 4-6 themes. For each:\n- THEME: descriptive name\n- FREQUENCY: how many feedback items relate to this theme\n- SENTIMENT: overall sentiment for this theme\n- REPRESENTATIVE QUOTES: 2-3 direct customer quotes\n- PATTERN: what's the underlying need or frustration?\n\nRank themes by frequency × severity impact.",
+        "includedData": ["product_name", "categorized"]
+      }
+    ],
+    "executiveSummary": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write an executive summary of customer feedback for {product_name} ({time_period}).\n\nCategorized feedback:\n{categorized}\n\nTheme analysis:\n{theme_analysis}\n\nFormat:\n\n# Customer Feedback Digest: {product_name}\nPeriod: {time_period}\n\n## Headline\n(One sentence — the single most important takeaway)\n\n## Sentiment Breakdown\n- Positive: N items (X%)\n- Neutral: N items (X%)\n- Negative: N items (X%)\n\n## Top Themes (ranked by impact)\n(Each theme with count, sentiment, and key quote)\n\n## Critical Items Requiring Immediate Attention\n(Any critical bugs or complaints)\n\n## Recommended Actions\n(3-5 specific, prioritized actions based on the feedback)\n\nWrite for a product leader who has 2 minutes to read this.",
+        "includedData": ["product_name", "time_period", "categorized", "theme_analysis"]
+      }
+    ],
+    "save": [
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/feedback-digest-{product_name}-{time_period}.md",
+        "content": "final",
+        "includedData": ["final", "product_name", "time_period"]
+      }
+    ]
+  }
+}

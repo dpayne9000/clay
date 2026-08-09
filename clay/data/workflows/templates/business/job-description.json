@@ -1,0 +1,81 @@
+{
+  "workflow": {
+    "steps": ["roleDetails", "requirementsInput", "draftJD", "humanReview", "finalise"]
+  },
+  "actionSets": {
+    "roleDetails": [
+      {
+        "id": "role",
+        "type": "humanDecision",
+        "prompt": "Job title"
+      },
+      {
+        "id": "team",
+        "type": "humanDecision",
+        "prompt": "Team or department"
+      },
+      {
+        "id": "location",
+        "type": "humanDecision",
+        "prompt": "Location and work type (e.g. London / Remote / Hybrid)"
+      },
+      {
+        "id": "seniority",
+        "type": "humanDecision",
+        "prompt": "Seniority level (e.g. Junior, Mid, Senior, Lead)"
+      }
+    ],
+    "requirementsInput": [
+      {
+        "id": "responsibilities",
+        "type": "humanDecision",
+        "prompt": "Main responsibilities (comma-separated)"
+      },
+      {
+        "id": "required_skills",
+        "type": "humanDecision",
+        "prompt": "Required skills or qualifications (comma-separated)"
+      },
+      {
+        "id": "nice_to_have",
+        "type": "humanDecision",
+        "prompt": "Nice-to-have skills (comma-separated, or press Enter to skip)"
+      }
+    ],
+    "draftJD": [
+      {
+        "id": "jd",
+        "type": "scramda2",
+        "prompt": "Write a compelling job description for a {seniority} {role} in the {team} team. Location: {location}.\n\nResponsibilities: {responsibilities}\nRequired skills: {required_skills}\nNice to have: {nice_to_have}\n\nStructure:\n- Short punchy intro (2 sentences, no corporate clichés)\n- The role section (what they will actually do)\n- Responsibilities as bullet points\n- Requirements as bullet points\n- Nice to have as bullet points (skip if empty)\n- A placeholder benefits section\n\nTone: direct and honest. Avoid 'rockstar', 'ninja', 'fast-paced environment'.",
+        "examples": [
+          {
+            "question": "Write a job description for a Senior Backend Engineer in the Platform team. Location: Remote. Responsibilities: design APIs, maintain infrastructure, mentor juniors, incident response. Required skills: Node.js, PostgreSQL, Docker, AWS. Nice to have: Kafka, Terraform.",
+            "answer": "SENIOR BACKEND ENGINEER — PLATFORM\nRemote\n\nWe are building the infrastructure that the rest of engineering depends on. This is a role for someone who likes owning systems end-to-end and is not afraid of a 3am PagerDuty alert occasionally.\n\nTHE ROLE\nYou will be the backbone of our platform team, designing the APIs and infrastructure that power our core product and keeping them running at scale. You will work closely with product engineers, set the bar for backend quality, and help grow the engineers around you.\n\nRESPONSIBILITIES\n- Design, build, and maintain scalable REST and event-driven APIs\n- Own infrastructure reliability, monitoring, and incident response\n- Mentor junior engineers through code review and pairing\n- Drive architectural decisions and document them clearly\n\nREQUIREMENTS\n- Strong Node.js — you know the runtime, not just the syntax\n- PostgreSQL experience including schema design and query optimisation\n- Docker and container-based deployments in production\n- AWS — EC2, RDS, S3, IAM at minimum\n\nNICE TO HAVE\n- Experience with Kafka or other message brokers\n- Infrastructure as code with Terraform\n\nBENEFITS\n[Salary range] | [Equity] | [Holiday] | [Learning budget] | [Other perks]\n\nTo apply: send your CV and two or three sentences about a system you are proud of building."
+          }
+        ],
+        "includedData": ["role", "team", "location", "seniority", "responsibilities", "required_skills", "nice_to_have"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "jd_notes",
+        "type": "humanDecision",
+        "prompt": "Review the job description. Enter edits or press Enter to finalise"
+      }
+    ],
+    "finalise": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "prompt": "Revise this job description applying the edit notes. If notes are empty, return it unchanged.\n\nNotes: {jd_notes}\n\nJob description:\n{jd}",
+        "examples": [
+          {
+            "question": "Notes: Add a note that visa sponsorship is not available. Job description: SENIOR BACKEND ENGINEER — PLATFORM\nRemote\n\nWe are building the infrastructure...",
+            "answer": "SENIOR BACKEND ENGINEER — PLATFORM\nRemote\n\nPlease note: we are not able to offer visa sponsorship for this role.\n\nWe are building the infrastructure..."
+          }
+        ],
+        "includedData": ["jd", "jd_notes"]
+      }
+    ]
+  }
+}

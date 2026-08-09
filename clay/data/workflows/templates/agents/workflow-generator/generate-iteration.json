@@ -1,0 +1,96 @@
+{
+  "workflow": {
+    "steps": ["recall", "ideate", "generate", "validate", "save"]
+  },
+
+  "actionSets": {
+    "recall": [
+      {
+        "id": "already_tried",
+        "type": "searchMemory",
+        "namespace": "workflow-ideas",
+        "query": "generated",
+        "maxResults": 10
+      }
+    ],
+
+    "ideate": [
+      {
+        "id": "best_idea",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Brainstorm 3 novel workflow ideas that haven't been tried before. Each should solve a real problem (business, personal, science, creative). For each idea provide: name, one-sentence purpose, key action types it would use.\n\nAlready tried:\n{already_tried}\n\nAvailable action types: humanDecision, humanShell, shell, scramda2, loop, loadContext, writeFile, writeMemory, searchMemory, listMemory, readMemory, deriveTags, browseWeb, searchWeb, runCode, sendEmail, sendAlert, writeSkill, listSkills, searchSkills.\n\nPick the BEST one for implementation.",
+        "includedData": ["already_tried"]
+      }
+    ],
+
+    "generate": [
+      {
+        "id": "workflow_json",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate a complete, valid clay workflow JSON for this idea:\n{best_idea}\n\nThe JSON must have: \"workflow\": {\"steps\": [...]}, \"actionSets\": {\"step_name\": [...actions...]}. Each action needs \"type\" and \"id\" at minimum, plus type-specific required fields. Use memory and skills meaningfully — not just dumps. Use deriveTags before writeMemory. Use searchMemory before research to avoid redundancy. Make it runnable in --auto mode. Return ONLY the JSON, no markdown fences.",
+        "includedData": ["best_idea"]
+      }
+    ],
+
+    "validate": [
+      {
+        "id": "validation_result",
+        "type": "runCode",
+        "language": "python",
+        "source": "import json, sys\ndata = json.loads(sys.stdin.read() if sys.stdin else '{}')\nsteps = data.get('workflow', {}).get('steps', [])\nsets = data.get('actionSets', {})\nerrors = []\nfor s in steps:\n    if s not in sets:\n        errors.append(f'step {s} has no actionSet')\nfor k in sets:\n    if k not in steps:\n        errors.append(f'actionSet {k} not in steps')\nfor k, actions in sets.items():\n    for i, a in enumerate(actions):\n        if not a.get('type'):\n            errors.append(f'action missing type in {k}[{i}]')\n        if not a.get('id'):\n            errors.append(f'action missing id in {k}[{i}]')\nif errors:\n    print('INVALID: ' + '; '.join(errors))\nelse:\n    print('VALID')",
+        "stdin": "workflow_json",
+        "includedData": ["workflow_json"]
+      }
+    ],
+
+    "save": [
+      {
+        "id": "idea_tags",
+        "type": "deriveTags",
+        "contentKey": "best_idea",
+        "maxTags": 6,
+        "includedData": ["best_idea"]
+      },
+      {
+        "id": "_idea_saved",
+        "type": "writeMemory",
+        "namespace": "workflow-ideas",
+        "content": "best_idea",
+        "tagsKey": "idea_tags",
+        "includedData": ["best_idea", "idea_tags"]
+      },
+      {
+        "id": "_wf_saved",
+        "type": "writeFile",
+        "file": "output/generated-workflows/wf-{iteration}.json",
+        "content": "workflow_json",
+        "includedData": ["workflow_json", "iteration"]
+      },
+      {
+        "id": "_skill_saved",
+        "type": "writeSkill",
+        "skillset": "workflow-templates",
+        "name": "generated-{iteration}",
+        "content": "workflow_json",
+        "extension": "json",
+        "includedData": ["workflow_json", "iteration"]
+      },
+      {
+        "id": "generation_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "One-sentence summary of what was generated this iteration.\n\nIdea: {best_idea}\nValidation: {validation_result}",
+        "includedData": ["best_idea", "validation_result"]
+      },
+      {
+        "id": "should_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Should we generate more workflows? Respond \"continue\" to keep going, or \"stop\" if 5 iterations is enough.\n\nCurrent iteration: {iteration}",
+        "includedData": ["iteration"]
+      }
+    ]
+  }
+}

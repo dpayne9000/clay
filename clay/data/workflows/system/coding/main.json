@@ -1,0 +1,21 @@
+{
+  "_comment": "Minimal launcher.",
+  "workflow": {
+    "steps": [
+      "session"
+    ]
+  },
+  "actionSets": {
+    "session": [
+      {
+        "id": "session_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0,
+        "continueKey": "keep_going",
+        "outputKey": "agent_reply",
+        "includedData": []
+      }
+    ]
+  }
+}

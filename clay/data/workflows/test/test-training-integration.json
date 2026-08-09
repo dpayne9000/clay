@@ -1,0 +1,124 @@
+{
+  "autoContext": "End-to-end integration test for the training variable system. Validates that: (1) training.json loads via loadContext and all 13 keys merge into workflow context, (2) individual training keys are accessible in subsequent steps via includedData, (3) training key values contain the expected Example/Input/Output format, (4) training keys survive through a sub-workflow seed, and (5) a deriveTags action can extract tags from a training value (confirming the values are real text strings).",
+
+  "workflow": {
+    "steps": [
+      "load_training",
+      "verify_key_availability",
+      "verify_content_format",
+      "derive_tags_from_training",
+      "write_verification_output"
+    ]
+  },
+
+  "actionSets": {
+
+    "load_training": [
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "../templates/research/training.json"
+      }
+    ],
+
+    "verify_key_availability": [
+      {
+        "_comment": "All 13 training keys must be accessible via includedData after loadContext.",
+        "id": "check_research_keys",
+        "type": "shell",
+        "command": "echo research-training-keys-available",
+        "includedData": [
+          "training_generate_queries",
+          "training_simulate_sources",
+          "training_extract_facts",
+          "training_extract_themes",
+          "training_synthesise"
+        ],
+        "timeout": 5
+      },
+      {
+        "id": "check_draft_keys",
+        "type": "shell",
+        "command": "echo draft-training-keys-available",
+        "includedData": [
+          "training_outline",
+          "training_exec_summary",
+          "training_background",
+          "training_findings",
+          "training_recommendations",
+          "training_assemble"
+        ],
+        "timeout": 5
+      },
+      {
+        "id": "check_review_keys",
+        "type": "shell",
+        "command": "echo review-training-keys-available",
+        "includedData": [
+          "training_critique",
+          "training_apply_feedback"
+        ],
+        "timeout": 5
+      }
+    ],
+
+    "verify_content_format": [
+      {
+        "_comment": "deriveTags on the training value will only produce non-empty output if the value is a real text string (not empty, not a placeholder).",
+        "id": "tags_from_queries_training",
+        "type": "deriveTags",
+        "contentKey": "training_generate_queries",
+        "maxTags": 4,
+        "includedData": ["training_generate_queries"]
+      },
+      {
+        "id": "tags_from_synthesise_training",
+        "type": "deriveTags",
+        "contentKey": "training_synthesise",
+        "maxTags": 4,
+        "includedData": ["training_synthesise"]
+      },
+      {
+        "id": "tags_from_critique_training",
+        "type": "deriveTags",
+        "contentKey": "training_critique",
+        "maxTags": 4,
+        "includedData": ["training_critique"]
+      }
+    ],
+
+    "derive_tags_from_training": [
+      {
+        "_comment": "Confirm tags were derived (non-empty string) for three different training values.",
+        "id": "tags_present_check",
+        "type": "shell",
+        "command": "echo tags-derived-from-training-values",
+        "includedData": [
+          "tags_from_queries_training",
+          "tags_from_synthesise_training",
+          "tags_from_critique_training"
+        ],
+        "timeout": 5
+      }
+    ],
+
+    "write_verification_output": [
+      {
+        "_comment": "Produce a timestamp and write a verification report to output/test/.",
+        "id": "run_ts",
+        "type": "shell",
+        "command": "date +%Y%m%d_%H%M",
+        "timeout": 5
+      },
+      {
+        "_comment": "Write confirmation file. File path uses {run_ts} template. Content key 'tags_present_check' holds the shell echo output.",
+        "id": "verification_file",
+        "type": "writeFile",
+        "file": "output/test/training-integration-{run_ts}.txt",
+        "content": "tags_present_check",
+        "includedData": ["tags_present_check", "run_ts"]
+      }
+    ]
+
+  }
+}

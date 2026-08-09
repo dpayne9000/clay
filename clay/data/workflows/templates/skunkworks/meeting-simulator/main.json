@@ -1,0 +1,55 @@
+{
+  "autoContext": "You are simulating a meeting with AI stakeholders. Each persona has distinct priorities and communication styles. They should challenge the user realistically.",
+
+  "workflow": {
+    "steps": ["intake", "generatePersonas", "simulationLoop", "debrief"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "meeting_agenda",
+        "type": "humanDecision",
+        "prompt": "What is the meeting about? (agenda or topic)"
+      },
+      {
+        "id": "attendees",
+        "type": "humanDecision",
+        "prompt": "Describe the attendees and their roles (e.g., 'CFO who cares about cost, CTO who cares about timeline, PM who wants more features'):"
+      },
+      {
+        "id": "your_goal",
+        "type": "humanDecision",
+        "prompt": "What are YOU trying to achieve in this meeting? (your goal or proposal)"
+      }
+    ],
+    "generatePersonas": [
+      {
+        "id": "personas",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create detailed personas for each meeting attendee.\n\nMeeting topic: {meeting_agenda}\nAttendees described: {attendees}\nPresenter's goal: {your_goal}\n\nFor each persona, define:\n- NAME: a realistic name\n- ROLE: their title\n- PRIORITY: what they care about most\n- LIKELY CONCERNS: 2-3 specific objections or questions they'll raise about {your_goal}\n- COMMUNICATION STYLE: direct / diplomatic / analytical / emotional\n- WHAT WOULD WIN THEM OVER: what they need to hear to support the proposal",
+        "includedData": ["meeting_agenda", "attendees", "your_goal"]
+      }
+    ],
+    "simulationLoop": [
+      {
+        "id": "meeting_log",
+        "type": "loop",
+        "file": "./simulation-iteration.json",
+        "iterations": 0,
+        "continueKey": "meeting_continues",
+        "outputKey": "exchange",
+        "includedData": ["meeting_agenda", "your_goal", "personas"]
+      }
+    ],
+    "debrief": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Debrief this meeting simulation.\n\nMeeting topic: {meeting_agenda}\nYour goal: {your_goal}\nPersonas: {personas}\n\nMeeting transcript:\n{meeting_log}\n\nFormat:\n\n# Meeting Simulation Debrief\n\n## What Went Well\n(Moments where you effectively addressed concerns)\n\n## What Needs Work\n(Questions you struggled with, concerns you didn't fully address)\n\n## Per-Stakeholder Assessment\nFor each persona:\n- Their main concern: addressed / partially addressed / unaddressed\n- Their likely support level: supportive / neutral / opposed\n- What would change their mind\n\n## Preparation Recommendations\n(Specific data, talking points, or concessions to prepare before the real meeting)",
+        "includedData": ["meeting_agenda", "your_goal", "personas", "meeting_log=meeting_log.exchange"]
+      }
+    ]
+  }
+}

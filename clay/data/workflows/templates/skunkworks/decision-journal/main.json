@@ -1,0 +1,85 @@
+{
+  "workflow": {
+    "steps": ["intake", "recallPrior", "analyze", "biasCheck", "premortem", "decide", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "decision",
+        "type": "humanDecision",
+        "prompt": "What decision are you trying to make?"
+      },
+      {
+        "id": "context",
+        "type": "humanDecision",
+        "prompt": "What's the context? (constraints, timeline, stakeholders, what's at stake)"
+      }
+    ],
+    "recallPrior": [
+      {
+        "id": "prior_decisions",
+        "type": "searchMemory",
+        "namespace": "decision-journal",
+        "queryKey": "decision",
+        "maxResults": 5
+      }
+    ],
+    "analyze": [
+      {
+        "id": "options",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate 3-5 options for this decision.\n\nDecision: {decision}\nContext: {context}\n\nRelated past decisions:\n{prior_decisions}\n\nFor each option:\n- OPTION: clear description\n- PROS: 2-3 specific advantages\n- CONS: 2-3 specific disadvantages\n- COST: time, money, or effort required\n- REVERSIBILITY: easy to undo / hard to undo / irreversible\n- SECOND-ORDER EFFECTS: what this choice makes easier or harder in the future\n\nInclude at least one unconventional option.",
+        "includedData": ["decision", "context", "prior_decisions"]
+      }
+    ],
+    "biasCheck": [
+      {
+        "id": "bias_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Check this decision analysis for cognitive biases.\n\nDecision: {decision}\nContext: {context}\nOptions: {options}\n\nCheck for:\n1. ANCHORING: Is the first option getting undue weight?\n2. CONFIRMATION BIAS: Are pros/cons selectively emphasizing what supports a predetermined choice?\n3. SUNK COST: Is past investment being used to justify continuing a path?\n4. STATUS QUO BIAS: Is 'do nothing' being unfairly favored or unfairly dismissed?\n5. AVAILABILITY BIAS: Are recent events overweighting certain risks?\n6. FRAMING EFFECT: Would the analysis change if framed differently?\n\nFor each bias detected:\n- BIAS: which one\n- EVIDENCE: where you see it in the analysis\n- CORRECTION: how to adjust the thinking",
+        "includedData": ["decision", "context", "options"]
+      }
+    ],
+    "premortem": [
+      {
+        "id": "premortem",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Run a premortem analysis.\n\nDecision: {decision}\nOptions: {options}\nBias check: {bias_analysis}\n\nFor each option, imagine it's 6 months later and it FAILED. Write:\n\n**Option [name] — FAILURE SCENARIO**\nWhat went wrong: (the most likely failure mode)\nWarning signs we should have seen: (what we'd notice going wrong)\nWhat we'd wish we'd done differently: (the preventable mistake)\nRecovery plan: (how we'd salvage the situation)\n\nBe honest and specific. This exercise works only if the failures feel plausible.",
+        "includedData": ["decision", "options", "bias_analysis"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "human_decision",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nDECISION ANALYSIS COMPLETE\n─────────────────────────────────────────────────────\n\nOptions:\n{options}\n\nBias check:\n{bias_analysis}\n\nPremortem:\n{premortem}\n\n─────────────────────────────────────────────────────\nWhat's your decision? (Pick an option and explain your reasoning)"
+      }
+    ],
+    "save": [
+      {
+        "id": "decision_record",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Create a decision journal entry.\n\nDecision: {decision}\nContext: {context}\nOptions considered: {options}\nBias check: {bias_analysis}\nPremortem: {premortem}\nFinal decision: {human_decision}\n\nFormat:\n\n# Decision Record: {decision}\n\n**Date**: [today]\n**Decision**: {human_decision}\n\n## Context\n{context}\n\n## Options Considered\n(Summary of each option)\n\n## Biases Identified\n(What we corrected for)\n\n## Premortem Highlights\n(Key failure modes to watch for)\n\n## Decision & Reasoning\n{human_decision}\n\n## Review Date\n(Suggest when to revisit this decision)",
+        "includedData": ["decision", "context", "options", "bias_analysis", "premortem", "human_decision"]
+      },
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "namespace": "decision-journal",
+        "content": "decision_record",
+        "includedData": ["decision_record"]
+      },
+      {
+        "id": "file_saved",
+        "type": "writeFile",
+        "file": "output/decision-journal.md",
+        "content": "decision_record",
+        "includedData": ["decision_record"]
+      }
+    ]
+  }
+}

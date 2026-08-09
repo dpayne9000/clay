@@ -1,0 +1,126 @@
+{
+  "autoContext": "You are a competitive intelligence analyst performing a detailed pricing analysis. Focus on quantifiable data, feature-value comparisons, and strategic positioning insights.",
+  "defaults": {
+    "memory_namespace": "competitor-pricing",
+    "output_dir": "output/competitor-pricing"
+  },
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+  "actionSets": {
+    "init": [
+      {
+        "id": "product_category",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "competitors",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "our_pricing",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "memory_namespace",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "output_dir",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+    "recall": [
+      {
+        "id": "prior_pricing",
+        "type": "searchMemory",
+        "namespace": "competitor-pricing",
+        "query": "competitor pricing tiers features comparison positioning",
+        "includedData": ["memory_namespace", "product_category"]
+      },
+      {
+        "id": "prior_entries",
+        "type": "listMemory",
+        "namespace": "competitor-pricing",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "research_loop": [
+      {
+        "id": "pricing_research",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 8,
+        "continueKey": "more_competitors",
+        "outputKey": "competitor_data",
+        "includedData": ["product_category", "competitors", "our_pricing", "memory_namespace", "prior_pricing"]
+      }
+    ],
+    "outline": [
+      {
+        "id": "analysis_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a structured outline for the competitor pricing analysis.\n\nProduct category: {product_category}\nCompetitors analyzed: {competitors}\nOur pricing: {our_pricing}\n\nPricing research findings:\n{pricing_research}\n\nPrior pricing context:\n{prior_pricing}\n\nCreate an outline with these sections:\n1. Executive Summary (key pricing insights)\n2. Market Pricing Overview (category pricing landscape)\n3. Competitor Profiles (one subsection per competitor)\n4. Feature-Price Matrix (what you get at each price point)\n5. Price Positioning Map (where each player sits)\n6. Value Gap Analysis (features per dollar comparison)\n7. Pricing Strategy Recommendations\n8. Risk Assessment (competitive threats to our pricing)\n\nNote which competitor data feeds into each section.",
+        "includedData": ["product_category", "competitors", "our_pricing", "pricing_research=pricing_research.competitor_data", "prior_pricing"]
+      }
+    ],
+    "draft_loop": [
+      {
+        "id": "draft_sections",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_sections",
+        "outputKey": "section_draft",
+        "includedData": ["product_category", "competitors", "our_pricing", "memory_namespace", "analysis_outline", "pricing_research=pricing_research.competitor_data"]
+      }
+    ],
+    "finalize": [
+      {
+        "id": "final_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Assemble the final competitor pricing analysis for {product_category}.\n\nCompetitors: {competitors}\nOur pricing: {our_pricing}\n\nAnalysis outline:\n{analysis_outline}\n\nDrafted sections:\n{draft_sections}\n\nCombine into a polished pricing analysis report. Ensure:\n- Executive summary highlights top 3 competitive pricing insights\n- Feature-price matrix is presented as a clear comparison table\n- Each competitor profile includes: plans, pricing, key features per tier, free tier details\n- Value gaps clearly show where we are over/under-priced relative to features\n- Recommendations are specific and quantified (e.g., suggested price points)\n- Include a pricing change risk assessment\n- Format as clean Markdown with tables for comparisons",
+        "includedData": ["product_category", "competitors", "our_pricing", "analysis_outline", "draft_sections=draft_sections.section_draft"]
+      },
+      {
+        "id": "final_tags",
+        "type": "deriveTags",
+        "content": "final_analysis",
+        "includedData": ["final_analysis"]
+      },
+      {
+        "id": "save_analysis_memory",
+        "type": "writeMemory",
+        "namespace": "competitor-pricing",
+        "entryId": "final-analysis",
+        "content": "final_analysis",
+        "tagsKey": "final_tags",
+        "includedData": ["final_analysis", "final_tags"]
+      },
+      {
+        "id": "save_template",
+        "type": "writeSkill",
+        "skillset": "competitor-pricing",
+        "name": "pricing-analysis-template",
+        "content": "analysis_outline",
+        "includedData": ["analysis_outline"]
+      }
+    ],
+    "deliver": [
+      {
+        "id": "saved_file",
+        "type": "writeFile",
+        "file": "{output_dir}/competitor-pricing-{product_category}.md",
+        "content": "final_analysis",
+        "includedData": ["final_analysis", "output_dir", "product_category"]
+      }
+    ]
+  }
+}

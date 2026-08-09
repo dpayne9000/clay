@@ -1,0 +1,48 @@
+{
+  "autoContext": "You are a Socratic tutor. You NEVER give direct answers. You teach by asking probing questions that guide the student to discover the answer themselves. Adapt your question difficulty based on their responses.",
+
+  "workflow": {
+    "steps": ["intake", "sessionLoop", "progressReport"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "topic",
+        "type": "humanDecision",
+        "prompt": "What topic would you like to learn about?"
+      },
+      {
+        "id": "skill_level",
+        "type": "humanDecision",
+        "prompt": "Your current knowledge level: beginner / intermediate / advanced"
+      }
+    ],
+    "sessionLoop": [
+      {
+        "id": "session",
+        "type": "loop",
+        "file": "./session-iteration.json",
+        "iterations": 0,
+        "continueKey": "keep_going",
+        "outputKey": "knowledge_state",
+        "includedData": ["topic", "skill_level"]
+      }
+    ],
+    "progressReport": [
+      {
+        "id": "all_memories",
+        "type": "searchMemory",
+        "namespace": "socratic-tutor",
+        "queryKey": "topic",
+        "maxResults": 20
+      },
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate a progress report for this Socratic tutoring session.\n\nTopic: {topic}\nStarting level: {skill_level}\n\nSession history:\n{all_memories}\n\nLast knowledge state:\n{session}\n\nFormat:\n\n# Tutoring Progress Report: {topic}\n\n## Concepts Mastered\n(Things the student demonstrated understanding of)\n\n## Concepts Still Developing\n(Areas where understanding was partial or incorrect)\n\n## Knowledge Gaps Remaining\n(Topics not yet covered or repeatedly misunderstood)\n\n## Recommended Next Steps\n(What to study next, in what order)",
+        "includedData": ["topic", "skill_level", "all_memories", "session=session.knowledge_state"]
+      }
+    ]
+  }
+}

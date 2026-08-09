@@ -1,0 +1,3 @@
+{
+  "selected_pattern": "PATTERN: REVISE_FILE_FROM_PROMPT\nSHAPE:\nhumanDecision(user_request)\nserveFileReads(target_request)\nscramda2(agent_reply: user_request + file_context + file_protocol)\napplyFileWrites(agent_reply)\nOPTIONAL runReplyCommands(agent_reply)"
+}

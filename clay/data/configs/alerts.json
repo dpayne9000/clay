@@ -1,0 +1,7 @@
+{
+  "channels": {
+    "email": { "enabled": true },
+    "webhook": { "enabled": false, "url": "" },
+    "file": { "enabled": true, "path": "logs/alerts.log" }
+  }
+}

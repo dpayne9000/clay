@@ -1,0 +1,7 @@
+{
+  "framework": "SOC2",
+  "scope": "Production infrastructure and data handling",
+  "current_state": "Early stage, partial controls in place",
+  "memory_namespace": "compliance",
+  "output_dir": "output/compliance-checklist"
+}

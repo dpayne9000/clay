@@ -1,0 +1,3 @@
+{
+  "file_protocol": "FILE FORMAT\nExisting file write:\n```language relative/path.ext\n<<<<<<< SEARCH\nexact current text\n=======\nreplacement text\n>>>>>>> REPLACE\n```\nNew file write:\n```language relative/path.ext\ncomplete contents\n```\nCommand to execute:\n```bash\nreal command\n```\nA FILE WRITE fence always has a language AND relative path on its opening line. A pathless bash fence is a COMMAND. `bash relative/path.sh` is a shell FILE WRITE. Never emit an unnamed code fence. SEARCH must exactly match CURRENT FILES. Never use TODOs, placeholders, stubs, '# rest unchanged', or invented existing-file contents."
+}

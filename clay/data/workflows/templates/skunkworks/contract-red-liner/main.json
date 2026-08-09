@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "steps": ["intake", "parseAndAnalyze", "riskMatrix", "humanReview", "redline"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "contract_text",
+        "type": "humanDecision",
+        "prompt": "Paste the contract text to analyze:"
+      },
+      {
+        "id": "your_side",
+        "type": "humanDecision",
+        "prompt": "Which party are you? (e.g., 'the vendor', 'the client', 'the employee')"
+      },
+      {
+        "id": "concerns",
+        "type": "humanDecision",
+        "prompt": "Any specific concerns to watch for? (or press Enter for general analysis)"
+      }
+    ],
+    "parseAndAnalyze": [
+      {
+        "id": "clause_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze this contract clause-by-clause from the perspective of {your_side}.\n\nSpecific concerns: {concerns}\n\nContract:\n{contract_text}\n\nFor EACH substantive clause:\n- CLAUSE: quote the relevant text (first 100 chars)\n- CLASSIFICATION: Standard / Unusual / Risky / Deal-Breaker\n- RISK TO {your_side}: description of the risk\n- SEVERITY: Critical / High / Medium / Low / None\n- SUGGESTED CHANGE: alternative language that better protects {your_side} (only for Risky/Deal-Breaker)\n- EXPLANATION: why this change matters (in plain English, not legalese)\n\nDon't skip standard clauses — mark them as Standard so the reader knows they were reviewed.",
+        "includedData": ["contract_text", "your_side", "concerns"]
+      }
+    ],
+    "riskMatrix": [
+      {
+        "id": "risk_summary",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a risk summary from this clause analysis.\n\n{clause_analysis}\n\nFormat:\n\n## Risk Matrix\n\n| # | Clause | Classification | Severity | Action Needed |\n|---|--------|---------------|----------|---------------|\n(one row per clause)\n\n## Deal-Breakers\n(Clauses that should block signing without changes)\n\n## High-Risk Items\n(Clauses that should be negotiated)\n\n## Acceptable With Caveats\n(Unusual but manageable with awareness)\n\n## Overall Assessment\n(One sentence: is this contract fair, one-sided, or balanced?)",
+        "includedData": ["clause_analysis"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "review_notes",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nCONTRACT ANALYSIS COMPLETE\n─────────────────────────────────────────────────────\n\n{risk_summary}\n\n─────────────────────────────────────────────────────\nAny additional concerns or clauses to flag? (or press Enter to generate redlined version)"
+      }
+    ],
+    "redline": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Generate a redlined version of this contract for {your_side}.\n\nOriginal contract:\n{contract_text}\n\nClause analysis:\n{clause_analysis}\n\nHuman reviewer notes: {review_notes}\n\nFormat the redlined contract:\n- Keep all original text\n- For each risky/deal-breaker clause, show:\n  [ORIGINAL]: the original text\n  [SUGGESTED]: the revised text\n  [REASON]: one-line explanation\n\n- At the end, add a NEGOTIATION SUMMARY listing all changes in priority order",
+        "includedData": ["contract_text", "clause_analysis", "review_notes", "your_side"]
+      },
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/contract-redline.md",
+        "content": "final",
+        "includedData": ["final"]
+      }
+    ]
+  }
+}

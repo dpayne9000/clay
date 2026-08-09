@@ -1,0 +1,66 @@
+# ── clay terminal theme — aurora ──────────────────────────────────────────
+# Colours: ANSI SGR codes (e.g. 96 = bright-cyan). Empty string = no colour.
+COLOR_BORDER="96"
+COLOR_ACTION="92"
+COLOR_STEP="97"
+COLOR_RESPONSE="97"
+COLOR_PROMPT_BOX="2;36"
+COLOR_ERROR="95"
+COLOR_WARN="94"
+COLOR_DIM="2"
+COLOR_BOLD="1"
+COLOR_DONE="92"
+# A session command is neither the workflow nor an answer to it, so it gets a
+# colour of its own rather than borrowing one that already means something.
+COLOR_COMMAND="1;93"
+# Diff bodies in concise mode. Plain red and green rather than aurora shades:
+# these two are the one place in clay where the colour carries the meaning
+# instead of decorating it, and every developer already reads them.
+COLOR_DIFF_ADD="32"
+COLOR_DIFF_DEL="31"
+
+# ── Symbols ───────────────────────────────────────────────────────────────────
+SYM_ACTION="▸"
+SYM_AURORA="◈"
+SYM_ERROR="✕"
+SYM_WARN="⚡"
+SYM_DONE="✓"
+SYM_COMMAND="»"
+SYM_FILE="✎"
+SYM_READ="▪"
+SYM_STEP_TRAIL="─"
+SYM_BANNER_H="═"
+SYM_RESPONSE_TOP="┄"
+SYM_RESPONSE_BOTTOM="╌"
+SYM_CORNER_TL="╔"
+SYM_CORNER_TR="╗"
+SYM_CORNER_BL="╚"
+SYM_CORNER_BR="╝"
+
+# ── Spinner ───────────────────────────────────────────────────────────────────
+SPINNER_FRAMES="◌ ◎ ● ◎ ◌ ·"
+SPINNER_COLORS="96 92 95 94 97 96"
+SPINNER_INTERVAL_MS="100"
+SPINNER_LABEL="processing"
+
+# ── Shimmer animation (startup banner) ────────────────────────────────────────
+SHIMMER_ENABLED="true"
+SHIMMER_FRAMES="96 92 95 94 97 96"
+SHIMMER_FRAME_MS="80"
+
+# ── Layout ────────────────────────────────────────────────────────────────────
+BANNER_WIDTH="52"
+STEP_RULE_WIDTH="46"
+# Prompt length is display.promptMaxChars in ~/.clay/config.json, not a theme
+# key: a theme styles, it does not decide how much of a prompt you may see.
+RESPONSE_INDENT="  "
+
+# ── Feature flags ─────────────────────────────────────────────────────────────
+FEATURE_BANNER="true"
+FEATURE_SPINNER="true"
+FEATURE_SCRAMDA_INPUT_BOX="true"
+FEATURE_SCRAMDA_OUTPUT_BOX="true"
+FEATURE_SHIMMER="true"
+FEATURE_CURSOR_HIDE="true"
+FEATURE_STEP_COLORS="true"
+FEATURE_ACTION_COLORS="true"

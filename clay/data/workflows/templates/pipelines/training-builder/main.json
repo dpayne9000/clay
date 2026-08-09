@@ -1,0 +1,53 @@
+{
+  "workflow": {
+    "steps": ["intake", "exampleLoop", "compile", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "task_description",
+        "type": "humanDecision",
+        "prompt": "What task should the training examples teach? (e.g., 'write concise bug reports', 'extract action items from meeting notes')"
+      },
+      {
+        "id": "quality_criteria",
+        "type": "humanDecision",
+        "prompt": "What makes a GOOD example? (e.g., 'specific, includes severity, references the exact code location')"
+      },
+      {
+        "id": "num_examples",
+        "type": "humanDecision",
+        "prompt": "How many examples to generate? (default: 5)"
+      }
+    ],
+    "exampleLoop": [
+      {
+        "id": "examples",
+        "type": "loop",
+        "file": "./example-iteration.json",
+        "iterations": 10,
+        "continueKey": "more_examples",
+        "outputKey": "approved_example",
+        "includedData": ["task_description", "quality_criteria", "num_examples"]
+      }
+    ],
+    "compile": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Compile these approved training examples into a single training entry suitable for a loadContext training.json file.\n\nTask: {task_description}\nQuality criteria: {quality_criteria}\n\nApproved examples from the loop:\n{examples}\n\nFormat as a single string value containing all examples, each separated by a blank line, in this format:\nExample N\nInput: [the input/question]\nOutput: [the expected output/answer]\n\nOnly include examples that were approved. Make sure the format is consistent across all examples.",
+        "includedData": ["task_description", "quality_criteria", "examples=examples.approved_example"]
+      }
+    ],
+    "save": [
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/training-{task_description}.json",
+        "content": "final",
+        "includedData": ["final", "task_description"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "workflow": {
+    "steps": ["intake", "research", "structure", "draft", "humanReview", "finalize"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "company",
+        "type": "humanDecision",
+        "prompt": "What company or product is this sales pitch for?"
+      },
+      {
+        "id": "target_audience",
+        "type": "humanDecision",
+        "prompt": "Who are you pitching to? (e.g., enterprise CTO, small business owner, investor)"
+      },
+      {
+        "id": "differentiators",
+        "type": "humanDecision",
+        "prompt": "What are the 2-3 key differentiators or selling points?"
+      },
+      {
+        "id": "competitors",
+        "type": "humanDecision",
+        "prompt": "Who are the main competitors? (or press Enter to skip)"
+      }
+    ],
+    "research": [
+      {
+        "id": "research_results",
+        "type": "workflow",
+        "file": "../shared/research/web-research.json",
+        "outputKey": "final",
+        "includedData": ["topic=company"]
+      }
+    ],
+    "structure": [
+      {
+        "id": "pitch_structure",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Design a compelling sales pitch structure for {company} targeting {target_audience}.\n\nDifferentiators: {differentiators}\nCompetitors: {competitors}\nMarket context: {research_results}\n\nCreate a pitch framework with:\n1. Opening hook (problem statement that resonates with {target_audience})\n2. Solution positioning (how {company} solves it)\n3. Proof points (3 evidence-backed claims)\n4. Competitive advantage (why not alternatives)\n5. Call to action\n\nBe specific to this audience — what do they care about most?",
+        "includedData": ["company", "target_audience", "differentiators", "competitors", "research_results=research_results.final"]
+      }
+    ],
+    "draft": [
+      {
+        "id": "pitch_draft",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Write a complete, polished sales pitch for {company} using this structure.\n\nTarget audience: {target_audience}\nDifferentiators: {differentiators}\nPitch structure:\n{pitch_structure}\n\nWrite in a confident, professional tone. Use concrete numbers where possible. The pitch should be 400-600 words — long enough to be substantive, short enough to hold attention.",
+        "includedData": ["company", "target_audience", "differentiators", "pitch_structure"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "review_feedback",
+        "type": "workflow",
+        "file": "../../shared/human/approve-or-revise.json",
+        "outputKey": "final",
+        "includedData": ["draft=pitch_draft", "critique=pitch_structure"]
+      }
+    ],
+    "finalize": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Finalize this sales pitch incorporating the reviewer's feedback.\n\nFeedback: {review_feedback}\nDraft: {pitch_draft}\n\nIf the feedback is APPROVE, polish for clarity and impact without changing substance. If specific changes are requested, apply them precisely.",
+        "includedData": ["review_feedback=review_feedback.final", "pitch_draft"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "autoContext": "You are an autonomous market research agent. Your job is to systematically research an industry, its target market, competitors, and trends. Search the web for data, store structured findings in memory, and produce a comprehensive market research report. Be data-driven: cite sources, include numbers, and distinguish facts from estimates.",
+
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+
+  "actionSets": {
+
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      }
+    ],
+
+    "recall": [
+      {
+        "id": "prior_research",
+        "type": "searchMemory",
+        "namespace": "market-research",
+        "queryKey": "industry",
+        "maxResults": 10
+      },
+      {
+        "id": "existing_skills",
+        "type": "listSkills",
+        "skillset": "market-research"
+      },
+      {
+        "id": "recall_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Summarize any prior research available for the {industry} industry targeting {target_market}. If no prior data exists, say 'No prior research found — starting fresh.'\n\nPrior research:\n{prior_research}\n\nExisting skills:\n{existing_skills}",
+        "includedData": ["industry", "target_market", "prior_research", "existing_skills"]
+      }
+    ],
+
+    "research_loop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 6,
+        "continueKey": "research_continue",
+        "outputKey": "research_findings",
+        "includedData": ["industry", "target_market", "competitors", "recall_summary"]
+      }
+    ],
+
+    "outline": [
+      {
+        "id": "all_findings",
+        "type": "searchMemory",
+        "namespace": "market-research",
+        "queryKey": "industry",
+        "maxResults": 20
+      },
+      {
+        "id": "report_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate the structure for a market research report on {industry} targeting {target_market}.\n\nCompetitors: {competitors}\n\nResearch findings:\n{all_findings}\n\nResearch log:\n{research_log}\n\nCreate an outline with these sections:\n1. Executive Summary\n2. Market Size & Growth (TAM, SAM, SOM estimates)\n3. Industry Trends & Drivers\n4. Competitive Landscape ({competitors})\n5. Customer Segments & Personas\n6. Market Entry Barriers\n7. SWOT Analysis\n8. Strategic Recommendations\n\nFor each section, list the key data points to include and sources to reference.",
+        "includedData": ["industry", "target_market", "competitors", "all_findings", "research_log=research_log.research_findings"]
+      }
+    ],
+
+    "draft_loop": [
+      {
+        "id": "draft_log",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "draft_continue",
+        "outputKey": "draft_section",
+        "includedData": ["industry", "target_market", "competitors", "report_outline"]
+      }
+    ],
+
+    "finalize": [
+      {
+        "id": "draft_memory",
+        "type": "searchMemory",
+        "namespace": "market-research",
+        "queryKey": "industry",
+        "maxResults": 25
+      },
+      {
+        "id": "final_report",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Produce the complete market research report for {industry} targeting {target_market}.\n\nOutline:\n{report_outline}\n\nDraft sections:\n{draft_log}\n\nAll stored findings:\n{draft_memory}\n\nCombine all draft sections into a polished, cohesive report. Ensure:\n- Market size estimates include methodology notes\n- Competitor analysis references specific product features and pricing\n- Customer segments are backed by data\n- Trends include timeframes and growth projections\n- SWOT is grounded in research findings, not generic\n- Recommendations are specific and actionable with priority ranking",
+        "includedData": ["industry", "target_market", "report_outline", "draft_log=draft_log.draft_section", "draft_memory"]
+      }
+    ],
+
+    "deliver": [
+      {
+        "id": "report_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/market-research-{timestamp}.md",
+        "content": "final_report",
+        "includedData": ["final_report", "output_dir", "timestamp"]
+      },
+      {
+        "id": "report_memory",
+        "type": "writeMemory",
+        "namespace": "market-research",
+        "entryId": "latest-report",
+        "content": "final_report",
+        "includedData": ["final_report"]
+      },
+      {
+        "id": "research_skill",
+        "type": "writeSkill",
+        "skillset": "market-research",
+        "name": "market-research-template",
+        "content": "report_outline",
+        "includedData": ["report_outline"]
+      }
+    ]
+  }
+}

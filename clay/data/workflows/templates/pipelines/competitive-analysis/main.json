@@ -1,0 +1,53 @@
+{
+  "workflow": {
+    "steps": ["intake", "companyLoop", "synthesize", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "companies",
+        "type": "humanDecision",
+        "prompt": "List the companies to analyze (comma-separated):"
+      },
+      {
+        "id": "your_company",
+        "type": "humanDecision",
+        "prompt": "Your company name (for comparison):"
+      },
+      {
+        "id": "industry",
+        "type": "humanDecision",
+        "prompt": "Industry or market segment:"
+      }
+    ],
+    "companyLoop": [
+      {
+        "id": "company_research",
+        "type": "loop",
+        "file": "./company-deep-dive.json",
+        "iterations": 8,
+        "continueKey": "more_companies",
+        "outputKey": "company_analysis",
+        "includedData": ["companies", "your_company", "industry"]
+      }
+    ],
+    "synthesize": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a comprehensive competitive analysis comparing {your_company} against competitors in {industry}.\n\nCompanies analyzed: {companies}\n\nResearch from deep dives:\n{company_research}\n\nProduce:\n\n## SWOT Analysis (for {your_company} relative to competitors)\n- Strengths, Weaknesses, Opportunities, Threats\n\n## Competitor Comparison Matrix\n- Key dimensions: pricing, features, market share, target segment, differentiators\n\n## Strategic Recommendations\n- 3-5 specific, actionable recommendations for {your_company}\n- Each recommendation should reference specific competitor intelligence\n\n## Market Gaps\n- Underserved segments or unmet needs none of the competitors fully address",
+        "includedData": ["your_company", "industry", "companies", "company_research=company_research.company_analysis"]
+      }
+    ],
+    "save": [
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/competitive-analysis-{industry}.md",
+        "content": "final",
+        "includedData": ["final", "industry"]
+      }
+    ]
+  }
+}

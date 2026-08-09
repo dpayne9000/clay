@@ -1,0 +1,6 @@
+{
+  "project_path": ".",
+  "bug_source": "Git history, test output, and error logs",
+  "memory_namespace": "bug-triage",
+  "output_dir": "output/bug-triage"
+}

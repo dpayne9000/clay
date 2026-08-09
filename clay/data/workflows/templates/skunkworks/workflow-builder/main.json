@@ -1,0 +1,69 @@
+{
+  "autoContext": "You are a workflow architect for the clay platform. You help users design and generate complete workflow JSON files. You know all available action types: humanDecision, scramda2, workflow, loop, loadContext, writeFile, shell, runCode, browseWeb, writeMemory, searchMemory, listMemory, readMemory, writeSkill, listSkills, searchSkills, humanShell, deriveTags, writeCode, createAgentAction. You know how includedData filters context, how loops work with continueKey and outputKey, and how sub-workflows chain via relative file paths.",
+
+  "workflow": {
+    "steps": ["intake", "loadSchema", "decompose", "generate", "humanReview", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "description",
+        "type": "humanDecision",
+        "prompt": "Describe the workflow you want to build. What should it do, step by step?"
+      },
+      {
+        "id": "complexity",
+        "type": "humanDecision",
+        "prompt": "Complexity: simple (single file), multi-step (human gates), pipeline (sub-workflows), or agent (loop + memory)?"
+      }
+    ],
+    "loadSchema": [
+      {
+        "id": "schema",
+        "type": "loadContext",
+        "file": "./action-reference.json"
+      }
+    ],
+    "decompose": [
+      {
+        "id": "workflow_design",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Design a workflow for this user request.\n\nUser description: {description}\nComplexity level: {complexity}\n\nAvailable action types and their fields:\n{action_reference}\n\nProduce a workflow design:\n\n1. STEPS: list each step name and what it does\n2. ACTIONS: for each step, what action type to use and why\n3. MODEL PROFILES: which modelProfile for each scramda2 action (orchestrator for reasoning, reports for writing, code for code, default for simple tasks)\n4. HUMAN GATES: where should humans review or approve?\n5. DATA FLOW: how does data chain between steps (includedData)\n6. FILES NEEDED: main.json plus any iteration files for loops\n\nBe specific — name exact action fields and values.",
+        "includedData": ["description", "complexity", "action_reference"]
+      }
+    ],
+    "generate": [
+      {
+        "id": "generated_json",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "prompt": "Generate complete, valid workflow JSON based on this design.\n\nDesign:\n{workflow_design}\n\nUser request: {description}\n\nGenerate the main.json content. Requirements:\n- Must be valid JSON\n- Every action needs 'id' and 'type'\n- scramda2 actions need 'prompt' and 'examples' (can be empty array)\n- Use relative paths for any file references (./iteration.json)\n- Include modelProfile on every scramda2 action\n- Add includedData to restrict context flow appropriately\n\nReturn ONLY the JSON — no commentary, no markdown fences.",
+        "includedData": ["workflow_design", "description"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "review_feedback",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nGENERATED WORKFLOW\n─────────────────────────────────────────────────────\n\nDesign:\n{workflow_design}\n\nGenerated JSON:\n{generated_json}\n\n─────────────────────────────────────────────────────\nType APPROVE to save, or describe what to change:"
+      }
+    ],
+    "save": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "prompt": "Finalize this workflow JSON.\n\nFeedback: {review_feedback}\nJSON: {generated_json}\n\nIf feedback is APPROVE, return the JSON as-is (ensure it's valid). If changes requested, apply them and return the updated JSON. Return ONLY valid JSON.",
+        "includedData": ["review_feedback", "generated_json"]
+      },
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/generated-workflow.json",
+        "content": "final",
+        "includedData": ["final"]
+      }
+    ]
+  }
+}

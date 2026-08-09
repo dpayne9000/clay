@@ -1,0 +1,66 @@
+{
+  "autoContext": "You are a code review assistant. You analyze code diffs, identify concerns, and provide structured feedback with severity ratings and suggested fixes. Be specific — reference exact line numbers and code patterns.",
+
+  "workflow": {
+    "steps": ["intake", "analyze", "reviewLoop", "humanCheckpoint", "summary", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "diff",
+        "type": "humanDecision",
+        "prompt": "Paste the code diff or code to review:"
+      },
+      {
+        "id": "context",
+        "type": "humanDecision",
+        "prompt": "Any context about this change? (purpose, PR description, or press Enter to skip)"
+      }
+    ],
+    "analyze": [
+      {
+        "id": "concern_list",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze this code diff and identify all concerns.\n\nContext: {context}\n\nDiff:\n{diff}\n\nFor each concern, provide:\n- CONCERN #N: descriptive title\n- SEVERITY: critical / major / minor / nit\n- LOCATION: file and line reference\n- DESCRIPTION: what's wrong and why it matters\n\nCategories to check:\n- Bugs (logic errors, off-by-one, null handling)\n- Security (injection, auth, data exposure)\n- Performance (N+1 queries, unnecessary computation)\n- Maintainability (naming, complexity, duplication)\n- Testing (missing test cases, edge cases)\n\nList ALL concerns, ranked by severity. If the code is clean, say so.",
+        "includedData": ["diff", "context"]
+      }
+    ],
+    "reviewLoop": [
+      {
+        "id": "detailed_review",
+        "type": "loop",
+        "file": "./review-iteration.json",
+        "iterations": 5,
+        "continueKey": "more_concerns",
+        "outputKey": "concern_analysis",
+        "includedData": ["diff", "concern_list"]
+      }
+    ],
+    "humanCheckpoint": [
+      {
+        "id": "human_notes",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nCODE REVIEW — AI analysis complete\n─────────────────────────────────────────────────────\n\nConcerns identified:\n{concern_list}\n\nDetailed analysis:\n{detailed_review}\n\n─────────────────────────────────────────────────────\nAdd any notes or press Enter to generate final review:"
+      }
+    ],
+    "summary": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Write a final code review summary.\n\nConcerns:\n{concern_list}\n\nDetailed analysis:\n{detailed_review}\n\nHuman reviewer notes:\n{human_notes}\n\nFormat as:\n\n# Code Review Summary\n\n## Overall Assessment\n(One sentence verdict: Approve / Approve with changes / Request changes)\n\n## Critical & Major Issues\n(Must fix before merge)\n\n## Minor Issues & Nits\n(Nice to fix but not blocking)\n\n## Positive Notes\n(What's done well in this code)\n\n## Suggested Fixes\n(For each major issue, show the suggested code change)",
+        "includedData": ["concern_list", "detailed_review=detailed_review.concern_analysis", "human_notes"]
+      }
+    ],
+    "save": [
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/code-review.md",
+        "content": "final",
+        "includedData": ["final"]
+      }
+    ]
+  }
+}

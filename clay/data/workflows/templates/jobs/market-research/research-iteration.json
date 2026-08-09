@@ -1,0 +1,88 @@
+{
+  "workflow": {
+    "steps": ["pick_angle", "search", "browse", "store", "assess"]
+  },
+
+  "actionSets": {
+
+    "pick_angle": [
+      {
+        "id": "research_angle",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "You are researching the {industry} industry targeting {target_market}. Iteration {iteration} of 6.\n\nResearch angles to cover in order:\n1. Market size and growth rate\n2. Industry trends and emerging technologies\n3. Competitor analysis — {competitors}\n4. Customer segments and buying behavior\n5. Market entry barriers and regulations\n6. Pricing models and revenue streams\n\nPrior research summary:\n{recall_summary}\n\nSelect angle {iteration}. Reply with:\nANGLE: <name>\nSEARCH_QUERY: <a specific web search query to find data on this angle>",
+        "includedData": ["industry", "target_market", "competitors", "recall_summary", "iteration"]
+      }
+    ],
+
+    "search": [
+      {
+        "id": "search_query",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Extract only the search query from this text — the line starting with 'SEARCH_QUERY:'. Reply with the query only, nothing else.\n\n{research_angle}",
+        "includedData": ["research_angle"]
+      },
+      {
+        "id": "search_results",
+        "type": "searchWeb",
+        "query": "{search_query}",
+        "maxResults": 5,
+        "includedData": ["search_query"]
+      }
+    ],
+
+    "browse": [
+      {
+        "id": "best_url",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Pick the single most relevant URL from these search results for researching {industry} {target_market}.\n\nSearch results:\n{search_results}\n\nReply with ONLY the URL, nothing else.",
+        "includedData": ["search_results", "industry", "target_market"]
+      },
+      {
+        "id": "page_content",
+        "type": "browseWeb",
+        "url": "{best_url}",
+        "maxChars": 4000,
+        "includedData": ["best_url"]
+      },
+      {
+        "id": "extracted_data",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Research angle: {research_angle}\n\nPage content from {best_url}:\n{page_content}\n\nExtract all relevant data points for a market research report on {industry} targeting {target_market}. Focus on:\n- Specific numbers (market size, growth rates, percentages)\n- Named competitors and their positioning\n- Customer demographics and preferences\n- Trends with timeframes\n- Source attribution\n\nBe precise and data-driven. Omit filler content.",
+        "includedData": ["research_angle", "best_url", "page_content", "industry", "target_market"]
+      }
+    ],
+
+    "store": [
+      {
+        "id": "finding_tags",
+        "type": "deriveTags",
+        "contentKey": "extracted_data",
+        "contextKey": "research_angle",
+        "maxTags": 6,
+        "includedData": ["extracted_data", "research_angle"]
+      },
+      {
+        "id": "finding_saved",
+        "type": "writeMemory",
+        "namespace": "market-research",
+        "content": "extracted_data",
+        "tagsKey": "finding_tags",
+        "includedData": ["extracted_data", "finding_tags"]
+      }
+    ],
+
+    "assess": [
+      {
+        "id": "research_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Market research iteration {iteration} of 6 complete.\n\nAngle researched: {research_angle}\n\nIf iteration is less than 6, reply YES to continue. If iteration is 6, reply NO — all angles have been covered.",
+        "includedData": ["iteration", "research_angle"]
+      }
+    ]
+  }
+}

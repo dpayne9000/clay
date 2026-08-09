@@ -1,0 +1,62 @@
+{
+  "autoContext": "You are an autonomous network exploration agent running on a macOS developer machine. You have access to standard Unix networking tools: ifconfig, netstat, arp, nmap, ping, traceroute, dig, curl, nc. Make specific, executable decisions. When picking protocols to explore, be concrete and varied — cover different layers of the network stack across iterations. When writing scripts, write working Python 3 code only.",
+
+  "workflow": {
+    "steps": ["init", "exploration", "synthesise"]
+  },
+
+  "actionSets": {
+    "init": [
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M",
+        "timeout": 5
+      },
+      {
+        "id": "skills_index",
+        "type": "listSkills",
+        "skillset": "network-explorer"
+      },
+      {
+        "id": "network_context",
+        "type": "shell",
+        "command": "ifconfig && arp -a",
+        "timeout": 15
+      }
+    ],
+
+    "exploration": [
+      {
+        "id": "exploration_log",
+        "type": "loop",
+        "file": "./probe-protocol.json",
+        "iterations": 10,
+        "continueKey": "should_continue",
+        "outputKey": "summary",
+        "includedData": ["skills_index", "network_context"]
+      }
+    ],
+
+    "synthesise": [
+      {
+        "id": "final_skills",
+        "type": "listSkills",
+        "skillset": "network-explorer"
+      },
+      {
+        "id": "report",
+        "type": "scramda2",
+        "prompt": "Synthesize a full network topology report from these iteration summaries:\n{exploration_log}\n\nNetwork context collected at start:\n{network_context}\n\nSkills built:\n{final_skills}\n\nInclude: interfaces found, hosts discovered, open ports per host, protocol coverage, anomalies, skill inventory.",
+        "includedData": ["exploration_log", "network_context", "final_skills"]
+      },
+      {
+        "id": "report_saved",
+        "type": "writeFile",
+        "file": "output/network-report-{timestamp}.txt",
+        "content": "report",
+        "includedData": ["report", "timestamp"]
+      }
+    ]
+  }
+}

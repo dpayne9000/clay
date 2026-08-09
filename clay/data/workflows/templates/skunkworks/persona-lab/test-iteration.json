@@ -1,0 +1,46 @@
+{
+  "workflow": {
+    "steps": ["testQuestion", "personaResponds", "userRates", "adjust"]
+  },
+  "actionSets": {
+    "testQuestion": [
+      {
+        "id": "test_input",
+        "type": "humanDecision",
+        "prompt": "Ask the persona a test question (or type 'done' to finish testing):"
+      }
+    ],
+    "personaResponds": [
+      {
+        "id": "persona_response",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "{persona_spec}\n\nUser: {test_input}",
+        "includedData": ["persona_spec", "test_input"]
+      }
+    ],
+    "userRates": [
+      {
+        "id": "rating",
+        "type": "humanDecision",
+        "prompt": "Persona response:\n{persona_response}\n\n─────────────────────────────────────────────────────\nRate: ON-BRAND / OFF-BRAND / NEEDS-ADJUSTMENT\nAdd notes on what to change (or press Enter if on-brand):"
+      }
+    ],
+    "adjust": [
+      {
+        "id": "test_log",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Test #{iteration} results:\n\nQuestion: {test_input}\nResponse: {persona_response}\nUser rating: {rating}\n\nPrevious test log:\n{test_log}\n\nIf rating is OFF-BRAND or NEEDS-ADJUSTMENT, suggest specific changes to the persona spec to address the feedback.\n\nAppend this test to the log:\n--- Test #{iteration} ---\nQ: {test_input}\nA: {persona_response}\nRating: {rating}\nAdjustment needed: [yes/no and what]",
+        "includedData": ["iteration", "test_input", "persona_response", "rating", "test_log"]
+      },
+      {
+        "id": "keep_testing",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "User input: {test_input}\n\nIf the user said 'done', 'stop', 'exit', or 'finish', respond 'done'. Otherwise respond 'yes'.",
+        "includedData": ["test_input"]
+      }
+    ]
+  }
+}

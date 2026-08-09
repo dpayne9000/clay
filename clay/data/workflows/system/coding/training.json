@@ -1,0 +1,74 @@
+{
+  "evidence_examples": [
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\ncli.py\nconfig.py\n\nCURRENT REQUEST:\nchange cli.py to print a skull",
+      "output": "<read_file><path>cli.py</path></read_file>"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nstore.py\nmodel.py\n\nCURRENT REQUEST:\nwhat does store.py do?",
+      "output": "<read_file><path>store.py</path></read_file>"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nsrc/parser.py\ntests/test_parser.py\npyproject.toml\n\nCURRENT REQUEST:\nthe parser test is failing; fix it",
+      "output": "<read_file><path>src/parser.py</path></read_file>\n<read_file><path>tests/test_parser.py</path></read_file>\n<read_file><path>pyproject.toml</path></read_file>"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nREADME.md\n\nCURRENT REQUEST:\ncreate tools/check.py that prints ok",
+      "output": "<read_file><path>tools/check.py</path></read_file>"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nREADME.md\n\nCURRENT REQUEST:\ncreate a folder reports with a Python script that generates report rows in CSV files",
+      "output": "<read_file><path>reports/generate.py</path></read_file>"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\napp.py\n\nCURRENT REQUEST:\nwhat is a Python tuple?",
+      "output": "NO_ACTION"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\nUser=Explain cli.py.\nFiles=\nCommand=(no commands found)\n\nWORKSPACE:\ncli.py\nconfig.py\n\nCURRENT REQUEST:\nchange that file to print a skull",
+      "output": "<read_file><path>cli.py</path></read_file>"
+    },
+    {
+      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\napi/client.py\napi/config.py\ntests/test_client.py\n\nCURRENT REQUEST:\nchange the client timeout behavior",
+      "output": "<read_file><path>api/client.py</path></read_file>\n<read_file><path>api/config.py</path></read_file>"
+    }
+  ],
+  "agent_examples": [
+    {
+      "input": "CURRENT REQUEST:\nwhat does module.py do?\n\nCURRENT FILES:\n=== module.py ===\nVALUE = 1",
+      "output": "It defines a module-level value named `VALUE`, currently set to 1."
+    },
+    {
+      "input": "CURRENT REQUEST:\nchange VALUE to 2\n\nCURRENT FILES:\n=== module.py ===\nVALUE = 1",
+      "output": "```python module.py\n<<<<<<< SEARCH\nVALUE = 1\n=======\nVALUE = 2\n>>>>>>> REPLACE\n```"
+    },
+    {
+      "input": "CURRENT REQUEST:\ncreate a folder reports with a Python script that writes report rows to CSV files\n\nCURRENT FILES:\n=== reports/generate.py ===\n(not found)",
+      "output": "```python reports/generate.py\nimport csv\nfrom pathlib import Path\n\nOUTPUT = Path(__file__).with_name(\"reports.csv\")\n\ndef main():\n    rows = [\n        {\"topic\": \"alpha\", \"fact\": \"first report fact\"},\n        {\"topic\": \"beta\", \"fact\": \"second report fact\"},\n    ]\n    with OUTPUT.open(\"w\", newline=\"\", encoding=\"utf-8\") as handle:\n        writer = csv.DictWriter(handle, fieldnames=[\"topic\", \"fact\"])\n        writer.writeheader()\n        writer.writerows(rows)\n\nif __name__ == \"__main__\":\n    main()\n```"
+    },
+    {
+      "input": "CURRENT REQUEST:\nrename VALUE to DEFAULT_VALUE in both files\n\nCURRENT FILES:\n=== a.py ===\nVALUE = 1\n\n=== b.py ===\nfrom a import VALUE",
+      "output": "```python a.py\n<<<<<<< SEARCH\nVALUE = 1\n=======\nDEFAULT_VALUE = 1\n>>>>>>> REPLACE\n```\n\n```python b.py\n<<<<<<< SEARCH\nfrom a import VALUE\n=======\nfrom a import DEFAULT_VALUE\n>>>>>>> REPLACE\n```"
+    },
+    {
+      "input": "CURRENT REQUEST:\nuse json.dumps and run the configured tests\n\nCURRENT FILES:\n=== module.py ===\nimport sys\n\ndef render(data):\n    return str(data)\n\n=== pyproject.toml ===\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]",
+      "output": "```python module.py\n<<<<<<< SEARCH\nimport sys\n=======\nimport json\nimport sys\n>>>>>>> REPLACE\n<<<<<<< SEARCH\ndef render(data):\n    return str(data)\n=======\ndef render(data):\n    return json.dumps(data)\n>>>>>>> REPLACE\n```\n\n```bash\npython3 -m pytest -q\n```"
+    },
+    {
+      "input": "CURRENT REQUEST:\nmake the shell installer print ready\n\nCURRENT FILES:\n=== scripts/install.sh ===\n#!/usr/bin/env bash\nset -e",
+      "output": "```bash scripts/install.sh\n<<<<<<< SEARCH\n#!/usr/bin/env bash\nset -e\n=======\n#!/usr/bin/env bash\nset -e\necho \"ready\"\n>>>>>>> REPLACE\n```"
+    },
+    {
+      "input": "CURRENT REQUEST:\nchange module.py to use config.TIMEOUT correctly\n\nCURRENT FILES:\n=== module.py ===\nfrom config import TIMEOUT\n...",
+      "output": "I need the current contents of `config.py` before I can safely make this change."
+    },
+    {
+      "input": "CURRENT REQUEST:\nshow me a Python list comprehension example; do not change the project\n\nCURRENT FILES:\n(no project files were needed)",
+      "output": "For example:\n\n    squares = [x * x for x in range(5)]"
+    },
+    {
+      "input": "CURRENT REQUEST:\nrun the unit tests\n\nCURRENT FILES:\n=== pyproject.toml ===\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]",
+      "output": "```bash\npython3 -m pytest -q\n```"
+    }
+  ]
+}

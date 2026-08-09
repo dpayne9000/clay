@@ -1,0 +1,42 @@
+{
+  "workflow": {
+    "steps": ["recall", "draft", "remember", "assess"]
+  },
+  "actionSets": {
+    "recall": [
+      {
+        "id": "relevant_themes",
+        "type": "searchMemory",
+        "namespace": "customer-feedback",
+        "query": "feedback themes sentiment insights recommendations customer quotes",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "draft": [
+      {
+        "id": "section_draft",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the next section of the customer feedback analysis report for {product_name}.\n\nReport outline:\n{report_outline}\n\nTheme analysis findings:\n{theme_analysis}\n\nMemory search results:\n{relevant_themes}\n\nPrevious iteration draft:\n{section_draft}\n\nIteration: {iteration}\n\nWrite the next unwritten section from the outline. Include:\n- Sentiment summary for the theme (positive/mixed/negative with approximate ratios)\n- Key findings with supporting data or customer quotes\n- Specific, actionable recommendations\n- Priority level for each recommendation\n\nFormat as clean Markdown with proper headings.",
+        "includedData": ["product_name", "report_outline", "theme_analysis", "relevant_themes", "section_draft", "iteration"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_draft",
+        "type": "writeMemory",
+        "namespace": "customer-feedback",
+        "content": "section_draft",
+        "includedData": ["section_draft"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_sections",
+        "type": "scramda2",
+        "prompt": "Report outline:\n{report_outline}\n\nLatest section:\n{section_draft}\n\nAre there more sections from the outline that still need to be written? Respond 'yes' if sections remain, or 'done' if all sections are complete.",
+        "includedData": ["report_outline", "section_draft"]
+      }
+    ]
+  }
+}

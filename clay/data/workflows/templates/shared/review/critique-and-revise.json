@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "draft": "",
+    "criteria": "clarity, accuracy, completeness, and appropriate tone for the audience"
+  },
+  "workflow": {
+    "steps": ["critique", "revise"]
+  },
+  "actionSets": {
+    "critique": [
+      {
+        "id": "critique",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "You are a senior editor. Review this draft against the following criteria: {criteria}\n\nProvide a structured critique:\n1. STRENGTHS — 2-3 specific things that work well\n2. ISSUES — each with severity (critical/major/minor) and a specific, actionable fix\n3. OVERALL VERDICT — Ready / Needs minor revision / Needs major revision\n\nBe specific — quote the problematic text and explain exactly what should change.\n\nDraft to review:\n{draft}",
+        "includedData": ["draft", "criteria"]
+      }
+    ],
+    "revise": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Revise this draft incorporating every issue from the critique. For each issue:\n- If critical or major: rewrite the affected section\n- If minor: apply the fix in place\n\nPreserve everything the critique listed as a strength. Do not add new content beyond what's needed to address the issues.\n\nCRITIQUE:\n{critique}\n\nORIGINAL DRAFT:\n{draft}",
+        "includedData": ["draft", "critique"]
+      }
+    ]
+  }
+}

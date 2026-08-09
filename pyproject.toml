@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clay"
+version = "0.1.0"
+description = "JSON-defined workflow automation engine | AI Pipes"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.11"
+authors = [{name = "Daniel Payne", email="daniel.payne.unlimited@gmail.com"}]
+dependencies = [
+    "boto3",
+    "pymongo",
+    "requests",
+    "dnspython",
+]
+
+[project.optional-dependencies]
+ui = ["PySide6==6.7.3"]
+
+[project.scripts]
+clay = "clay.cli:cli"
+
+[tool.setuptools]
+include-package-data = false
+packages = [
+    "clay",
+    "clay.actions",
+    "clay.actions.agent",
+    "clay.actions.core",
+    "clay.adapters",
+    "clay.auth",
+    "clay.channels",
+    "clay.daemon",
+    "clay.lib",
+    "clay.run",
+    "clay.run.renderers",
+    "clay.run.termui",
+    "clay.ui",
+    "clay.vendor",
+    "clay.vendor.gopher",
+]
+
+[tool.setuptools.package-data]
+clay = [
+    "data/configs/alerts.json",
+    "data/configs/default.json",
+    "data/configs/email.json",
+    "data/configs/startup.json",
+    "data/skills/celeb-tracker/*",
+    "data/skills/developer/*",
+    "data/skills/network-connection-probe/*",
+    "data/skills/network-explorer/*",
+    "data/skills/system-editor/*",
+    "data/workflows/system/**/*.json",
+    "data/workflows/system/**/*.txt",
+    "data/workflows/templates/**/*.json",
+    "data/workflows/templates/**/*.txt",
+    "run/termui/themes/*.theme",
+    "vendor/gopher/LICENSE",
+]
+
+[tool.clay-release.source]
+files = [
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
+    "setup.py",
+    "clay/__init__.py",
+    "clay/cli.py",
+    "clay/cloud.py",
+    "clay/lint.py",
+    "clay/sync.py",
+    "clay/data/configs/alerts.json",
+    "clay/data/configs/default.json",
+    "clay/data/configs/email.json",
+    "clay/data/configs/startup.json",
+    "clay/data/skills/README.md",
+]
+directories = [
+    "clay/actions",
+    "clay/adapters",
+    "clay/auth",
+    "clay/channels",
+    "clay/daemon",
+    "clay/lib",
+    "clay/run",
+    "clay/ui",
+    "clay/vendor",
+    "clay/data/workflows/system",
+    "clay/data/workflows/templates",
+]

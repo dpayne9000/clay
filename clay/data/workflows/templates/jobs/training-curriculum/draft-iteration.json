@@ -1,0 +1,52 @@
+{
+  "workflow": {
+    "steps": ["recall", "draft", "save_skill", "remember", "assess"]
+  },
+  "actionSets": {
+    "recall": [
+      {
+        "id": "relevant_research",
+        "type": "searchMemory",
+        "namespace": "training",
+        "query": "curriculum topics exercises assessment resources learning",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "draft": [
+      {
+        "id": "module_draft",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the next module of the {subject} training curriculum ({skill_level} level).\n\nCurriculum outline:\n{curriculum_outline}\n\nTopic research findings:\n{topic_research}\n\nMemory search results:\n{relevant_research}\n\nPrevious module drafts:\n{module_draft}\n\nIteration: {iteration}\n\nWrite the next unwritten module from the outline. Each module must include:\n- Module title and week number\n- Learning objectives (3-5 measurable objectives)\n- Topics covered (with brief descriptions)\n- Exercises (2-3 hands-on activities with clear instructions)\n- Assessment (quiz questions, project deliverable, or skill demonstration)\n- Resources (readings, tools, videos)\n- Estimated time breakdown (lectures, exercises, self-study)\n\nMake exercises concrete and actionable. Assessment criteria should be specific and measurable.",
+        "includedData": ["subject", "skill_level", "curriculum_outline", "topic_research", "relevant_research", "module_draft", "iteration"]
+      }
+    ],
+    "save_skill": [
+      {
+        "id": "module_template",
+        "type": "writeSkill",
+        "skillset": "training",
+        "name": "module-{iteration}",
+        "content": "module_draft",
+        "includedData": ["module_draft", "iteration"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_draft",
+        "type": "writeMemory",
+        "namespace": "training",
+        "content": "module_draft",
+        "includedData": ["module_draft"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_modules",
+        "type": "scramda2",
+        "prompt": "Curriculum outline:\n{curriculum_outline}\n\nLatest module:\n{module_draft}\n\nAre there more modules from the outline that still need to be written? Respond 'yes' if modules remain, or 'done' if all modules are complete.",
+        "includedData": ["curriculum_outline", "module_draft"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+
+{
+  "workflow": {
+    "steps": ["humanReview"]
+  },
+  "actionSets": {
+    "humanReview": [
+      {
+        "id": "feedback",
+        "type": "humanDecision",
+        "prompt": ">"
+      },
+      {
+        "id": "final",
+        "type": "scramda2",
+        "prompt": "{feedback}",
+        "examples": [
+          {
+            "question": "Write a professional self-assessment for Jane Smith, a Senior Product Manager with 8 years of experience. Skills: product strategy, stakeholder management, data analysis, roadmapping. Work style: collaborative, remote-first. Achievements: Led redesign of checkout flow increasing conversion by 22%. Built and shipped a new analytics dashboard used by 300 enterprise clients. Grew the product team from 3 to 11 people over 2 years.",
+            "answer": "PROFESSIONAL SUMMARY\nJane Smith is a Senior Product Manager with 8 years of experience turning complex business problems into products people actually use. She combines rigorous data analysis with strong stakeholder relationships to build and ship at speed. Jane thrives in remote-first environments and has a track record of scaling both products and teams.\n\nCORE STRENGTHS\n- Product strategy and long-range roadmapping\n- Stakeholder management across engineering, design, and commercial teams\n- Data-driven decision making and experimentation\n- Team building and cross-functional leadership\n\nNOTABLE ACHIEVEMENTS\n- Redesigned checkout flow, delivering a 22% uplift in conversion rate\n- Shipped an analytics dashboard now used by 300+ enterprise clients\n- Scaled product team from 3 to 11, establishing hiring and onboarding processes\n\nWORK STYLE\nJane does her best work in collaborative, remote-first settings where autonomy is matched with accountability. She brings structure to ambiguity and communicates clearly across technical and non-technical audiences."
+          }
+        ],
+        "max_tokens": 1000,
+        "includedData": ["feedback"]
+      }
+    ]
+    }
+}

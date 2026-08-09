@@ -1,0 +1,64 @@
+{
+  "workflow": {
+    "steps": ["search", "browse", "analyze", "tag", "remember", "assess"]
+  },
+  "actionSets": {
+    "search": [
+      {
+        "id": "web_search",
+        "type": "searchWeb",
+        "query": "{framework} compliance requirements checklist {search_focus}",
+        "includedData": ["framework"]
+      }
+    ],
+    "browse": [
+      {
+        "id": "research_url",
+        "type": "scramda2",
+        "prompt": "Extract the first complete http:// or https:// URL from these search results. Return only the URL.\n\n{web_search}",
+        "includedData": ["web_search"]
+      },
+      {
+        "id": "regulatory_content",
+        "type": "browseWeb",
+        "url": "{research_url}",
+        "includedData": ["research_url"]
+      }
+    ],
+    "analyze": [
+      {
+        "id": "requirement_finding",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze {framework} compliance requirements for the current focus area.\n\nIteration: {iteration}\nFramework: {framework}\nScope: {scope}\nCurrent state: {current_state}\n\nWeb research content:\n{regulatory_content}\n\nPrevious iteration finding:\n{requirement_finding}\n\nPrior compliance context:\n{prior_compliance}\n\nFocus this iteration on ONE of these requirement areas (pick the one not yet covered):\n- Access control: authentication, authorization, role-based access, MFA\n- Data protection: encryption at rest and in transit, data classification, retention\n- Audit logging: event logging, log retention, monitoring, alerting\n- Incident response: response plan, notification procedures, recovery\n- Vendor management: third-party risk, data processing agreements\n- Policy documentation: required policies, review cadence, training\n\nProvide:\nAREA: [which requirement area]\nCONTROLS: [specific {framework} control IDs or articles]\nREQUIREMENTS: [detailed list of what is required]\nCURRENT_GAPS: [likely gaps given the current state described]\nRISK_LEVEL: [critical/high/medium/low]\nREMEDIATION_HINTS: [initial ideas for closing gaps]",
+        "includedData": ["iteration", "framework", "scope", "current_state", "regulatory_content", "requirement_finding", "prior_compliance"]
+      }
+    ],
+    "tag": [
+      {
+        "id": "requirement_tags",
+        "type": "deriveTags",
+        "content": "requirement_finding",
+        "includedData": ["requirement_finding"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_requirement",
+        "type": "writeMemory",
+        "namespace": "compliance",
+        "content": "requirement_finding",
+        "tagsKey": "requirement_tags",
+        "includedData": ["requirement_finding", "requirement_tags"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_requirements",
+        "type": "scramda2",
+        "prompt": "We have completed iteration {iteration} of {framework} compliance requirement research.\n\nLatest finding:\n{requirement_finding}\n\nHave we covered all key areas (access control, data protection, audit logging, incident response, vendor management, policy documentation)? If important areas remain, respond 'yes' to continue. If all areas are covered, respond 'done'.",
+        "includedData": ["iteration", "framework", "requirement_finding"]
+      }
+    ]
+  }
+}

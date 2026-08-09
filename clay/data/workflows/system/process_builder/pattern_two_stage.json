@@ -1,0 +1,3 @@
+{
+  "selected_pattern": "PATTERN: TWO_STAGE_EVIDENCE_AND_CODE\nSHAPE:\nlistWorkspace(workspace_files)\nhumanDecision(user_request)\nscramda2(evidence_request: workspace_files + user_request -> <read_file> markers only)\nserveFileReads(evidence_request)\nscramda2(agent_reply: user_request + file_context + file_protocol)\napplyFileWrites(agent_reply)\nOPTIONAL runReplyCommands(agent_reply)"
+}

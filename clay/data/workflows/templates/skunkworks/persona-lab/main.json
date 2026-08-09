@@ -1,0 +1,74 @@
+{
+  "workflow": {
+    "steps": ["intake", "generatePersona", "testLoop", "export"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "persona_description",
+        "type": "humanDecision",
+        "prompt": "Describe the AI persona you want to build (tone, knowledge, personality, boundaries):"
+      },
+      {
+        "id": "use_case",
+        "type": "humanDecision",
+        "prompt": "What will this persona be used for? (e.g., customer support chatbot, writing assistant, onboarding guide)"
+      },
+      {
+        "id": "example_interactions",
+        "type": "humanDecision",
+        "prompt": "Give 1-2 example interactions showing how this persona should respond (or press Enter to skip):"
+      }
+    ],
+    "generatePersona": [
+      {
+        "id": "persona_spec",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate a complete AI persona specification.\n\nDescription: {persona_description}\nUse case: {use_case}\nExample interactions: {example_interactions}\n\nCreate:\n\n1. SYSTEM PROMPT: the full system prompt for this persona (include personality, tone, knowledge scope, and boundaries)\n\n2. BEHAVIORAL RULES:\n   - ALWAYS: things the persona must always do\n   - NEVER: things the persona must never do\n   - WHEN UNSURE: how to handle ambiguous situations\n\n3. SAMPLE RESPONSES: 3 example Q&A pairs showing the persona's ideal behavior\n\n4. EDGE CASES: how the persona should handle off-topic questions, rude users, and requests outside its scope",
+        "includedData": ["persona_description", "use_case", "example_interactions"]
+      }
+    ],
+    "testLoop": [
+      {
+        "id": "test_results",
+        "type": "loop",
+        "file": "./test-iteration.json",
+        "iterations": 0,
+        "continueKey": "keep_testing",
+        "outputKey": "test_log",
+        "includedData": ["persona_spec", "persona_description", "use_case"]
+      }
+    ],
+    "export": [
+      {
+        "id": "final_context",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "prompt": "Generate a context.json file for the chatbot workflow from this persona spec.\n\nPersona spec:\n{persona_spec}\n\nTest results and refinements:\n{test_results}\n\nGenerate valid JSON with these keys:\n- system_prompt: the refined system prompt\n- persona_name: the persona's name\n- persona_description: one-line description\n- behavioral_rules: the ALWAYS/NEVER/WHEN_UNSURE rules as a single string\n\nReturn ONLY valid JSON.",
+        "includedData": ["persona_spec", "test_results=test_results.test_log"]
+      },
+      {
+        "id": "saved_context",
+        "type": "writeFile",
+        "file": "output/persona-context.json",
+        "content": "final_context",
+        "includedData": ["final_context"]
+      },
+      {
+        "id": "final_training",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "prompt": "Generate a training.json file for the chatbot workflow from the test interactions.\n\nPersona spec:\n{persona_spec}\n\nTest log:\n{test_results}\n\nGenerate valid JSON with these keys:\n- training_chatbot_prompt: a single string containing 3-5 Example blocks showing ideal Q&A behavior\n- training_analysis_report: a single string with an example of how the persona should analyze and respond to complex queries\n\nUse the best exchanges from testing. Return ONLY valid JSON.",
+        "includedData": ["persona_spec", "test_results=test_results.test_log"]
+      },
+      {
+        "id": "saved_training",
+        "type": "writeFile",
+        "file": "output/persona-training.json",
+        "content": "final_training",
+        "includedData": ["final_training"]
+      }
+    ]
+  }
+}

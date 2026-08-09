@@ -1,0 +1,103 @@
+{
+  "autoContext": "Validates searchWeb action. Covers: engine param ('duckduckgo' is real keyless web search against the DDG HTML endpoint and is the default, 'duckduckgo-instant' is the keyless Instant Answer API which only answers definitional queries, 'google' requires apiKey+cx, 'bing' requires apiKey), query param (string with {variable} template), queryKey param (alternative to inline query — reads value from previous_data), maxResults param (int cap on results), missing credentials returns None so the id is popped and the workflow default stands, unknown engine returns None. NOTE: requires internet access.",
+
+  "defaults": {
+    "search_topic": "open source workflow engines"
+  },
+
+  "workflow": {
+    "steps": [
+      "test_duckduckgo_inline_query",
+      "test_duckduckgo_querykey",
+      "test_duckduckgo_max_results",
+      "test_duckduckgo_instant",
+      "test_google_missing_credentials",
+      "test_bing_missing_credentials",
+      "test_unknown_engine"
+    ]
+  },
+
+  "actionSets": {
+
+    "test_duckduckgo_inline_query": [
+      {
+        "_comment": "PARAM: engine='duckduckgo' — real web search against html.duckduckgo.com, no credentials needed. This is the default engine, so omitting 'engine' entirely behaves the same way. Results carry title, unwrapped URL and snippet. PARAM: query — inline string with {variable} template resolved from includedData.",
+        "id": "ddg_result",
+        "type": "searchWeb",
+        "engine": "duckduckgo",
+        "query": "what is {search_topic}",
+        "includedData": ["search_topic"]
+      }
+    ],
+
+    "test_duckduckgo_querykey": [
+      {
+        "_comment": "PARAM: queryKey — alternative to inline query. Reads the value of this key from previous_data and uses it as the search query. Takes precedence over query param when both present.",
+        "id": "ddg_querykey_result",
+        "type": "searchWeb",
+        "engine": "duckduckgo",
+        "queryKey": "search_topic",
+        "includedData": ["search_topic"]
+      }
+    ],
+
+    "test_duckduckgo_max_results": [
+      {
+        "_comment": "PARAM: maxResults — int cap on number of results returned. Limits the formatted output length.",
+        "id": "ddg_limited_result",
+        "type": "searchWeb",
+        "engine": "duckduckgo",
+        "query": "workflow automation tools",
+        "maxResults": 3
+      }
+    ],
+
+    "test_duckduckgo_instant": [
+      {
+        "_comment": "PARAM: engine='duckduckgo-instant' — the JSON Instant Answer API, also keyless. It is NOT a web search: it returns an abstract for a definitional query and nothing at all for most others, which is why it is not the default. Kept because it is the cheapest way to get a one-paragraph definition with a source URL. A '[no results for: ...]' string here is a pass, not a failure.",
+        "id": "ddg_instant_result",
+        "type": "searchWeb",
+        "engine": "duckduckgo-instant",
+        "query": "argon2"
+      }
+    ],
+
+    "test_google_missing_credentials": [
+      {
+        "_comment": "PARAM: engine='google' — requires apiKey and cx (Custom Search Engine ID). When either is absent the handler logs 'searchWeb(google): missing apiKey or cx' and returns None, so the id is popped and any workflow default stands. It does NOT fall back to another engine. Workflow continues.",
+        "id": "google_no_creds",
+        "type": "searchWeb",
+        "engine": "google",
+        "query": "test query"
+      }
+    ],
+
+    "test_bing_missing_credentials": [
+      {
+        "_comment": "PARAM: engine='bing' — requires apiKey. When absent the handler logs and returns None, same as google. PARAM: apiKey — credential string passed directly in action def, or via {\"override\": \"key_name\"} from a secrets loadContext, since searchWeb does no {placeholder} interpolation on credential fields.",
+        "id": "bing_no_creds",
+        "type": "searchWeb",
+        "engine": "bing",
+        "query": "test query"
+      }
+    ],
+
+    "test_unknown_engine": [
+      {
+        "_comment": "PARAM: engine with unrecognised value — handler returns None and prints warning. Workflow continues.",
+        "id": "unknown_engine_result",
+        "type": "searchWeb",
+        "engine": "notarealengine",
+        "query": "test"
+      },
+      {
+        "_comment": "Confirm workflow continues after unknown engine failure.",
+        "id": "after_unknown",
+        "type": "shell",
+        "command": "echo workflow-continued-after-unknown-engine",
+        "timeout": 5
+      }
+    ]
+
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "autoContext": "Validates workflow (sub-workflow) action. Covers: file param (path to sub-workflow JSON), includedData param (keys filtered and passed as seed to sub-workflow via build_ctx), and the full sub-workflow result dict stored under the action id. Use dot-notation in a parent includedData entry to extract a specific key from the sub-workflow result (e.g. 'sub_result.final').",
+
+  "defaults": {
+    "seed_value": "passed-from-parent"
+  },
+
+  "workflow": {
+    "steps": ["test_basic_call", "test_seed_passing", "test_dot_extraction"]
+  },
+
+  "actionSets": {
+
+    "test_basic_call": [
+      {
+        "_comment": "PARAM: file — path to sub-workflow JSON. Result is the full sub-workflow step_output dict stored under action id 'sub_result'.",
+        "id": "sub_result",
+        "type": "workflow",
+        "file": "./fixtures/sub-workflow.json"
+      }
+    ],
+
+    "test_seed_passing": [
+      {
+        "_comment": "PARAM: includedData — keys filtered by build_ctx before being passed as initial seed to sub-workflow. Sub-workflow receives only 'seed_value' from parent context.",
+        "id": "seeded_sub_result",
+        "type": "workflow",
+        "file": "./fixtures/sub-workflow.json",
+        "includedData": ["seed_value"]
+      }
+    ],
+
+    "test_dot_extraction": [
+      {
+        "_comment": "Dot-notation in includedData extracts a specific key from a prior workflow result. 'sub_final=sub_result.final' pulls sub_result['final'] into ctx as 'sub_final'.",
+        "id": "extracted",
+        "type": "shell",
+        "command": "echo dot-extraction-worked",
+        "includedData": ["sub_final=sub_result.final"],
+        "timeout": 5
+      }
+    ]
+
+  }
+}

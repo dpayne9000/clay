@@ -1,0 +1,129 @@
+{
+  "autoContext": "You are an autonomous SEO audit agent. Your job is to systematically analyze a website across key SEO dimensions — on-page SEO, meta tags, page speed indicators, content structure, and internal linking. Compare against competitors where possible. Store all findings in memory with tags. Produce a scored audit report with actionable recommendations.",
+
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+
+  "actionSets": {
+
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      }
+    ],
+
+    "recall": [
+      {
+        "id": "prior_audits",
+        "type": "searchMemory",
+        "namespace": "seo-audit",
+        "queryKey": "target_url",
+        "maxResults": 10
+      },
+      {
+        "id": "existing_skills",
+        "type": "listSkills",
+        "skillset": "seo-audit"
+      },
+      {
+        "id": "recall_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Summarize any prior audit data available for {target_url}. If no prior data exists, say 'No prior audit data found — starting fresh.'\n\nPrior audits:\n{prior_audits}\n\nExisting skills:\n{existing_skills}",
+        "includedData": ["target_url", "prior_audits", "existing_skills"]
+      }
+    ],
+
+    "research_loop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 5,
+        "continueKey": "research_continue",
+        "outputKey": "research_findings",
+        "includedData": ["target_url", "competitor_urls", "recall_summary"]
+      }
+    ],
+
+    "outline": [
+      {
+        "id": "all_findings",
+        "type": "searchMemory",
+        "namespace": "seo-audit",
+        "queryKey": "target_url",
+        "maxResults": 20
+      },
+      {
+        "id": "audit_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate the structure for an SEO audit report for {target_url}.\n\nResearch findings:\n{all_findings}\n\nResearch log:\n{research_log}\n\nCreate an outline with these sections:\n1. Executive Summary\n2. On-Page SEO Analysis (title tags, headings, keyword usage)\n3. Meta Tags & Open Graph Review\n4. Page Speed & Performance Indicators\n5. Content Structure & Readability\n6. Internal Linking Analysis\n7. Competitor Comparison ({competitor_urls})\n8. Scoring Matrix (each dimension scored 1-10)\n9. Priority Recommendations\n\nFor each section, list the key data points to include and the scoring criteria.",
+        "includedData": ["target_url", "competitor_urls", "all_findings", "research_log=research_log.research_findings"]
+      }
+    ],
+
+    "draft_loop": [
+      {
+        "id": "draft_log",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "draft_continue",
+        "outputKey": "draft_section",
+        "includedData": ["target_url", "competitor_urls", "audit_outline"]
+      }
+    ],
+
+    "finalize": [
+      {
+        "id": "draft_memory",
+        "type": "searchMemory",
+        "namespace": "seo-audit",
+        "queryKey": "target_url",
+        "maxResults": 25
+      },
+      {
+        "id": "final_report",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Produce the complete SEO audit report for {target_url}.\n\nOutline:\n{audit_outline}\n\nDraft sections:\n{draft_log}\n\nAll stored findings:\n{draft_memory}\n\nCombine all draft sections into a polished, cohesive report. Ensure:\n- Every section from the outline is covered\n- Scores are consistent (1-10 scale per dimension)\n- An overall SEO health score is calculated as weighted average\n- Top 5 priority recommendations are listed with expected impact\n- Competitor comparison references specific data points\n- Actionable next steps are concrete and prioritized",
+        "includedData": ["target_url", "audit_outline", "draft_log=draft_log.draft_section", "draft_memory"]
+      }
+    ],
+
+    "deliver": [
+      {
+        "id": "report_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/seo-audit-{timestamp}.md",
+        "content": "final_report",
+        "includedData": ["final_report", "output_dir", "timestamp"]
+      },
+      {
+        "id": "report_memory",
+        "type": "writeMemory",
+        "namespace": "seo-audit",
+        "entryId": "latest-audit",
+        "content": "final_report",
+        "includedData": ["final_report"]
+      },
+      {
+        "id": "audit_skill",
+        "type": "writeSkill",
+        "skillset": "seo-audit",
+        "name": "seo-audit-template",
+        "content": "audit_outline",
+        "includedData": ["audit_outline"]
+      }
+    ]
+  }
+}

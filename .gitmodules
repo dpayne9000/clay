@@ -1,0 +1,3 @@
+[submodule "connectors/gopher"]
+	path = connectors/gopher
+	url = https://github.com/dpayne9000/gopherAdapter.git

@@ -1,0 +1,74 @@
+{
+  "defaults": {
+    "depth": "comprehensive",
+    "doc_type": "research report",
+    "audience": "general readers"
+  },
+  "workflow": {
+    "steps": ["load_training", "generateQueries", "simulateSources", "extractFacts", "extractThemes", "synthesise"]
+  },
+  "actionSets": {
+    "load_training": [
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "../training.json"
+      }
+    ],
+    "generateQueries": [
+      {
+        "id": "search_queries",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_generate_queries"
+        },
+        "prompt": "Generate 5 specific research queries for a {depth} {doc_type} about: {topic}\nTarget audience: {audience}\nReturn a numbered list of search queries only.\n\n{training_generate_queries}",
+        "includedData": ["topic", "depth", "doc_type", "audience"]
+      }
+    ],
+    "simulateSources": [
+      {
+        "id": "source_content",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_simulate_sources"
+        },
+        "prompt": "You are a research assistant synthesising authoritative sources. Based on these queries about {topic}, provide detailed research content covering: key statistics and data, expert perspectives, recent developments, real-world case studies, and opposing viewpoints where relevant.\n\nQueries:\n{search_queries}\n\n{training_simulate_sources}",
+        "includedData": ["topic", "search_queries"]
+      }
+    ],
+    "extractFacts": [
+      {
+        "id": "key_facts",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_extract_facts"
+        },
+        "prompt": "Extract 8-12 specific, concrete facts from this research content. Prefix each with F: and put each on its own line. Facts should be specific and data-driven where possible.\n\nContent:\n{source_content}\n\n{training_extract_facts}",
+        "includedData": ["source_content"]
+      }
+    ],
+    "extractThemes": [
+      {
+        "id": "key_themes",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_extract_themes"
+        },
+        "prompt": "Identify 4-5 key themes from this research content. For each theme give it a name and write 2 sentences explaining its significance.\n\nContent:\n{source_content}\n\n{training_extract_themes}",
+        "includedData": ["source_content"]
+      }
+    ],
+    "synthesise": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "examples": {
+          "override": "training_synthesise"
+        },
+        "prompt": "Synthesise this research into a comprehensive brief for writing a {doc_type} about '{topic}' for {audience}.\n\nKEY FACTS:\n{key_facts}\n\nKEY THEMES:\n{key_themes}\n\nProduce a Research Brief with these sections:\n- OVERVIEW (2-3 sentences framing the topic)\n- KEY FACTS (the most important data points)\n- KEY THEMES (the dominant patterns)\n- IMPLICATIONS FOR {audience} (what this means for them specifically)\n\n{training_synthesise}",
+        "includedData": ["topic", "doc_type", "audience", "key_facts", "key_themes"]
+      }
+    ]
+  }
+}

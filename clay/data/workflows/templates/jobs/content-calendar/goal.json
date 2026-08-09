@@ -1,0 +1,9 @@
+{
+  "brand": "Acme Corp",
+  "channels": "blog,social,email",
+  "topics": "product updates,industry trends,customer stories,how-to guides",
+  "cadence": "weekly",
+  "duration_weeks": 4,
+  "memory_namespace": "content-calendar",
+  "output_dir": "output/content-calendar"
+}

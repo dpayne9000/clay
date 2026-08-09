@@ -1,0 +1,121 @@
+{
+  "autoContext": "You are a senior software engineer performing a systematic bug triage on a codebase. Be thorough and prioritize by severity and impact.",
+  "defaults": {
+    "memory_namespace": "bug-triage",
+    "output_dir": "output/bug-triage"
+  },
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+  "actionSets": {
+    "init": [
+      {
+        "id": "project_path",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "bug_source",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "memory_namespace",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "output_dir",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+    "recall": [
+      {
+        "id": "prior_triages",
+        "type": "searchMemory",
+        "namespace": "bug-triage",
+        "query": "previous bug triage findings critical issues patterns",
+        "includedData": ["memory_namespace"]
+      },
+      {
+        "id": "prior_tags",
+        "type": "listMemory",
+        "namespace": "bug-triage",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "research_loop": [
+      {
+        "id": "research_findings",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 5,
+        "continueKey": "more_research",
+        "outputKey": "finding",
+        "includedData": ["project_path", "bug_source", "memory_namespace", "prior_triages"]
+      }
+    ],
+    "outline": [
+      {
+        "id": "report_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Based on the research findings from the bug triage investigation, create a structured outline for the triage report.\n\nProject: {project_path}\nBug source: {bug_source}\n\nResearch findings:\n{research_findings}\n\nPrior triage context:\n{prior_triages}\n\nCreate an outline with these sections:\n1. Executive Summary\n2. Critical Bugs (severity P0/P1)\n3. Important Bugs (severity P2)\n4. Minor Issues (severity P3)\n5. Patterns and Root Causes\n6. Recommended Fixes (prioritized)\n7. Technical Debt Observations\n\nFor each planned section, note which findings feed into it.",
+        "includedData": ["project_path", "bug_source", "research_findings=research_findings.finding", "prior_triages"]
+      }
+    ],
+    "draft_loop": [
+      {
+        "id": "draft_sections",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 5,
+        "continueKey": "more_sections",
+        "outputKey": "section_draft",
+        "includedData": ["project_path", "bug_source", "memory_namespace", "report_outline", "research_findings=research_findings.finding"]
+      }
+    ],
+    "finalize": [
+      {
+        "id": "final_report",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Assemble the final bug triage report from the drafted sections.\n\nProject: {project_path}\nReport outline:\n{report_outline}\n\nDrafted sections:\n{draft_sections}\n\nCombine into a polished, complete bug triage report. Ensure:\n- Executive summary is concise and actionable\n- Bugs are clearly categorized by severity\n- Each bug has: description, location, impact, suggested fix\n- Patterns section identifies systemic issues\n- Fix recommendations are prioritized by impact vs effort\n- Format as clean Markdown",
+        "includedData": ["project_path", "report_outline", "draft_sections=draft_sections.section_draft"]
+      },
+      {
+        "id": "final_tags",
+        "type": "deriveTags",
+        "content": "final_report",
+        "includedData": ["final_report"]
+      },
+      {
+        "id": "save_report_memory",
+        "type": "writeMemory",
+        "namespace": "bug-triage",
+        "entryId": "final-report",
+        "content": "final_report",
+        "tagsKey": "final_tags",
+        "includedData": ["final_report", "final_tags"]
+      },
+      {
+        "id": "save_template",
+        "type": "writeSkill",
+        "skillset": "bug-triage",
+        "name": "triage-report-template",
+        "content": "report_outline",
+        "includedData": ["report_outline"]
+      }
+    ],
+    "deliver": [
+      {
+        "id": "saved_file",
+        "type": "writeFile",
+        "file": "{output_dir}/bug-triage-report.md",
+        "content": "final_report",
+        "includedData": ["final_report", "output_dir"]
+      }
+    ]
+  }
+}

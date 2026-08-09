@@ -1,0 +1,64 @@
+{
+  "workflow": {
+    "steps": ["select_aspect", "scan", "store", "assess"]
+  },
+
+  "actionSets": {
+
+    "select_aspect": [
+      {
+        "id": "aspect_choice",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "You are auditing {target_url} for SEO. Iteration {iteration} of 5.\n\nThe five aspects to cover in order:\n1. On-page SEO (title tags, H1/H2 hierarchy, keyword density)\n2. Meta tags (description, Open Graph, Twitter cards, canonical)\n3. Page speed indicators (resource count, image optimization clues, script loading)\n4. Content structure (readability, heading hierarchy, content length, internal anchors)\n5. Internal linking (nav structure, link depth, orphan pages)\n\nPrior findings from this audit:\n{recall_summary}\n\nSelect aspect number {iteration}. Reply with ONLY the aspect name and a specific list of 3-5 things to check on the page.",
+        "includedData": ["target_url", "recall_summary", "iteration"]
+      }
+    ],
+
+    "scan": [
+      {
+        "id": "target_page",
+        "type": "browseWeb",
+        "url": "{target_url}",
+        "maxChars": 5000,
+        "includedData": ["target_url"]
+      },
+      {
+        "id": "aspect_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze the following page content for: {aspect_choice}\n\nURL: {target_url}\nPage content:\n{target_page}\n\nCompetitor URLs for context: {competitor_urls}\n\nProvide a detailed technical analysis:\n- What was found (specific tags, values, counts)\n- What is missing or misconfigured\n- Score this aspect 1-10 with justification\n- Specific fixes ranked by impact",
+        "includedData": ["aspect_choice", "target_url", "target_page", "competitor_urls"]
+      }
+    ],
+
+    "store": [
+      {
+        "id": "finding_tags",
+        "type": "deriveTags",
+        "contentKey": "aspect_analysis",
+        "contextKey": "aspect_choice",
+        "maxTags": 6,
+        "includedData": ["aspect_analysis", "aspect_choice"]
+      },
+      {
+        "id": "finding_saved",
+        "type": "writeMemory",
+        "namespace": "seo-audit",
+        "content": "aspect_analysis",
+        "tagsKey": "finding_tags",
+        "includedData": ["aspect_analysis", "finding_tags"]
+      }
+    ],
+
+    "assess": [
+      {
+        "id": "research_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "SEO audit research iteration {iteration} of 5 complete.\n\nAspect analyzed: {aspect_choice}\n\nIf iteration is less than 5, reply YES to continue to the next aspect. If iteration is 5, reply NO — all aspects have been covered.",
+        "includedData": ["iteration", "aspect_choice"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "autoContext": "You are facilitating an AI debate. Two personas will argue opposing sides of a topic. Be rigorous, evidence-based, and persuasive. Each side should genuinely try to win.",
+
+  "workflow": {
+    "steps": ["intake", "openingStatements", "debateLoop", "verdict", "summary"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "topic",
+        "type": "humanDecision",
+        "prompt": "What topic should be debated?"
+      },
+      {
+        "id": "side_a",
+        "type": "humanDecision",
+        "prompt": "Stance A (FOR side):"
+      },
+      {
+        "id": "side_b",
+        "type": "humanDecision",
+        "prompt": "Stance B (AGAINST side):"
+      },
+      {
+        "id": "num_rounds",
+        "type": "humanDecision",
+        "prompt": "Number of debate rounds (default: 3):"
+      }
+    ],
+    "openingStatements": [
+      {
+        "id": "opening_a",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "You are debating: {topic}\nYou are arguing FOR: {side_a}\n\nWrite a compelling 200-word opening statement. Lead with your strongest argument. Use evidence and logic. You must genuinely try to win this debate.\n\nOpening statement:",
+        "includedData": ["topic", "side_a"]
+      },
+      {
+        "id": "opening_b",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "You are debating: {topic}\nYou are arguing FOR: {side_b}\n\nYour opponent's opening statement:\n{opening_a}\n\nWrite a compelling 200-word opening statement. Counter their strongest point and present your own. Use evidence and logic.\n\nOpening statement:",
+        "includedData": ["topic", "side_b", "opening_a"]
+      }
+    ],
+    "debateLoop": [
+      {
+        "id": "debate_log",
+        "type": "loop",
+        "file": "./round-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_rounds",
+        "outputKey": "round_transcript",
+        "includedData": ["topic", "side_a", "side_b", "opening_a", "opening_b", "num_rounds"]
+      }
+    ],
+    "verdict": [
+      {
+        "id": "human_verdict",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nDEBATE COMPLETE\n─────────────────────────────────────────────────────\n\nTopic: {topic}\nSide A ({side_a}): Opening + rounds\nSide B ({side_b}): Opening + rounds\n\nLast round:\n{debate_log}\n\n─────────────────────────────────────────────────────\nWho won? Type A, B, or DRAW, with a brief explanation:"
+      }
+    ],
+    "summary": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Write a debate summary for: {topic}\n\nSide A ({side_a}):\nOpening: {opening_a}\n\nSide B ({side_b}):\nOpening: {opening_b}\n\nDebate rounds:\n{debate_log}\n\nHuman verdict: {human_verdict}\n\nSummary format:\n# Debate Summary: {topic}\n\n## Strongest Arguments\n**For {side_a}:** (top 2-3 points)\n**For {side_b}:** (top 2-3 points)\n\n## Key Moments\n(Where the debate turned, strongest rebuttals)\n\n## Verdict\n{human_verdict}\n\n## Balanced Takeaway\n(What someone watching this debate should conclude)",
+        "includedData": ["topic", "side_a", "side_b", "opening_a", "opening_b", "debate_log=debate_log.round_transcript", "human_verdict"]
+      }
+    ]
+  }
+}

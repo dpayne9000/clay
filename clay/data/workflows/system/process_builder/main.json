@@ -1,0 +1,259 @@
+{
+  "workflow": {
+    "steps": [
+      "context",
+      "purpose",
+      "pattern",
+      "select_pattern",
+      "configure",
+      "training_choice",
+      "review",
+      "generate",
+      "apply"
+    ]
+  },
+  "actionSets": {
+    "context": [
+      {
+        "id": "template",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./workflow_template.json"
+      },
+      {
+        "id": "training",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./training.json"
+      }
+    ],
+    "purpose": [
+      {
+        "id": "workflow_goal",
+        "type": "humanDecision",
+        "prompt": "\nWhat process should the workflow perform?\n> "
+      },
+      {
+        "id": "workflow_name",
+        "type": "humanDecision",
+        "prompt": "\nFolder/name for the generated workflow?\n> "
+      }
+    ],
+    "pattern": [
+      {
+        "id": "pattern_choice",
+        "type": "humanDecision",
+        "prompt": "\nChoose a workflow shape:\n1. Revise a configured file from a prompt\n2. Create a new file from a prompt\n3. Read configured file(s) and answer\n4. Revise file(s), then optionally run a command\n5. Generate one or more new files from a prompt\n6. Two-stage: choose evidence, then code\n> "
+      }
+    ],
+    "select_pattern": [
+      {
+        "id": "pattern_1",
+        "type": "matchText",
+        "visible": false,
+        "source": "pattern_choice",
+        "values": [
+          "1"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "pattern_choice"
+        ]
+      },
+      {
+        "id": "selected_pattern_1",
+        "type": "loadContext",
+        "visible": false,
+        "when": "pattern_1",
+        "file": "./pattern_revise_file.json"
+      },
+      {
+        "id": "pattern_2",
+        "type": "matchText",
+        "visible": false,
+        "source": "pattern_choice",
+        "values": [
+          "2"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "pattern_choice"
+        ]
+      },
+      {
+        "id": "selected_pattern_2",
+        "type": "loadContext",
+        "visible": false,
+        "when": "pattern_2",
+        "file": "./pattern_create_file.json"
+      },
+      {
+        "id": "pattern_3",
+        "type": "matchText",
+        "visible": false,
+        "source": "pattern_choice",
+        "values": [
+          "3"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "pattern_choice"
+        ]
+      },
+      {
+        "id": "selected_pattern_3",
+        "type": "loadContext",
+        "visible": false,
+        "when": "pattern_3",
+        "file": "./pattern_read_answer.json"
+      },
+      {
+        "id": "pattern_4",
+        "type": "matchText",
+        "visible": false,
+        "source": "pattern_choice",
+        "values": [
+          "4"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "pattern_choice"
+        ]
+      },
+      {
+        "id": "selected_pattern_4",
+        "type": "loadContext",
+        "visible": false,
+        "when": "pattern_4",
+        "file": "./pattern_revise_run.json"
+      },
+      {
+        "id": "pattern_5",
+        "type": "matchText",
+        "visible": false,
+        "source": "pattern_choice",
+        "values": [
+          "5"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "pattern_choice"
+        ]
+      },
+      {
+        "id": "selected_pattern_5",
+        "type": "loadContext",
+        "visible": false,
+        "when": "pattern_5",
+        "file": "./pattern_generate_files.json"
+      },
+      {
+        "id": "pattern_6",
+        "type": "matchText",
+        "visible": false,
+        "source": "pattern_choice",
+        "values": [
+          "6"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "pattern_choice"
+        ]
+      },
+      {
+        "id": "selected_pattern_6",
+        "type": "loadContext",
+        "visible": false,
+        "when": "pattern_6",
+        "file": "./pattern_two_stage.json"
+      }
+    ],
+    "configure": [
+      {
+        "id": "target_paths",
+        "type": "humanDecision",
+        "prompt": "\nWhich workspace-relative file path(s) should this process operate on? Use DYNAMIC for dynamic selection.\n> "
+      },
+      {
+        "id": "model_purpose",
+        "type": "humanDecision",
+        "prompt": "\nWhat exactly should the model step do? Give one responsibility.\n> "
+      },
+      {
+        "id": "command_mode",
+        "type": "humanDecision",
+        "prompt": "\nCommand execution?\n1. NO\n2. YES, after writes/generation\n> "
+      }
+    ],
+    "training_choice": [
+      {
+        "id": "training_mode",
+        "type": "humanDecision",
+        "prompt": "\nFew-shot training?\n1. NONE\n2. MINIMAL (2-4 examples)\n3. STRONG (5-8 distinct behaviors)\n> "
+      }
+    ],
+    "review": [
+      {
+        "id": "review_decision",
+        "type": "humanDecision",
+        "prompt": "\nType GENERATE to render the workflow, or CANCEL.\n> "
+      },
+      {
+        "id": "should_generate",
+        "type": "matchText",
+        "visible": false,
+        "source": "review_decision",
+        "values": [
+          "GENERATE",
+          "generate"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "review_decision"
+        ]
+      }
+    ],
+    "generate": [
+      {
+        "id": "generated_workflow",
+        "type": "scramda2",
+        "when": "should_generate",
+        "modelProfile": "code",
+        "examples": {
+          "override": "generator_examples"
+        },
+        "prompt": "WORKFLOW TEMPLATE — STRUCTURAL SOURCE OF TRUTH:\n{workflow_template}\n\nSELECTED PATTERN — TOPOLOGY SOURCE OF TRUTH:\n{selected_pattern}\n\nHUMAN CONFIGURATION:\nWORKFLOW GOAL:\n{workflow_goal}\n\nWORKFLOW NAME:\n{workflow_name}\n\nTARGET PATHS:\n{target_paths}\n\nMODEL PURPOSE:\n{model_purpose}\n\nCOMMAND MODE:\n{command_mode}\n\nTRAINING MODE:\n{training_mode}\n\nRender the complete workflow files now. Use only action types and field names present in WORKFLOW TEMPLATE. Follow SELECTED PATTERN exactly; do not add architecture, memory, review, repair, or gates not requested by the human. Every generated file fence must include a workspace-relative path under WORKFLOW NAME. Each scramda2 query must receive only data required for its stated responsibility. If training is requested, example inputs must mirror live query labels exactly and outputs must match the downstream consumer. For file-writing nodes, train path-bearing file fences explicitly. Output only generated file fences.",
+        "includedData": [
+          "workflow_template",
+          "selected_pattern",
+          "workflow_goal",
+          "workflow_name",
+          "target_paths",
+          "model_purpose",
+          "command_mode",
+          "training_mode",
+          "generator_examples"
+        ]
+      }
+    ],
+    "apply": [
+      {
+        "id": "files_written",
+        "type": "applyFileWrites",
+        "when": "should_generate",
+        "reply": "generated_workflow",
+        "maxFiles": 12,
+        "includedData": [
+          "generated_workflow"
+        ]
+      }
+    ]
+  }
+}

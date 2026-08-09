@@ -1,0 +1,40 @@
+{
+  "autoContext": "You are a network security monitor. Be precise about IP addresses, ports, and protocols. Flag any new or unexpected devices, open ports, or connections.",
+
+  "workflow": {
+    "steps": ["init", "surveillance_loop"]
+  },
+
+  "actionSets": {
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "today",
+        "type": "shell",
+        "command": "date +%Y-%m-%d",
+        "timeout": 5
+      },
+      {
+        "id": "prior_baselines",
+        "type": "listMemory",
+        "namespace": "{memory_namespace}"
+      }
+    ],
+
+    "surveillance_loop": [
+      {
+        "id": "scan_log",
+        "type": "loop",
+        "file": "./scan-iteration.json",
+        "iterations": 0,
+        "continueKey": "should_stop",
+        "outputKey": "scan_summary",
+        "includedData": ["today", "prior_baselines", "memory_namespace", "alert_channel", "alert_recipient"]
+      }
+    ]
+  }
+}

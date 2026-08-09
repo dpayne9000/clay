@@ -1,0 +1,59 @@
+{
+  "workflow": {
+    "steps": ["meetingInfo", "aiSummary", "corrections", "actionItems"]
+  },
+  "actionSets": {
+    "meetingInfo": [
+      {
+        "id": "meeting_name",
+        "type": "humanDecision",
+        "prompt": "Meeting name or topic"
+      },
+      {
+        "id": "attendees",
+        "type": "humanDecision",
+        "prompt": "Attendees (comma-separated names)"
+      },
+      {
+        "id": "notes",
+        "type": "humanDecision",
+        "prompt": "Paste your meeting notes"
+      }
+    ],
+    "aiSummary": [
+      {
+        "id": "summary",
+        "type": "scramda2",
+        "prompt": "Summarise the following meeting notes for a meeting called '{meeting_name}' attended by {attendees}.\n\nReturn three sections:\nSUMMARY — 2-3 sentence overview\nKEY DECISIONS — bullet list\nOPEN QUESTIONS — numbered list\n\nNotes:\n{notes}",
+        "examples": [
+          {
+            "question": "Summarise meeting 'Q2 Roadmap Review' attended by Alice, Ben, Carol.\nNotes:\nWe reviewed the Q2 plan. Alice pushed to prioritise the mobile app rewrite. Ben flagged a dependency on the new auth service which isn't ready until May. Carol said design can start now without the auth service. We agreed Carol starts design next week. No decision on launch date yet.",
+            "answer": "SUMMARY\nThe team reviewed the Q2 roadmap with a focus on the mobile app rewrite. Design work will begin immediately while a dependency on the auth service (available May) is resolved in parallel.\n\nKEY DECISIONS\n- Mobile app rewrite is Q2 priority\n- Carol to begin design work next week\n- Auth service dependency does not block design phase\n\nOPEN QUESTIONS\n1. What is the target launch date for the mobile app?\n2. What happens to Q2 scope if auth service is delayed beyond May?"
+          }
+        ],
+        "includedData": ["meeting_name", "attendees", "notes"]
+      }
+    ],
+    "corrections": [
+      {
+        "id": "edits",
+        "type": "humanDecision",
+        "prompt": "Any corrections or additions to the summary? (press Enter to skip)"
+      }
+    ],
+    "actionItems": [
+      {
+        "id": "actions",
+        "type": "scramda2",
+        "prompt": "Using this meeting summary and any corrections, extract a concrete action items list.\n\nFormat each line as:\n[Owner] — [Task] — Due: [timeframe or TBD]\n\nSummary:\n{summary}\n\nCorrections:\n{edits}",
+        "examples": [
+          {
+            "question": "Summary: Carol to begin design next week. Auth service available May. Launch date TBD. Corrections: Ben owns the auth service, deadline is April 30th.",
+            "answer": "ACTION ITEMS\n1. Carol — Begin mobile app design — Due: Next week\n2. Ben   — Deliver auth service — Due: April 30th\n3. Alice — Confirm Q2 launch date — Due: TBD"
+          }
+        ],
+        "includedData": ["summary", "edits"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "workflow": {
+    "steps": ["recall", "plan", "browse", "reason", "assess", "remember", "report", "save_skill", "decide"]
+  },
+
+  "actionSets": {
+
+    "recall": [
+      {
+        "id": "prior_findings",
+        "type": "searchMemory",
+        "namespace": "celeb-tracker",
+        "queryKey": "target_name",
+        "maxResults": 6
+      },
+      {
+        "id": "relevant_skills",
+        "type": "searchSkills",
+        "skillset": "celeb-tracker",
+        "queryKey": "target_name"
+      }
+    ],
+
+    "plan": [
+      {
+        "id": "search_plan",
+        "type": "scramda2",
+        "prompt": "Iteration {iteration}. Tracking: {target_name}\n\nMission: {mission}\n\nPrior intelligence:\n{prior_findings}\n\nAvailable reusable skills:\n{relevant_skills}\n\nChoose ONE specific source to browse now — pick the one most likely to reveal current whereabouts, confirmed appearances, or upcoming schedule that has NOT yet been checked.\n\nReply in exactly this format:\nANGLE: <what you expect to find>\nURL: <a real, publicly accessible URL>\nREASON: <why this source is valuable right now>",
+        "includedData": ["target_name", "mission", "prior_findings", "relevant_skills", "iteration"]
+      },
+      {
+        "id": "search_url",
+        "type": "scramda2",
+        "prompt": "Extract only the URL from this text. Reply with the URL only — nothing else.\n\n{search_plan}",
+        "includedData": ["search_plan"]
+      }
+    ],
+
+    "browse": [
+      {
+        "id": "page_content",
+        "type": "browseWeb",
+        "url": "{search_url}",
+        "maxChars": 4000,
+        "includedData": ["search_url"]
+      }
+    ],
+
+    "reason": [
+      {
+        "id": "raw_findings",
+        "type": "scramda2",
+        "prompt": "Target: {target_name}\n\nSearch angle: {search_plan}\n\nPage content from {search_url}:\n{page_content}\n\nExtract every fact relevant to whereabouts, location, appearances, events, travel, or schedule:\n- Specific dates, cities, venues, country\n- Event names, tour legs, residencies\n- Any quotes about plans or travel\n- How recent this information appears to be\n- Source credibility assessment\n\nBe concrete and factual. Discard unrelated content.",
+        "includedData": ["target_name", "search_plan", "search_url", "page_content"]
+      }
+    ],
+
+    "assess": [
+      {
+        "id": "location_assessment",
+        "type": "scramda2",
+        "prompt": "Target: {target_name}\n\nNew findings:\n{raw_findings}\n\nAll prior intelligence:\n{prior_findings}\n\nSynthesize a current location assessment:\n- Most likely current location (city/country)\n- Confidence: HIGH / MEDIUM / LOW\n- Next confirmed public appearance (date + city if known)\n- Next 2 weeks schedule (if known)\n- Key evidence and sources\n- Remaining gaps",
+        "includedData": ["target_name", "raw_findings", "prior_findings"]
+      }
+    ],
+
+    "remember": [
+      {
+        "id": "memory_tags",
+        "type": "deriveTags",
+        "contentKey": "raw_findings",
+        "contextKey": "location_assessment",
+        "maxTags": 6,
+        "includedData": ["raw_findings", "location_assessment"]
+      },
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "namespace": "celeb-tracker",
+        "content": "raw_findings",
+        "tagsKey": "memory_tags",
+        "includedData": ["raw_findings", "memory_tags"]
+      },
+      {
+        "id": "assessment_saved",
+        "type": "writeMemory",
+        "namespace": "celeb-tracker",
+        "content": "location_assessment",
+        "tagsKey": "memory_tags",
+        "includedData": ["location_assessment", "memory_tags"]
+      }
+    ],
+
+    "report": [
+      {
+        "id": "iteration_summary",
+        "type": "scramda2",
+        "prompt": "Write a concise intelligence report paragraph for iteration {iteration} tracking {target_name}.\n\nFindings: {raw_findings}\nAssessment: {location_assessment}\nSource browsed: {search_url}\n\nInclude: what was found, what it confirms or contradicts, current best location estimate, and confidence level.",
+        "includedData": ["iteration", "target_name", "raw_findings", "location_assessment", "search_url"]
+      },
+      {
+        "id": "iter_report",
+        "type": "writeFile",
+        "file": "{output_dir}/iter-{iteration}.md",
+        "content": "iteration_summary",
+        "includedData": ["output_dir", "iteration", "iteration_summary"]
+      }
+    ],
+
+    "save_skill": [
+      {
+        "id": "skill_name",
+        "type": "scramda2",
+        "prompt": "Is the search approach used this iteration reusable for tracking other public figures?\n\nApproach: {search_plan}\nURL browsed: {search_url}\n\nIf YES — reply with a kebab-case skill name (e.g. 'tour-schedule-search', 'venue-scan', 'news-tracker').\nIf the approach is too specific to this one person — reply with exactly: SKIP",
+        "includedData": ["search_plan", "search_url"]
+      },
+      {
+        "id": "skill_script",
+        "type": "scramda2",
+        "prompt": "Write a short reusable Python script that automates the search approach below for any given target name. Accept the target name as sys.argv[1] and print the URL to browse.\n\nApproach: {search_plan}\n\nReturn ONLY the complete Python script.",
+        "includedData": ["search_plan"]
+      },
+      {
+        "id": "skill_saved",
+        "type": "writeSkill",
+        "skillset": "celeb-tracker",
+        "name": "{skill_name}",
+        "extension": "py",
+        "content": "skill_script",
+        "skipValue": "SKIP",
+        "includedData": ["skill_name", "skill_script"]
+      }
+    ],
+
+    "decide": [
+      {
+        "id": "should_continue",
+        "type": "scramda2",
+        "prompt": "Iteration {iteration} complete. Tracking: {target_name}\n\nCurrent assessment:\n{location_assessment}\n\nStop (reply NO) only if ALL of these are true:\n- Current location confirmed with HIGH confidence\n- At least 2 weeks of upcoming schedule is known\n- Multiple independent sources agree\n\nOtherwise reply YES to keep searching.",
+        "includedData": ["iteration", "target_name", "location_assessment"]
+      }
+    ]
+
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "autoContext": "Validates shell action. Covers: command param (plain string), timeout param (int seconds), variable substitution ({var} from previous_data via _SafeMap), whitelisted commands (date, echo, hostname, whoami, uname), and blocked command rejection.",
+
+  "defaults": {
+    "test_label": "shell-test"
+  },
+
+  "workflow": {
+    "steps": ["basic_commands", "variable_substitution", "custom_timeout", "compound_command"]
+  },
+
+  "actionSets": {
+
+    "basic_commands": [
+      {
+        "_comment": "PARAM: command — plain shell command. echo is whitelisted.",
+        "id": "echo_result",
+        "type": "shell",
+        "command": "echo hello-from-shell",
+        "timeout": 5
+      },
+      {
+        "_comment": "PARAM: command — date with format string. date is whitelisted.",
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d",
+        "timeout": 5
+      },
+      {
+        "_comment": "PARAM: command — hostname is whitelisted for system info.",
+        "id": "hostname_result",
+        "type": "shell",
+        "command": "hostname",
+        "timeout": 5
+      },
+      {
+        "_comment": "PARAM: command — whoami is whitelisted.",
+        "id": "whoami_result",
+        "type": "shell",
+        "command": "whoami",
+        "timeout": 5
+      }
+    ],
+
+    "variable_substitution": [
+      {
+        "_comment": "PARAM: command with {variable} — resolved from previous_data via _SafeMap. Injection chars are stripped from values before substitution.",
+        "id": "subst_result",
+        "type": "shell",
+        "command": "echo label-is-{test_label}",
+        "includedData": ["test_label"],
+        "timeout": 5
+      },
+      {
+        "_comment": "PARAM: {timestamp} — value from previous step, substituted into this command.",
+        "id": "subst_chained",
+        "type": "shell",
+        "command": "echo date-was-{timestamp}",
+        "includedData": ["timestamp"],
+        "timeout": 5
+      }
+    ],
+
+    "custom_timeout": [
+      {
+        "_comment": "PARAM: timeout — int seconds before the command is killed. Default is 30. Here set to 3.",
+        "id": "timeout_result",
+        "type": "shell",
+        "command": "date",
+        "timeout": 3
+      }
+    ],
+
+    "compound_command": [
+      {
+        "_comment": "PARAM: command with && — each executable segment is whitelist-checked independently.",
+        "id": "compound_result",
+        "type": "shell",
+        "command": "echo part-one && echo part-two",
+        "timeout": 5
+      }
+    ]
+
+  }
+}

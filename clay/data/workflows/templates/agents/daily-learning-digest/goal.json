@@ -1,0 +1,7 @@
+{
+  "interests": ["distributed systems", "machine learning", "systems programming", "security"],
+  "digest_recipient": "",
+  "memory_namespace": "learning",
+  "max_articles_per_topic": "3",
+  "output_dir": "output/learning-digest"
+}

@@ -1,0 +1,42 @@
+{
+  "workflow": {
+    "steps": ["recall", "draft", "remember", "assess"]
+  },
+  "actionSets": {
+    "recall": [
+      {
+        "id": "relevant_findings",
+        "type": "searchMemory",
+        "namespace": "bug-triage",
+        "query": "bugs errors issues severity findings evidence",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "draft": [
+      {
+        "id": "section_draft",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the next section of the bug triage report.\n\nReport outline:\n{report_outline}\n\nResearch findings:\n{research_findings}\n\nMemory search results:\n{relevant_findings}\n\nPrevious iteration draft:\n{section_draft}\n\nIteration: {iteration}\n\nWrite the next unwritten section from the outline. Include:\n- For bug sections: description, file/location, severity, impact, reproduction steps if known, suggested fix\n- For patterns section: identify common root causes across bugs\n- For recommendations: prioritize by impact-vs-effort, include specific action items\n\nFormat as clean Markdown with proper headings.",
+        "includedData": ["report_outline", "research_findings", "relevant_findings", "section_draft", "iteration"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_draft",
+        "type": "writeMemory",
+        "namespace": "bug-triage",
+        "content": "section_draft",
+        "includedData": ["section_draft"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_sections",
+        "type": "scramda2",
+        "prompt": "Report outline:\n{report_outline}\n\nLatest section:\n{section_draft}\n\nAre there more sections from the outline that still need to be written? Respond 'yes' if sections remain, or 'done' if all sections are complete.",
+        "includedData": ["report_outline", "section_draft"]
+      }
+    ]
+  }
+}

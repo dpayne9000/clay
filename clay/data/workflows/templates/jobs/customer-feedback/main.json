@@ -1,0 +1,121 @@
+{
+  "autoContext": "You are a product analyst performing a thorough customer feedback analysis. Extract actionable insights and quantify sentiment where possible.",
+  "defaults": {
+    "memory_namespace": "customer-feedback",
+    "output_dir": "output/customer-feedback"
+  },
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+  "actionSets": {
+    "init": [
+      {
+        "id": "feedback_source",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "product_name",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "memory_namespace",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "output_dir",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+    "recall": [
+      {
+        "id": "prior_analysis",
+        "type": "searchMemory",
+        "namespace": "customer-feedback",
+        "query": "previous feedback analysis themes sentiment product insights",
+        "includedData": ["memory_namespace", "product_name"]
+      },
+      {
+        "id": "prior_entries",
+        "type": "listMemory",
+        "namespace": "customer-feedback",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "research_loop": [
+      {
+        "id": "theme_analysis",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_themes",
+        "outputKey": "theme_finding",
+        "includedData": ["feedback_source", "product_name", "memory_namespace", "prior_analysis"]
+      }
+    ],
+    "outline": [
+      {
+        "id": "report_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a structured outline for the customer feedback analysis report.\n\nProduct: {product_name}\nFeedback source: {feedback_source}\n\nTheme analysis findings:\n{theme_analysis}\n\nPrior analysis context:\n{prior_analysis}\n\nCreate an outline with these sections:\n1. Executive Summary (key takeaways, overall sentiment)\n2. Usability Feedback (ease of use, UX issues, onboarding)\n3. Feature Requests (most requested, feature gaps)\n4. Bug Reports from Users (user-reported issues, frequency)\n5. Pricing Sentiment (value perception, willingness to pay)\n6. Support Experience (response quality, resolution time)\n7. Key Recommendations (prioritized action items)\n8. Trends and Comparisons (vs prior periods if available)\n\nNote which theme findings map to each section.",
+        "includedData": ["product_name", "feedback_source", "theme_analysis=theme_analysis.theme_finding", "prior_analysis"]
+      }
+    ],
+    "draft_loop": [
+      {
+        "id": "draft_sections",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "more_sections",
+        "outputKey": "section_draft",
+        "includedData": ["product_name", "memory_namespace", "report_outline", "theme_analysis=theme_analysis.theme_finding"]
+      }
+    ],
+    "finalize": [
+      {
+        "id": "final_report",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Assemble the final customer feedback analysis report for {product_name}.\n\nReport outline:\n{report_outline}\n\nDrafted sections:\n{draft_sections}\n\nCombine into a polished report. Ensure:\n- Executive summary highlights top 3 actionable insights\n- Each theme section includes specific customer quotes or data points\n- Recommendations are prioritized by customer impact and implementation effort\n- Sentiment indicators (positive/neutral/negative) are noted per theme\n- Format as clean Markdown with proper headings and bullet points",
+        "includedData": ["product_name", "report_outline", "draft_sections=draft_sections.section_draft"]
+      },
+      {
+        "id": "final_tags",
+        "type": "deriveTags",
+        "content": "final_report",
+        "includedData": ["final_report"]
+      },
+      {
+        "id": "save_report_memory",
+        "type": "writeMemory",
+        "namespace": "customer-feedback",
+        "entryId": "final-analysis",
+        "content": "final_report",
+        "tagsKey": "final_tags",
+        "includedData": ["final_report", "final_tags"]
+      },
+      {
+        "id": "save_template",
+        "type": "writeSkill",
+        "skillset": "customer-feedback",
+        "name": "feedback-analysis-template",
+        "content": "report_outline",
+        "includedData": ["report_outline"]
+      }
+    ],
+    "deliver": [
+      {
+        "id": "saved_file",
+        "type": "writeFile",
+        "file": "{output_dir}/customer-feedback-{product_name}.md",
+        "content": "final_report",
+        "includedData": ["final_report", "output_dir", "product_name"]
+      }
+    ]
+  }
+}

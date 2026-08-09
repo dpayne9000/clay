@@ -1,0 +1,64 @@
+{
+  "workflow": {
+    "steps": ["search", "browse", "analyze", "tag", "remember", "assess"]
+  },
+  "actionSets": {
+    "search": [
+      {
+        "id": "web_search",
+        "type": "searchWeb",
+        "query": "{subject} {skill_level} curriculum syllabus learning resources",
+        "includedData": ["subject", "skill_level"]
+      }
+    ],
+    "browse": [
+      {
+        "id": "research_url",
+        "type": "scramda2",
+        "prompt": "Extract the first complete http:// or https:// URL from these search results. Return only the URL.\n\n{web_search}",
+        "includedData": ["web_search"]
+      },
+      {
+        "id": "educational_content",
+        "type": "browseWeb",
+        "url": "{research_url}",
+        "includedData": ["research_url"]
+      }
+    ],
+    "analyze": [
+      {
+        "id": "topic_finding",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Research educational content and curricula for {subject} at the {skill_level} level.\n\nIteration: {iteration}\nSubject: {subject}\nSkill level: {skill_level}\nDuration: {duration_weeks} weeks\nLearning objectives: {learning_objectives}\n\nWeb research content:\n{educational_content}\n\nPrevious iteration finding:\n{topic_finding}\n\nPrior curriculum context:\n{prior_curricula}\n\nFocus this iteration on researching ONE aspect (pick the one not yet covered):\n- Core topic coverage: what existing curricula include for this subject\n- Exercise and project ideas: practical activities that reinforce learning\n- Assessment approaches: how to measure skill acquisition\n- Learning resources: books, tools, platforms, references\n- Industry relevance: what skills employers actually need\n- Pedagogical sequence: optimal ordering of topics for {skill_level} learners\n\nProvide:\nASPECT: [which aspect you researched]\nFINDINGS: [detailed findings from web research and analysis]\nTOPICS_IDENTIFIED: [specific topics or skills to include]\nRESOURCES: [specific resources, tools, or references found]\nRECOMMENDATIONS: [how to incorporate these into the curriculum]",
+        "includedData": ["iteration", "subject", "skill_level", "duration_weeks", "learning_objectives", "educational_content", "topic_finding", "prior_curricula"]
+      }
+    ],
+    "tag": [
+      {
+        "id": "topic_tags",
+        "type": "deriveTags",
+        "content": "topic_finding",
+        "includedData": ["topic_finding"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_topic",
+        "type": "writeMemory",
+        "namespace": "training",
+        "content": "topic_finding",
+        "tagsKey": "topic_tags",
+        "includedData": ["topic_finding", "topic_tags"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_topics",
+        "type": "scramda2",
+        "prompt": "We have completed iteration {iteration} of curriculum research for {subject}.\n\nLatest finding:\n{topic_finding}\n\nHave we covered sufficient research aspects (core topics, exercises, assessment, resources, industry relevance, pedagogical sequence)? If important aspects remain, respond 'yes' to continue. If we have enough material to design a solid {duration_weeks}-week curriculum, respond 'done'.",
+        "includedData": ["iteration", "subject", "duration_weeks", "topic_finding"]
+      }
+    ]
+  }
+}

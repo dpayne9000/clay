@@ -1,0 +1,79 @@
+{
+  "autoContext": "Validates context filtering (build_ctx). Verifies that includedData restricts which keys reach handlers, dot-notation extracts nested values, engine globals (__config__, __schema__) are only delivered when explicitly listed in includedData, and loop results are stored as full dicts with dot-extractable keys.",
+
+  "defaults": {
+    "secret": "LEAKED",
+    "data": "data-payload"
+  },
+
+  "workflow": {
+    "steps": ["prepare", "test_filter", "test_passthrough", "test_dot_path", "test_loop_dot"]
+  },
+
+  "actionSets": {
+
+    "prepare": [
+      {
+        "_comment": "Load fixture with nested dict into step_output under key 'nested'.",
+        "id": "_nested",
+        "type": "loadContext",
+        "file": "./fixtures/nested-context.json"
+      }
+    ],
+
+    "test_filter": [
+      {
+        "_comment": "Both 'data' and '__config__' are in includedData — they must substitute. 'secret' is NOT listed — it must stay blocked. shell _SafeMap leaves unknown placeholders as literal '{key}' strings.",
+        "id": "filter_result",
+        "type": "shell",
+        "command": "echo allowed={data} __config__={__config__} secret={secret}",
+        "includedData": ["data", "__config__"],
+        "timeout": 5
+      }
+    ],
+
+    "test_passthrough": [
+      {
+        "_comment": "__config__ is listed in includedData so it is substituted. secret is not listed so it stays blocked.",
+        "id": "passthrough_result",
+        "type": "shell",
+        "command": "echo __config__={__config__} secret={secret}",
+        "includedData": ["__config__"],
+        "timeout": 5
+      }
+    ],
+
+    "test_dot_path": [
+      {
+        "_comment": "Dot-notation 'leaf=nested.leaf' extracts only nested['leaf'] into ctx as 'leaf'. The sibling key and the full nested dict are not in ctx, so {sibling} and {nested} stay as literal placeholders.",
+        "id": "dot_result",
+        "type": "shell",
+        "command": "echo leaf={leaf} sibling={sibling} secret={secret}",
+        "includedData": ["leaf=nested.leaf"],
+        "timeout": 5
+      }
+    ],
+
+    "test_loop_dot": [
+      {
+        "_comment": "Loop result stored as full dict under 'loop_data'. continueKey stops after 1 iteration.",
+        "id": "loop_data",
+        "type": "loop",
+        "file": "./fixtures/loop-iteration.json",
+        "iterations": 5,
+        "continueKey": "should_continue",
+        "outputKey": "iteration_output"
+      },
+      {
+        "_comment": "Dot-notation extracts loop_data.iteration_output as 'iter_out'. The full loop_data dict is not in ctx. Python checks the scalar value was correctly delivered via stdin.",
+        "id": "loop_check",
+        "type": "runCode",
+        "language": "python",
+        "source": "import sys; v = sys.stdin.read().strip(); out = 'ok' if 'iteration-' in v else 'FAIL:' + repr(v); print(out)",
+        "stdin": "iter_out",
+        "includedData": ["iter_out=loop_data.iteration_output"]
+      }
+    ]
+
+  }
+}

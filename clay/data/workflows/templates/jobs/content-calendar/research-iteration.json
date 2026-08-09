@@ -1,0 +1,88 @@
+{
+  "workflow": {
+    "steps": ["pick_topic", "search", "browse_competitor", "store", "assess"]
+  },
+
+  "actionSets": {
+
+    "pick_topic": [
+      {
+        "id": "research_topic",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "You are researching content ideas for {brand}. Iteration {iteration} of 4.\n\nChannels: {channels}\nTopics: {topics}\nCadence: {cadence}\n\nResearch areas to cover in order:\n1. Trending topics and hashtags in the first topic area\n2. Competitor content strategies and posting patterns\n3. High-performing content formats per channel\n4. Seasonal themes and upcoming events relevant to the topics\n\nPrior research:\n{recall_summary}\n\nSelect area {iteration}. Reply with:\nTOPIC_AREA: <name>\nSEARCH_QUERY: <a specific web search query to find trending content ideas>",
+        "includedData": ["brand", "channels", "topics", "cadence", "recall_summary", "iteration"]
+      }
+    ],
+
+    "search": [
+      {
+        "id": "search_query",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Extract only the search query from this text — the line starting with 'SEARCH_QUERY:'. Reply with the query only, nothing else.\n\n{research_topic}",
+        "includedData": ["research_topic"]
+      },
+      {
+        "id": "search_results",
+        "type": "searchWeb",
+        "query": "{search_query}",
+        "maxResults": 5,
+        "includedData": ["search_query"]
+      }
+    ],
+
+    "browse_competitor": [
+      {
+        "id": "best_url",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Pick the single most relevant URL from these search results for content research for {brand}.\n\nSearch results:\n{search_results}\n\nReply with ONLY the URL, nothing else.",
+        "includedData": ["search_results", "brand"]
+      },
+      {
+        "id": "page_content",
+        "type": "browseWeb",
+        "url": "{best_url}",
+        "maxChars": 4000,
+        "includedData": ["best_url"]
+      },
+      {
+        "id": "extracted_ideas",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Research topic: {research_topic}\n\nPage content from {best_url}:\n{page_content}\n\nExtract content ideas and strategy insights for {brand} across channels: {channels}\n\nFocus on:\n- Specific content titles and angles that performed well\n- Posting frequency and timing patterns\n- Content formats (listicles, how-tos, case studies, infographics)\n- Keywords and hashtags with traction\n- Engagement patterns (what drives comments, shares)\n\nList at least 5 concrete content ideas with suggested channel and format.",
+        "includedData": ["research_topic", "best_url", "page_content", "brand", "channels"]
+      }
+    ],
+
+    "store": [
+      {
+        "id": "idea_tags",
+        "type": "deriveTags",
+        "contentKey": "extracted_ideas",
+        "contextKey": "research_topic",
+        "maxTags": 6,
+        "includedData": ["extracted_ideas", "research_topic"]
+      },
+      {
+        "id": "ideas_saved",
+        "type": "writeMemory",
+        "namespace": "content-calendar",
+        "content": "extracted_ideas",
+        "tagsKey": "idea_tags",
+        "includedData": ["extracted_ideas", "idea_tags"]
+      }
+    ],
+
+    "assess": [
+      {
+        "id": "research_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Content research iteration {iteration} of 4 complete.\n\nTopic researched: {research_topic}\n\nIf iteration is less than 4, reply YES to continue. If iteration is 4, reply NO — all topics have been covered.",
+        "includedData": ["iteration", "research_topic"]
+      }
+    ]
+  }
+}

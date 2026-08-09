@@ -1,0 +1,19 @@
+{
+  "defaults": {
+    "draft": "[no draft provided]",
+    "critique": "[no critique provided]"
+  },
+  "workflow": {
+    "steps": ["review"]
+  },
+  "actionSets": {
+    "review": [
+      {
+        "id": "final",
+        "type": "humanDecision",
+        "prompt": "=== DRAFT ===\n{draft}\n\n=== AI CRITIQUE ===\n{critique}\n\nEnter revision notes, or type APPROVE to accept",
+        "includedData": ["draft", "critique"]
+      }
+    ]
+  }
+}

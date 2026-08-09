@@ -1,0 +1,42 @@
+{
+  "workflow": {
+    "steps": ["recall", "draft", "remember", "assess"]
+  },
+  "actionSets": {
+    "recall": [
+      {
+        "id": "relevant_requirements",
+        "type": "searchMemory",
+        "namespace": "compliance",
+        "query": "compliance requirements controls gaps remediation risk",
+        "includedData": ["memory_namespace"]
+      }
+    ],
+    "draft": [
+      {
+        "id": "section_draft",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the next section of the {framework} compliance checklist.\n\nChecklist outline:\n{checklist_outline}\n\nRequirement research findings:\n{requirement_research}\n\nMemory search results:\n{relevant_requirements}\n\nPrevious iteration draft:\n{section_draft}\n\nIteration: {iteration}\nCurrent state: {current_state}\n\nWrite the next unwritten section from the outline. For each requirement include:\n- Control ID or reference\n- Requirement description\n- Current status: Compliant / Partial / Non-compliant / Unknown\n- Gap analysis: what is missing\n- Remediation steps: specific actions to achieve compliance\n- Priority: Critical / High / Medium / Low\n- Estimated effort: days or weeks\n\nFormat as a Markdown table or structured list.",
+        "includedData": ["framework", "checklist_outline", "requirement_research", "relevant_requirements", "section_draft", "iteration", "current_state"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_draft",
+        "type": "writeMemory",
+        "namespace": "compliance",
+        "content": "section_draft",
+        "includedData": ["section_draft"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_sections",
+        "type": "scramda2",
+        "prompt": "Checklist outline:\n{checklist_outline}\n\nLatest section:\n{section_draft}\n\nAre there more sections from the outline that still need to be written? Respond 'yes' if sections remain, or 'done' if all sections are complete.",
+        "includedData": ["checklist_outline", "section_draft"]
+      }
+    ]
+  }
+}

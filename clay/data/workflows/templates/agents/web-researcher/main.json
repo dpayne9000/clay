@@ -1,0 +1,94 @@
+{
+  "autoContext": "You are an autonomous web research agent. Your mission is to thoroughly research a topic by browsing the web, extracting key information, storing findings in memory, and producing a comprehensive research brief. Be systematic: plan your research strategy, execute it, and synthesize findings. Stop when you have sufficient coverage or when sources start repeating the same information.",
+
+  "workflow": {
+    "steps": ["loadGoal", "init", "researchLoop", "synthesize", "humanReview", "save"]
+  },
+
+  "actionSets": {
+
+    "loadGoal": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      }
+    ],
+
+    "init": [
+      {
+        "id": "prior_research",
+        "type": "searchMemory",
+        "namespace": "web-researcher",
+        "queryKey": "target_topic",
+        "maxResults": 10
+      },
+      {
+        "id": "strategy",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "You are starting a web research mission.\n\nTopic: {target_topic}\nDepth: {research_depth}\nOutput format: {output_format}\nConstraints: {constraints}\n\nPrior research from memory:\n{prior_research}\n\nCreate a research strategy:\n1. 5-8 specific search queries to execute\n2. Types of sources to prioritize (academic, industry, news, etc.)\n3. Key data points you need to find\n4. What would constitute 'sufficient coverage' to stop\n\nBe specific — name actual search queries, not vague categories.",
+        "includedData": ["target_topic", "research_depth", "output_format", "constraints", "prior_research"]
+      }
+    ],
+
+    "researchLoop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 8,
+        "continueKey": "should_continue",
+        "outputKey": "iteration_findings",
+        "includedData": ["target_topic", "strategy", "research_depth", "constraints"]
+      }
+    ],
+
+    "synthesize": [
+      {
+        "id": "all_memories",
+        "type": "searchMemory",
+        "namespace": "web-researcher",
+        "queryKey": "target_topic",
+        "maxResults": 20
+      },
+      {
+        "id": "synthesis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Synthesize all research findings on: {target_topic}\n\nResearch strategy executed:\n{strategy}\n\nAll findings from memory:\n{all_memories}\n\nLast iteration findings:\n{research_log}\n\nProduce a comprehensive research brief:\n\n# Research Brief: {target_topic}\n\n## Executive Summary\n(3-4 sentences — the key takeaway)\n\n## Key Findings\n(8-12 specific, data-backed findings)\n\n## Themes & Patterns\n(4-6 themes with evidence)\n\n## Implications\n(What this means for stakeholders)\n\n## Sources & Confidence\n(Assessment of source quality and coverage gaps)\n\n## Recommended Next Steps\n(What additional research would add value)",
+        "includedData": ["target_topic", "strategy", "all_memories", "research_log=research_log.iteration_findings"]
+      }
+    ],
+
+    "humanReview": [
+      {
+        "id": "review_feedback",
+        "type": "humanDecision",
+        "prompt": "─────────────────────────────────────────────────────\nRESEARCH COMPLETE — review the synthesis\n─────────────────────────────────────────────────────\n\n{synthesis}\n\n─────────────────────────────────────────────────────\nType APPROVE to save, or enter feedback for revision:"
+      }
+    ],
+
+    "save": [
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      },
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Finalize this research brief incorporating the reviewer's feedback.\n\nFeedback: {review_feedback}\nDraft: {synthesis}\n\nIf feedback is APPROVE, polish for clarity without changing substance. If changes requested, apply them.",
+        "includedData": ["review_feedback", "synthesis"]
+      },
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/research-{timestamp}.md",
+        "content": "final",
+        "includedData": ["final", "timestamp"]
+      }
+    ]
+  }
+}

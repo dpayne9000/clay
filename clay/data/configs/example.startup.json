@@ -1,0 +1,8 @@
+{
+    "daemon": [
+        "workflows/system/messaging/telegram.json"
+    ],
+    "user": [
+        "workflows/system/editor/main.json"
+    ]
+}

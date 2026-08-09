@@ -1,0 +1,90 @@
+{
+  "autoContext": "You are a research assistant building a daily learning digest. Find recent, substantive articles — not listicles or marketing. Prioritize technical depth.",
+
+  "workflow": {
+    "steps": ["init", "research_loop", "synthesize", "deliver"]
+  },
+
+  "actionSets": {
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "today",
+        "type": "shell",
+        "command": "date +%Y-%m-%d",
+        "timeout": 5
+      },
+      {
+        "id": "prior_entries",
+        "type": "listMemory",
+        "namespace": "{memory_namespace}"
+      },
+      {
+        "id": "recent_digests",
+        "type": "searchMemory",
+        "namespace": "{memory_namespace}",
+        "query": "recent summary digest",
+        "maxResults": 3
+      }
+    ],
+
+    "research_loop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./topic-iteration.json",
+        "iterations": 4,
+        "outputKey": "topic_digest",
+        "includedData": ["interests", "today", "prior_entries", "memory_namespace"]
+      }
+    ],
+
+    "synthesize": [
+      {
+        "id": "all_todays_findings",
+        "type": "searchMemory",
+        "namespace": "{memory_namespace}",
+        "query": "{today} findings article",
+        "maxResults": 15
+      },
+      {
+        "id": "digest_text",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate a daily learning digest from today's research findings. Compare with prior digests to highlight what's genuinely new vs. already known. Format with clear sections per topic, key takeaways, and a \"connections\" section linking related findings across topics.\n\nToday's findings:\n{all_todays_findings}\n\nRecent prior digests:\n{recent_digests}\n\nDate: {today}",
+        "includedData": ["all_todays_findings", "recent_digests", "today"]
+      },
+      {
+        "id": "_digest_skill",
+        "type": "writeSkill",
+        "skillset": "learning",
+        "name": "digest-{today}",
+        "content": "digest_text",
+        "extension": "txt",
+        "includedData": ["digest_text", "today"]
+      }
+    ],
+
+    "deliver": [
+      {
+        "id": "_file_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/digest-{today}.md",
+        "content": "digest_text",
+        "includedData": ["output_dir", "today", "digest_text"]
+      },
+      {
+        "id": "_email_sent",
+        "type": "sendEmail",
+        "to": "{digest_recipient}",
+        "subject": "Learning Digest — {today}",
+        "body": "digest_text",
+        "includedData": ["digest_recipient", "today", "digest_text"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+boto3
+botocore
+certifi
+charset-normalizer
+dnspython
+idna
+jmespath
+pymongo
+python-dateutil
+requests
+s3transfer
+six
+urllib3

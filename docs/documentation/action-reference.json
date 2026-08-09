@@ -1,0 +1,1111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "title": "ClayAction",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "sendAlert"
+        },
+        "id": {
+          "description": "Output key for alert delivery confirmation",
+          "type": "string"
+        },
+        "channel": {
+          "description": "Delivery channel: email, webhook, or file",
+          "type": "string"
+        },
+        "message": {
+          "description": "Context key or literal text. Supports {placeholder}",
+          "type": "string"
+        },
+        "level": {
+          "description": "Alert level: info, warning, or critical",
+          "type": "string",
+          "default": "info"
+        },
+        "to": {
+          "description": "Override recipient for email channel. Supports {placeholder}",
+          "type": "string"
+        },
+        "url": {
+          "description": "Override URL for webhook channel. Supports {placeholder}",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "channel",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loadContext"
+        },
+        "id": {
+          "description": "Required but ignored \u2014 all keys from the file merge into context directly",
+          "type": "string"
+        },
+        "file": {
+          "description": "Path to a JSON file whose top-level keys are merged into the workflow context",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "file"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "createAgentAction"
+        },
+        "id": {
+          "description": "Output key for the created file path",
+          "type": "string"
+        },
+        "actionName": {
+          "description": "kebab-case or snake_case name matching [a-z][a-z0-9_-]{1,39}",
+          "type": "string"
+        },
+        "content": {
+          "description": "Context key holding the Python source for the new action module",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "actionName",
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "sendEmail"
+        },
+        "id": {
+          "description": "Output key for the send confirmation",
+          "type": "string"
+        },
+        "to": {
+          "description": "Recipient email address. Supports {placeholder}",
+          "type": "string"
+        },
+        "body": {
+          "description": "Context key or literal text for email body. Supports {placeholder}",
+          "type": "string"
+        },
+        "subject": {
+          "description": "Subject line. Supports {placeholder}",
+          "type": "string",
+          "default": "No Subject"
+        },
+        "format": {
+          "description": "Email body format: 'plain' or 'html'",
+          "type": "string",
+          "default": "plain"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "to",
+        "body"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "humanShell"
+        },
+        "id": {
+          "description": "Output key for stdout",
+          "type": "string"
+        },
+        "command": {
+          "description": "Command template. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Seconds before the process is killed",
+          "type": "integer",
+          "default": 60
+        },
+        "skipValue": {
+          "description": "If the resolved command equals this value, skip without prompting",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "command"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loop"
+        },
+        "id": {
+          "description": "Output key for the final iteration's outputKey value",
+          "type": "string"
+        },
+        "file": {
+          "description": "Path to the sub-workflow JSON file to run each iteration",
+          "type": "string"
+        },
+        "iterations": {
+          "description": "Max iterations. 0 or absent = infinite (requires continueKey)",
+          "type": "integer",
+          "default": 0
+        },
+        "continueKey": {
+          "description": "Sub-workflow output key checked for stop signal (false/done/0/no/stop/empty)",
+          "type": "string"
+        },
+        "outputKey": {
+          "description": "Sub-workflow output key appended to loop_history each iteration",
+          "type": "string",
+          "default": "final"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "file"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "writeMemory"
+        },
+        "id": {
+          "description": "Output key for the saved entry ID",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Directory namespace to write into (e.g. developer)",
+          "type": "string"
+        },
+        "content": {
+          "description": "Context key holding the text content to persist",
+          "type": "string"
+        },
+        "tagsKey": {
+          "description": "Context key holding a comma-separated tag string. Auto-derived if absent",
+          "type": "string"
+        },
+        "entryId": {
+          "description": "Override the generated entry ID. Overwrites existing entry if reused",
+          "type": "string"
+        },
+        "source": {
+          "description": "Metadata field recorded in the JSON entry",
+          "type": "string",
+          "default": "workflow"
+        },
+        "skillset": {
+          "description": "If set, also saves the content as a skill file in this skillset",
+          "type": "string"
+        },
+        "skillExtension": {
+          "description": "File extension for the dual-written skill file",
+          "type": "string",
+          "default": "py"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "namespace",
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "searchMemory"
+        },
+        "id": {
+          "description": "Output key for formatted matching entries",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace to search",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search query (tag matches score 3\u00d7, content matches 1\u00d7)",
+          "type": "string"
+        },
+        "queryKey": {
+          "description": "Context key holding the query. Takes precedence over query",
+          "type": "string"
+        },
+        "maxResults": {
+          "description": "Maximum entries to return",
+          "type": "integer",
+          "default": 5
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "namespace"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "listMemory"
+        },
+        "id": {
+          "description": "Output key for newline-separated entry IDs with tags",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace to list entries from",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "namespace"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "readMemory"
+        },
+        "id": {
+          "description": "Output key for the formatted entry content",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace the entry lives in",
+          "type": "string"
+        },
+        "entryId": {
+          "description": "ID of the entry to read",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "namespace",
+        "entryId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "runCode"
+        },
+        "id": {
+          "description": "Output key for stdout",
+          "type": "string"
+        },
+        "language": {
+          "description": "Interpreter: python, bash, node, sh",
+          "type": "string",
+          "default": "python"
+        },
+        "source": {
+          "description": "Inline source code string",
+          "type": "string"
+        },
+        "sourceKey": {
+          "description": "Context key holding the source code. Takes precedence over source",
+          "type": "string"
+        },
+        "stdin": {
+          "description": "Context key whose value is piped as stdin to the process",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Seconds before the process is killed",
+          "type": "integer",
+          "default": 30
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "shell"
+        },
+        "id": {
+          "description": "Output key for stdout",
+          "type": "string"
+        },
+        "command": {
+          "description": "Shell command. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Seconds before the process is killed",
+          "type": "integer",
+          "default": 30
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "command"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "writeSkill"
+        },
+        "id": {
+          "description": "Output key for the saved file path",
+          "type": "string"
+        },
+        "skillset": {
+          "description": "Skillset directory name under skills/",
+          "type": "string"
+        },
+        "name": {
+          "description": "Skill filename without extension. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "content": {
+          "description": "Context key holding the skill content to write",
+          "type": "string"
+        },
+        "extension": {
+          "description": "File extension: py, json, txt, sh",
+          "type": "string",
+          "default": "py"
+        },
+        "skipValue": {
+          "description": "If the resolved name equals this value, skip without writing",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "skillset",
+        "name",
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "listSkills"
+        },
+        "id": {
+          "description": "Output key for newline-separated filenames with tags",
+          "type": "string"
+        },
+        "skillset": {
+          "description": "Skillset directory name under skills/",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "skillset"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "removeSkill"
+        },
+        "id": {
+          "description": "Output key for the removed file path",
+          "type": "string"
+        },
+        "skillset": {
+          "description": "Skillset directory name under skills/",
+          "type": "string"
+        },
+        "name": {
+          "description": "Skill filename without extension. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "extension": {
+          "description": "File extension",
+          "type": "string",
+          "default": "py"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "skillset",
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "searchSkills"
+        },
+        "id": {
+          "description": "Output key for newline-separated matching filenames ranked by relevance",
+          "type": "string"
+        },
+        "skillset": {
+          "description": "Skillset directory name under skills/",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search query \u2014 keywords matched against skill filenames",
+          "type": "string"
+        },
+        "queryKey": {
+          "description": "Context key holding the query. Takes precedence over query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "skillset"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "deriveTags"
+        },
+        "id": {
+          "description": "Output key for the comma-separated tag string",
+          "type": "string"
+        },
+        "contentKey": {
+          "description": "Context key holding the primary text to analyse",
+          "type": "string"
+        },
+        "content": {
+          "description": "Inline fallback text if contentKey is absent or empty",
+          "type": "string"
+        },
+        "contextKey": {
+          "description": "Context key for secondary text, weighted at 40% of primary",
+          "type": "string"
+        },
+        "maxTags": {
+          "description": "Maximum number of tags to return",
+          "type": "integer",
+          "default": 6
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "telegram"
+        },
+        "id": {
+          "description": "telegram is an action that persists, and hosts a telegram bot channel. It does not require params other than type=telegram and runs until manually stopped",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "browseWeb"
+        },
+        "id": {
+          "description": "Output key for the extracted page text",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL to fetch (http/https only). Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "maxChars": {
+          "description": "Maximum characters of extracted text to return",
+          "type": "integer",
+          "default": 4000
+        },
+        "siteKey": {
+          "description": "If set, saves URL and 500-char preview to webactions/{siteKey}.json",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "url"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "searchWeb"
+        },
+        "id": {
+          "description": "Output key for the formatted numbered result list",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search query string. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "queryKey": {
+          "description": "Context key holding the query. Takes precedence over query",
+          "type": "string"
+        },
+        "engine": {
+          "description": "Search engine: duckduckgo, google, or bing",
+          "type": "string",
+          "default": "duckduckgo"
+        },
+        "maxResults": {
+          "description": "Maximum results to return",
+          "type": "integer",
+          "default": 5
+        },
+        "apiKey": {
+          "description": "Required for google and bing engines",
+          "type": "string"
+        },
+        "cx": {
+          "description": "Custom Search Engine ID \u2014 required for google engine",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "listSites"
+        },
+        "id": {
+          "description": "Output key for newline-separated .json filenames in webactions/",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loadSite"
+        },
+        "id": {
+          "description": "Output key for the site profile JSON string",
+          "type": "string"
+        },
+        "siteKey": {
+          "description": "Filename stem in webactions/ (without .json)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "siteKey"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "writeCode"
+        },
+        "id": {
+          "description": "Output key for the written file path",
+          "type": "string"
+        },
+        "contentKey": {
+          "description": "Context key holding AI-generated content (code fences stripped automatically)",
+          "type": "string"
+        },
+        "file": {
+          "description": "Output file path. Supports {placeholder} interpolation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "contentKey",
+        "file"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "API"
+        },
+        "id": {
+          "description": "Output key for the response body (parsed JSON or raw text)",
+          "type": "string"
+        },
+        "endpoint": {
+          "description": "Full URL of the API endpoint",
+          "type": "string"
+        },
+        "method": {
+          "description": "HTTP method: get, post, put, patch, delete",
+          "type": "string",
+          "default": "get"
+        },
+        "params": {
+          "description": "URL query parameters as a JSON object",
+          "type": "object"
+        },
+        "headers": {
+          "description": "HTTP headers as a JSON object",
+          "type": "object"
+        },
+        "data": {
+          "description": "Request body, sent as JSON",
+          "type": "object"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "endpoint"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "readFile"
+        },
+        "id": {
+          "description": "Output key for the file's text content",
+          "type": "string"
+        },
+        "file": {
+          "description": "Input path relative to root. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "root": {
+          "description": "Directory the path resolves under; paths may not escape it",
+          "type": "string",
+          "default": "output"
+        },
+        "encoding": {
+          "description": "Text encoding used to read the file",
+          "type": "string",
+          "default": "utf-8"
+        },
+        "maxBytes": {
+          "description": "Reject the read if the file exceeds this many bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "file"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "writeFile"
+        },
+        "id": {
+          "description": "Output key for the written file path",
+          "type": "string"
+        },
+        "file": {
+          "description": "Output path relative to root. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "content": {
+          "description": "Context key holding the content to write verbatim",
+          "type": "string"
+        },
+        "root": {
+          "description": "Directory the path resolves under; paths may not escape it",
+          "type": "string",
+          "default": "output"
+        },
+        "encoding": {
+          "description": "Text encoding used to write the file",
+          "type": "string",
+          "default": "utf-8"
+        },
+        "append": {
+          "description": "Append instead of overwriting",
+          "type": "boolean",
+          "default": false
+        },
+        "createParent": {
+          "description": "Create missing parent directories",
+          "type": "boolean",
+          "default": true
+        },
+        "stripCodeFence": {
+          "description": "Strip one outer Markdown code fence from the content",
+          "type": "boolean",
+          "default": true
+        },
+        "requireCodeFence": {
+          "description": "Fail if the content is not wrapped in a complete code fence",
+          "type": "boolean",
+          "default": false
+        },
+        "ensureFinalNewline": {
+          "description": "Ensure the written content ends with exactly one newline",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "file",
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "humanDecision"
+        },
+        "id": {
+          "description": "Output key for the typed response",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "Text shown to the human. Supports {placeholder} interpolation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "prompt"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "mongo"
+        },
+        "id": {
+          "description": "Output key for the list of retrieved documents",
+          "type": "string"
+        },
+        "url": {
+          "description": "MongoDB connection URI (e.g. mongodb://localhost:27017)",
+          "type": "string"
+        },
+        "db": {
+          "description": "Database name",
+          "type": "string"
+        },
+        "collection": {
+          "description": "Collection name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "url",
+        "db",
+        "collection"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "python"
+        },
+        "id": {
+          "description": "Output key for the captured stdout",
+          "type": "string"
+        },
+        "code": {
+          "description": "Python source to execute. No builtins \u2014 pure computation only",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "code"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "report"
+        },
+        "id": {
+          "description": "Output key for the send confirmation string",
+          "type": "string"
+        },
+        "body": {
+          "description": "Context key holding the email body, or a literal string",
+          "type": "string"
+        },
+        "to_email": {
+          "description": "Recipient email address",
+          "type": "string"
+        },
+        "from_email": {
+          "description": "Sender email address",
+          "type": "string"
+        },
+        "smtp_server": {
+          "description": "SMTP server hostname",
+          "type": "string"
+        },
+        "smtp_port": {
+          "description": "SMTP server port (typically 587 for STARTTLS)",
+          "type": "integer"
+        },
+        "smtp_username": {
+          "description": "SMTP login username",
+          "type": "string"
+        },
+        "smtp_password": {
+          "description": "SMTP login password",
+          "type": "string"
+        },
+        "subject": {
+          "description": "Email subject line",
+          "type": "string",
+          "default": "No Subject"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "body",
+        "to_email",
+        "from_email",
+        "smtp_server",
+        "smtp_port",
+        "smtp_username",
+        "smtp_password"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "scramda2"
+        },
+        "id": {
+          "description": "Output key for the AI response text",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "Prompt sent to the AI. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "model": {
+          "description": "Literal model ID to use for this call",
+          "type": "string"
+        },
+        "modelProfile": {
+          "description": "Named alias resolved from config.models[modelProfile] in context. Overrides model",
+          "type": "string"
+        },
+        "max_tokens": {
+          "description": "Cap on response length in tokens",
+          "type": "integer"
+        },
+        "examples": {
+          "description": "Few-shot examples as [{\"input\": ..., \"output\": ...}]",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "prompt"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "transformData"
+        },
+        "id": {
+          "description": "Output key for the transformed result",
+          "type": "string"
+        },
+        "source": {
+          "description": "Context key holding the data to transform",
+          "type": "string"
+        },
+        "method": {
+          "description": "Transformation method: parseLines or map",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "source",
+        "method"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "workflow"
+        },
+        "id": {
+          "description": "Output key for the sub-workflow result",
+          "type": "string"
+        },
+        "file": {
+          "description": "Path to the workflow JSON file to run",
+          "type": "string"
+        },
+        "outputKey": {
+          "description": "Key to extract from the sub-workflow's final context",
+          "type": "string",
+          "default": "final"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "file"
+      ],
+      "additionalProperties": true
+    }
+  ]
+}

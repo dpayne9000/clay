@@ -1,0 +1,6 @@
+{
+  "alert_channel": "file",
+  "alert_recipient": "",
+  "memory_namespace": "network-surveillance",
+  "output_dir": "output/network-surveillance"
+}

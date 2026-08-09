@@ -1,0 +1,61 @@
+{
+  "workflow": {
+    "steps": ["recall_findings", "write_section", "store_draft"]
+  },
+
+  "actionSets": {
+
+    "recall_findings": [
+      {
+        "id": "section_findings",
+        "type": "searchMemory",
+        "namespace": "market-research",
+        "queryKey": "report_outline",
+        "maxResults": 10
+      },
+      {
+        "id": "section_pick",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of 6. You are writing sections of a market research report.\n\nFull outline:\n{report_outline}\n\nSections to draft in order:\n1. Executive Summary\n2. Market Size & Growth\n3. Industry Trends & Drivers\n4. Competitive Landscape\n5. Customer Segments & Personas\n6. Market Entry Barriers + SWOT + Strategic Recommendations\n\nReply with ONLY the section name for iteration {iteration}.",
+        "includedData": ["iteration", "report_outline"]
+      }
+    ],
+
+    "write_section": [
+      {
+        "id": "draft_section",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Write the following section of the market research report on {industry} targeting {target_market}:\n\nSection: {section_pick}\n\nCompetitors: {competitors}\n\nReport outline:\n{report_outline}\n\nRelevant findings from memory:\n{section_findings}\n\nWrite a complete, polished draft of this section. Include specific data points with source attribution. Use markdown formatting. Be data-driven, not speculative.",
+        "includedData": ["industry", "target_market", "competitors", "section_pick", "report_outline", "section_findings"]
+      }
+    ],
+
+    "store_draft": [
+      {
+        "id": "draft_tags",
+        "type": "deriveTags",
+        "contentKey": "draft_section",
+        "contextKey": "section_pick",
+        "maxTags": 4,
+        "includedData": ["draft_section", "section_pick"]
+      },
+      {
+        "id": "draft_saved",
+        "type": "writeMemory",
+        "namespace": "market-research",
+        "content": "draft_section",
+        "tagsKey": "draft_tags",
+        "includedData": ["draft_section", "draft_tags"]
+      },
+      {
+        "id": "draft_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Draft iteration {iteration} of 6 complete. Section written: {section_pick}\n\nIf iteration is less than 6, reply YES to continue. If iteration is 6, reply NO — all sections are drafted.",
+        "includedData": ["iteration", "section_pick"]
+      }
+    ]
+  }
+}

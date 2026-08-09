@@ -1,0 +1,6 @@
+{
+  "feedback_source": "path/to/feedback-data.csv",
+  "product_name": "My Product",
+  "memory_namespace": "customer-feedback",
+  "output_dir": "output/customer-feedback"
+}

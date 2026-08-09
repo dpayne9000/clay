@@ -1,0 +1,62 @@
+{
+  "workflow": {
+    "steps": ["intake", "generate", "humanReview", "save"]
+  },
+  "actionSets": {
+    "intake": [
+      {
+        "id": "role",
+        "type": "humanDecision",
+        "prompt": "What role is being onboarded? (e.g., Senior Frontend Engineer, Product Manager, Sales Rep)"
+      },
+      {
+        "id": "department",
+        "type": "humanDecision",
+        "prompt": "Department or team:"
+      },
+      {
+        "id": "tools",
+        "type": "humanDecision",
+        "prompt": "Key tools/systems they need access to (comma-separated, or press Enter to auto-detect from role):"
+      },
+      {
+        "id": "special_notes",
+        "type": "humanDecision",
+        "prompt": "Any special onboarding requirements? (or press Enter to skip)"
+      }
+    ],
+    "generate": [
+      {
+        "id": "checklist",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Create a comprehensive 30-60-90 day onboarding checklist for a new {role} in {department}.\n\nTools/systems they need: {tools}\nSpecial requirements: {special_notes}\n\nStructure as:\n\n## Pre-Start (before day 1)\n- [ ] IT/access items\n- [ ] Equipment needs\n\n## Week 1: Orientation\n- [ ] Daily items with specific goals\n\n## Days 8-30: Foundation\n- [ ] Key milestones, meetings to attend, docs to read\n\n## Days 31-60: Contribution\n- [ ] First deliverables, deeper team integration\n\n## Days 61-90: Independence\n- [ ] Ownership areas, first solo project\n\nBe specific to the role — a {role} needs different onboarding than a generic employee. Include the actual tool names from the list provided.",
+        "includedData": ["role", "department", "tools", "special_notes"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "review_notes",
+        "type": "humanDecision",
+        "prompt": "Review the checklist below and enter any changes, additions, or press Enter to approve:\n\n{checklist}",
+        "includedData": ["checklist"]
+      }
+    ],
+    "save": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "modelProfile": "reports",
+        "prompt": "Finalize this onboarding checklist incorporating the reviewer's notes.\n\nOriginal checklist:\n{checklist}\n\nReviewer notes: {review_notes}\n\nIf notes are empty, return the checklist as-is with clean formatting. If changes are requested, apply them.",
+        "includedData": ["checklist", "review_notes"]
+      },
+      {
+        "id": "saved",
+        "type": "writeFile",
+        "file": "output/onboarding-{role}.md",
+        "content": "final",
+        "includedData": ["final", "role"]
+      }
+    ]
+  }
+}

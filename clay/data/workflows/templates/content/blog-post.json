@@ -1,0 +1,85 @@
+{
+  "workflow": {
+    "steps": ["topicSetup", "outline", "humanOutlineReview", "fullDraft", "humanDraftReview", "finalPost"]
+  },
+  "actionSets": {
+    "topicSetup": [
+      {
+        "id": "topic",
+        "type": "humanDecision",
+        "prompt": "Blog post topic"
+      },
+      {
+        "id": "audience",
+        "type": "humanDecision",
+        "prompt": "Target audience (e.g. developers, CTOs, general tech readers)"
+      },
+      {
+        "id": "tone",
+        "type": "humanDecision",
+        "prompt": "Tone (e.g. technical, conversational, opinion-led)"
+      },
+      {
+        "id": "angle",
+        "type": "humanDecision",
+        "prompt": "What angle or opinion should this post take? (one sentence)"
+      }
+    ],
+    "outline": [
+      {
+        "id": "structure",
+        "type": "scramda2",
+        "prompt": "Create a blog post outline for a {tone} post about '{topic}' targeting {audience}. The angle is: {angle}.\n\nList 4-6 sections with a one-sentence description of each. Include a hook opening and a strong closing call to action.",
+        "examples": [
+          {
+            "question": "Create a blog post outline for a conversational post about 'why most API documentation fails' targeting developers. Angle: Good docs are a product decision, not a writing task.",
+            "answer": "OUTLINE: Why Most API Documentation Fails\n\n1. Hook — Open with a developer war story: the moment you realise docs are wrong and you have been debugging the docs, not your code.\n2. The real problem — Documentation is treated as an afterthought, written by engineers who built the thing and can no longer see it with fresh eyes.\n3. Docs as product — Great docs require the same user research, iteration, and ownership as a product feature.\n4. What good looks like — Examples of API docs that developers actually love: Stripe, Twilio, and what they have in common.\n5. Practical fixes — Three things any team can do this sprint: add a 'first call in 5 minutes' guide, audit your error messages, and appoint a docs owner.\n6. Call to action — Ask readers: when did you last actually read your own docs as if you were a new user?"
+          }
+        ],
+        "includedData": ["topic", "audience", "tone", "angle"]
+      }
+    ],
+    "humanOutlineReview": [
+      {
+        "id": "outline_edits",
+        "type": "humanDecision",
+        "prompt": "Review the outline. Enter changes (add/remove sections, adjust angle) or press Enter to continue"
+      }
+    ],
+    "fullDraft": [
+      {
+        "id": "draft",
+        "type": "scramda2",
+        "prompt": "Write a full blog post using this outline. Tone: {tone}. Audience: {audience}. Apply any outline changes: {outline_edits}.\n\nWrite each section in full. Aim for 600-800 words total. Do not include section headers in the final post — let the writing flow naturally.\n\nOutline:\n{structure}",
+        "examples": [
+          {
+            "question": "Write a blog post. Tone: conversational. Audience: developers. Outline changes: none. Outline: 1. Hook — war story about wrong docs. 2. Real problem — docs as afterthought. 3. Docs as product.",
+            "answer": "You have been staring at the same error for two hours. You have re-read the quickstart guide three times. You have tried every combination of parameters the examples show. Then you find it: a community forum post from eighteen months ago where someone says the guide is wrong and has been wrong since v2.1.\n\nThat moment — realising you were debugging documentation, not code — is something most developers have experienced. And it is almost always avoidable.\n\nThe problem is not that engineers write bad docs. The problem is that documentation is treated as the last task before shipping, assigned to whoever has a spare hour, with no user research, no iteration, and no owner. In other words, it is treated as anything but a product..."
+          }
+        ],
+        "includedData": ["structure", "outline_edits", "tone", "audience"]
+      }
+    ],
+    "humanDraftReview": [
+      {
+        "id": "draft_notes",
+        "type": "humanDecision",
+        "prompt": "Read the draft. Enter revision notes or press Enter to publish as-is"
+      }
+    ],
+    "finalPost": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "prompt": "Polish this blog post applying the revision notes. If notes are empty, fix any awkward phrasing and return the post ready to publish.\n\nNotes: {draft_notes}\n\nDraft:\n{draft}",
+        "examples": [
+          {
+            "question": "Notes: The ending feels weak, punch it up. Draft: ...documentation is treated as anything but a product. Next time you ship an API, ask yourself: did you actually read the docs?",
+            "answer": "...documentation is treated as anything but a product.\n\nHere is a challenge: before your next release, sit down with someone who has never used your API and watch them read your docs. Do not help them. Just watch. You will find every fix you need in the first ten minutes."
+          }
+        ],
+        "includedData": ["draft", "draft_notes"]
+      }
+    ]
+  }
+}

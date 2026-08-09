@@ -1,0 +1,7 @@
+{
+  "industry": "SaaS productivity tools",
+  "target_market": "SMB teams 10-50 employees",
+  "competitors": "Notion,Asana,Monday.com,ClickUp",
+  "memory_namespace": "market-research",
+  "output_dir": "output/market-research"
+}

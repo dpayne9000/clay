@@ -1,0 +1,8 @@
+{
+  "training_example": [
+    {
+      "question": "example question demonstrating the few-shot format",
+      "answer": "example answer demonstrating the few-shot format"
+    }
+  ]
+}

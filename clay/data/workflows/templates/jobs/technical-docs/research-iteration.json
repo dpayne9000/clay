@@ -1,0 +1,70 @@
+{
+  "workflow": {
+    "steps": ["pick_area", "explore", "store", "assess"]
+  },
+
+  "actionSets": {
+
+    "pick_area": [
+      {
+        "id": "exploration_target",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "You are exploring the codebase at {project_path} to write {doc_type} documentation. Iteration {iteration} of 6.\n\nProject overview:\n{project_overview}\n\nAreas to explore in order:\n1. Project structure — list all directories and key config files\n2. Entry points — main files, CLI commands, app startup\n3. Core modules — primary business logic files\n4. Data models — schemas, types, database models\n5. API surface — routes, endpoints, exported functions\n6. Configuration — env vars, config files, dependencies\n\nPrior findings:\n{recall_summary}\n\nSelect area {iteration}. Reply with:\nAREA: <name>\nCOMMANDS: <1-3 shell commands to run, separated by ' && '>\n\nUse only: ls, head, cat, wc, find (for listing only). Maximum 30 lines per file read.",
+        "includedData": ["project_path", "doc_type", "project_overview", "recall_summary", "iteration"]
+      }
+    ],
+
+    "explore": [
+      {
+        "id": "shell_commands",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Extract only the shell commands from this text — the line starting with 'COMMANDS:'. Reply with the commands only, nothing else.\n\n{exploration_target}",
+        "includedData": ["exploration_target"]
+      },
+      {
+        "id": "code_output",
+        "type": "shell",
+        "command": "{shell_commands}",
+        "includedData": ["shell_commands"]
+      },
+      {
+        "id": "code_analysis",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Exploration area: {exploration_target}\n\nShell output:\n{code_output}\n\nDoc type: {doc_type}\n\nAnalyze this code/output for documentation purposes. Extract:\n- File purposes and responsibilities\n- Function/class signatures with parameters\n- Data structures and their fields\n- Dependencies and imports\n- Configuration options\n- Usage patterns and conventions\n\nBe precise: use exact names, types, and signatures as found in the code.",
+        "includedData": ["exploration_target", "code_output", "doc_type"]
+      }
+    ],
+
+    "store": [
+      {
+        "id": "analysis_tags",
+        "type": "deriveTags",
+        "contentKey": "code_analysis",
+        "contextKey": "exploration_target",
+        "maxTags": 6,
+        "includedData": ["code_analysis", "exploration_target"]
+      },
+      {
+        "id": "analysis_saved",
+        "type": "writeMemory",
+        "namespace": "tech-docs",
+        "content": "code_analysis",
+        "tagsKey": "analysis_tags",
+        "includedData": ["code_analysis", "analysis_tags"]
+      }
+    ],
+
+    "assess": [
+      {
+        "id": "research_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Code exploration iteration {iteration} of 6 complete.\n\nArea explored: {exploration_target}\n\nIf iteration is less than 6, reply YES to continue. If iteration is 6, reply NO — all areas have been explored.",
+        "includedData": ["iteration", "exploration_target"]
+      }
+    ]
+  }
+}

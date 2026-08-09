@@ -1,0 +1,5 @@
+{
+  "target_name": "Taylor Swift",
+  "mission": "Find and track the current whereabouts, recent public appearances, confirmed schedule, and location patterns of this person using only publicly available information.",
+  "output_dir": "output/celeb-tracker"
+}

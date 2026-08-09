@@ -1,0 +1,51 @@
+{
+  "workflow": {
+    "steps": ["plan", "browse", "extract", "remember", "assess"]
+  },
+  "actionSets": {
+    "plan": [
+      {
+        "id": "search_plan",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Iteration {iteration} of web research on: {target_topic}\n\nResearch strategy:\n{strategy}\n\nPrevious iteration findings:\n{iteration_findings}\n\nChoose ONE specific public URL that will add information not yet covered. Return only the complete http:// or https:// URL, with no label or explanation.",
+        "includedData": ["iteration", "target_topic", "strategy", "iteration_findings"]
+      }
+    ],
+    "browse": [
+      {
+        "id": "page_content",
+        "type": "browseWeb",
+        "url": "{search_plan}",
+        "includedData": ["search_plan"]
+      }
+    ],
+    "extract": [
+      {
+        "id": "iteration_findings",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "prompt": "Extract key findings from this web content about {target_topic}.\n\nSource content:\n{page_content}\n\nExtract:\n- 3-5 specific facts with data points\n- Any expert quotes or study references\n- New information not covered in previous iterations\n\nPrevious findings for context:\n{iteration_findings}\n\nFormat each finding as: FINDING: [specific fact or insight]",
+        "includedData": ["target_topic", "page_content", "iteration_findings"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "namespace": "web-researcher",
+        "content": "iteration_findings",
+        "includedData": ["iteration_findings"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "should_continue",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Assess research progress on: {target_topic}\n\nIteration: {iteration}\nResearch strategy:\n{strategy}\n\nFindings so far:\n{iteration_findings}\n\nConstraints: {constraints}\n\nShould we continue researching? Consider:\n- Have we covered the key search queries from the strategy?\n- Are we finding genuinely new information or just repetition?\n- Do we have enough data points for a comprehensive brief?\n\nRespond 'yes' to continue or 'done' to stop and synthesize.",
+        "includedData": ["target_topic", "iteration", "strategy", "iteration_findings", "constraints"]
+      }
+    ]
+  }
+}

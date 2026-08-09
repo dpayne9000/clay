@@ -1,0 +1,135 @@
+{
+  "autoContext": "You are an autonomous technical documentation agent. Your job is to explore a codebase using shell commands, understand its architecture, and produce comprehensive documentation. Use shell commands to read files, list directories, and understand project structure. Store all findings in memory with structured tags. Produce documentation that matches the requested doc_type (API reference, getting started, or architecture).",
+
+  "workflow": {
+    "steps": ["init", "recall", "research_loop", "outline", "draft_loop", "finalize", "deliver"]
+  },
+
+  "actionSets": {
+
+    "init": [
+      {
+        "id": "goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "timestamp",
+        "type": "shell",
+        "command": "date +%Y-%m-%d_%H%M"
+      }
+    ],
+
+    "recall": [
+      {
+        "id": "prior_docs",
+        "type": "searchMemory",
+        "namespace": "tech-docs",
+        "queryKey": "project_path",
+        "maxResults": 10
+      },
+      {
+        "id": "existing_skills",
+        "type": "listSkills",
+        "skillset": "tech-docs"
+      },
+      {
+        "id": "project_overview",
+        "type": "shell",
+        "command": "ls -la {project_path} && echo '---' && cat {project_path}/README.md 2>/dev/null || echo 'No README found'",
+        "includedData": ["project_path"]
+      },
+      {
+        "id": "recall_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Summarize what we know about the project at {project_path}.\n\nDoc type requested: {doc_type}\n\nProject listing:\n{project_overview}\n\nPrior documentation:\n{prior_docs}\n\nExisting skills:\n{existing_skills}\n\nWhat do we know, and what do we still need to explore?",
+        "includedData": ["project_path", "doc_type", "project_overview", "prior_docs", "existing_skills"]
+      }
+    ],
+
+    "research_loop": [
+      {
+        "id": "research_log",
+        "type": "loop",
+        "file": "./research-iteration.json",
+        "iterations": 6,
+        "continueKey": "research_continue",
+        "outputKey": "research_findings",
+        "includedData": ["project_path", "doc_type", "recall_summary", "project_overview"]
+      }
+    ],
+
+    "outline": [
+      {
+        "id": "all_findings",
+        "type": "searchMemory",
+        "namespace": "tech-docs",
+        "queryKey": "doc_type",
+        "maxResults": 20
+      },
+      {
+        "id": "doc_outline",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Generate the structure for {doc_type} documentation for the project at {project_path}.\n\nProject overview:\n{project_overview}\n\nCode analysis findings:\n{all_findings}\n\nResearch log:\n{research_log}\n\nCreate a documentation outline appropriate for {doc_type}:\n\nIf API reference:\n1. Overview & Authentication\n2. Endpoints/Functions grouped by module\n3. Request/Response schemas\n4. Error codes\n5. Examples\n6. Rate limits & best practices\n\nIf getting started:\n1. Prerequisites\n2. Installation\n3. Quick start (hello world)\n4. Core concepts\n5. Common tasks\n6. Troubleshooting\n\nIf architecture:\n1. System overview\n2. Component diagram\n3. Data flow\n4. Key modules & responsibilities\n5. Dependencies & integrations\n6. Deployment topology\n\nFor each section, list the specific code files and data to reference.",
+        "includedData": ["doc_type", "project_path", "project_overview", "all_findings", "research_log=research_log.research_findings"]
+      }
+    ],
+
+    "draft_loop": [
+      {
+        "id": "draft_log",
+        "type": "loop",
+        "file": "./draft-iteration.json",
+        "iterations": 6,
+        "continueKey": "draft_continue",
+        "outputKey": "draft_section",
+        "includedData": ["project_path", "doc_type", "doc_outline"]
+      }
+    ],
+
+    "finalize": [
+      {
+        "id": "draft_memory",
+        "type": "searchMemory",
+        "namespace": "tech-docs",
+        "queryKey": "doc_type",
+        "maxResults": 25
+      },
+      {
+        "id": "final_docs",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Produce the complete {doc_type} documentation for {project_path}.\n\nOutline:\n{doc_outline}\n\nDraft sections:\n{draft_log}\n\nAll stored analysis:\n{draft_memory}\n\nCombine all draft sections into polished, cohesive documentation. Ensure:\n- Code examples are accurate and runnable\n- Function signatures match what was found in the codebase\n- Installation steps are complete and tested\n- Cross-references between sections are correct\n- Formatting follows standard technical documentation conventions\n- A table of contents is included at the top",
+        "includedData": ["doc_type", "project_path", "doc_outline", "draft_log=draft_log.draft_section", "draft_memory"]
+      }
+    ],
+
+    "deliver": [
+      {
+        "id": "docs_saved",
+        "type": "writeFile",
+        "file": "{output_dir}/{doc_type}-{timestamp}.md",
+        "content": "final_docs",
+        "includedData": ["final_docs", "output_dir", "doc_type", "timestamp"]
+      },
+      {
+        "id": "docs_memory",
+        "type": "writeMemory",
+        "namespace": "tech-docs",
+        "entryId": "latest-docs",
+        "content": "final_docs",
+        "includedData": ["final_docs"]
+      },
+      {
+        "id": "docs_skill",
+        "type": "writeSkill",
+        "skillset": "tech-docs",
+        "name": "tech-docs-template",
+        "content": "doc_outline",
+        "includedData": ["doc_outline"]
+      }
+    ]
+  }
+}

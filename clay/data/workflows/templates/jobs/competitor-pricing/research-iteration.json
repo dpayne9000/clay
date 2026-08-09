@@ -1,0 +1,63 @@
+{
+  "workflow": {
+    "steps": ["browse", "analyze", "tag", "remember", "assess"]
+  },
+  "actionSets": {
+    "browse": [
+      {
+        "id": "pricing_plan",
+        "type": "scramda2",
+        "prompt": "Determine which competitor to research this iteration.\n\nIteration: {iteration}\nCompetitors list: {competitors}\nProduct category: {product_category}\n\nPrevious iteration finding:\n{competitor_data}\n\nPick the next competitor from the list that has NOT been researched yet. Return ONLY the competitor name and their likely pricing page URL.\n\nFormat:\nCOMPETITOR: [name]\nURL: [pricing page URL]",
+        "includedData": ["iteration", "competitors", "product_category"]
+      },
+      {
+        "id": "pricing_url",
+        "type": "scramda2",
+        "prompt": "Extract the complete http:// or https:// URL from this research plan. Return only the URL.\n\n{pricing_plan}",
+        "includedData": ["pricing_plan"]
+      },
+      {
+        "id": "pricing_page",
+        "type": "browseWeb",
+        "url": "{pricing_url}",
+        "includedData": ["pricing_url"]
+      }
+    ],
+    "analyze": [
+      {
+        "id": "competitor_data",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Analyze the pricing data for this competitor in the {product_category} market.\n\nIteration: {iteration}\nCompetitor research plan:\n{pricing_plan}\n\nPricing page content:\n{pricing_page}\n\nOur pricing for comparison:\n{our_pricing}\n\nPrior pricing context:\n{prior_pricing}\n\nExtract and analyze:\nCOMPETITOR: [name]\nPLANS: [list each plan with name and price]\nFEATURES_PER_PLAN: [key features included at each tier]\nFREE_TIER: [details if exists, or 'none']\nENTERPRISE: [enterprise plan details and pricing model]\nPRICING_MODEL: [per user, flat rate, usage-based, hybrid]\nDISCOUNTS: [annual billing discounts, volume discounts]\nVS_OUR_PRICING: [how their pricing compares to ours at each tier]\nVALUE_ASSESSMENT: [where they offer more or less value per dollar]\nNOTABLE: [anything unique about their pricing strategy]",
+        "includedData": ["iteration", "product_category", "pricing_plan", "pricing_page", "our_pricing", "prior_pricing"]
+      }
+    ],
+    "tag": [
+      {
+        "id": "competitor_tags",
+        "type": "deriveTags",
+        "content": "competitor_data",
+        "includedData": ["competitor_data"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "saved_competitor",
+        "type": "writeMemory",
+        "namespace": "competitor-pricing",
+        "entryId": "competitor-{iteration}",
+        "content": "competitor_data",
+        "tagsKey": "competitor_tags",
+        "includedData": ["competitor_data", "competitor_tags", "iteration"]
+      }
+    ],
+    "assess": [
+      {
+        "id": "more_competitors",
+        "type": "scramda2",
+        "prompt": "We have completed iteration {iteration} of competitor pricing research for {product_category}.\n\nCompetitors to analyze: {competitors}\n\nLatest data:\n{competitor_data}\n\nHave we researched all competitors from the list? If competitors remain unresearched, respond 'yes' to continue. If all competitors are covered, respond 'done'.",
+        "includedData": ["iteration", "product_category", "competitors", "competitor_data"]
+      }
+    ]
+  }
+}

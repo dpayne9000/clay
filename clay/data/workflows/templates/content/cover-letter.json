@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "steps": ["gatherInputs", "draftLetter", "humanReview", "finalise"]
+  },
+  "actionSets": {
+    "gatherInputs": [
+      {
+        "id": "job_title",
+        "type": "humanDecision",
+        "prompt": "Job title you are applying for"
+      },
+      {
+        "id": "company",
+        "type": "humanDecision",
+        "prompt": "Company name"
+      },
+      {
+        "id": "skills",
+        "type": "humanDecision",
+        "prompt": "Your top 3 relevant skills (comma-separated)"
+      },
+      {
+        "id": "experience",
+        "type": "humanDecision",
+        "prompt": "One sentence describing your most relevant experience"
+      }
+    ],
+    "draftLetter": [
+      {
+        "id": "draft",
+        "type": "scramda2",
+        "prompt": "Write a professional cover letter for a {job_title} position at {company}. The applicant has these skills: {skills}. Their most relevant experience: {experience}. The letter should be enthusiastic, concise, and under 300 words. End with 'Yours sincerely, [Name]'.",
+        "examples": [
+          {
+            "question": "Write a professional cover letter for a Software Engineer position at Stripe. Skills: TypeScript, Node.js, PostgreSQL. Experience: Built a payments API handling 2M transactions per month at a fintech startup.",
+            "answer": "Dear Hiring Manager,\n\nI am writing to express my strong interest in the Software Engineer position at Stripe. With hands-on experience building a payments API processing over 2 million transactions monthly, I understand the precision and reliability that financial infrastructure demands.\n\nMy core skills in TypeScript, Node.js, and PostgreSQL have been central to delivering this work — from designing schemas that handle concurrent writes safely to building developer-facing APIs that are both powerful and easy to integrate. I take particular pride in writing code that is maintainable and well-tested, because I know that in payments, edge cases are not optional.\n\nStripe's commitment to developer experience and its influence on how the internet handles money make this an opportunity I find genuinely exciting. I would love to bring my background to a team working at that scale.\n\nThank you for your consideration.\n\nYours sincerely, [Name]"
+          }
+        ],
+        "includedData": ["job_title", "company", "skills", "experience"]
+      }
+    ],
+    "humanReview": [
+      {
+        "id": "feedback",
+        "type": "humanDecision",
+        "prompt": "Review the draft above. Enter revision notes, or press Enter to accept"
+      }
+    ],
+    "finalise": [
+      {
+        "id": "final",
+        "type": "scramda2",
+        "model": "unsloth/Qwen3-0.6B-GGUF:Q6_K",
+        "prompt": "Revise this cover letter applying the feedback. If feedback is empty, return the draft unchanged.\n\nFeedback: {feedback}\n\nDraft:\n{draft}",
+        "examples": [
+          {
+            "question": "Feedback: Add a mention of remote work experience and make it punchier. Draft: Dear Hiring Manager, I am writing to express my strong interest in the Software Engineer position at Stripe...",
+            "answer": "Dear Hiring Manager,\n\nPayments infrastructure should be invisible to users and bulletproof under the hood — that is the standard I have held myself to building APIs at scale. With TypeScript, Node.js, and PostgreSQL I delivered a payments system processing 2M monthly transactions, and did it fully remotely as part of a distributed team.\n\nStripe sets the bar for developer experience in fintech. I would like to help raise it further.\n\nThank you for your time.\n\nYours sincerely, [Name]"
+          }
+        ],
+        "includedData": ["draft", "feedback"]
+      }
+    ]
+  }
+}

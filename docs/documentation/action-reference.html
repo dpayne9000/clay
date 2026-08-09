@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>clay — Action Reference</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  #layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  #sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #161b22;
+    border-right: 1px solid #30363d;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 20px 8px;
+    flex-shrink: 0;
+  }
+  #sidebar h2 {
+    color: #00d4ff;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin: 0 0 12px 8px;
+  }
+  #sidebar .count {
+    color: #8b949e;
+    font-size: 0.78em;
+    margin: 0 0 16px 12px;
+  }
+  #content {
+    flex: 1;
+    padding: 32px 40px;
+    max-width: 900px;
+  }
+  #content h1 {
+    color: #00d4ff;
+    font-size: 1.6em;
+    margin: 0 0 4px;
+  }
+  #content .subtitle {
+    color: #8b949e;
+    font-size: 0.95em;
+    margin: 0 0 32px;
+  }
+  table { border-collapse: collapse; width: 100%; }
+  th, td {
+    text-align: left;
+    padding: 7px 10px;
+    border-bottom: 1px solid #30363d;
+  }
+  th {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  tr:hover { background: #1c2128; }
+  code {
+    background: #1c2128;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: monospace;
+    font-size: 0.92em;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::marker { display: none; }
+  details summary::before { content: "▶ "; font-size: 0.8em; }
+  details[open] summary::before { content: "▼ "; font-size: 0.8em; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #161b22; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    #sidebar { display: none; }
+    #content { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="layout">
+  <nav id="sidebar" aria-label="Action types">
+    <h2>◈ clay</h2>
+    <p class="count">33 action types</p>
+    <a href="#sendAlert" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#8b949e; margin-right:6px">▸</span>sendAlert</a>
+<a href="#loadContext" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#8b949e; margin-right:6px">▸</span>loadContext</a>
+<a href="#createAgentAction" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#cc44ff; margin-right:6px">▸</span>createAgentAction</a>
+<a href="#sendEmail" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#8b949e; margin-right:6px">▸</span>sendEmail</a>
+<a href="#humanShell" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#cc44ff; margin-right:6px">▸</span>humanShell</a>
+<a href="#loop" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#ff9900; margin-right:6px">▸</span>loop</a>
+<a href="#writeMemory" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#ff6e40; margin-right:6px">▸</span>writeMemory</a>
+<a href="#searchMemory" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#ff6e40; margin-right:6px">▸</span>searchMemory</a>
+<a href="#listMemory" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#ff6e40; margin-right:6px">▸</span>listMemory</a>
+<a href="#readMemory" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#ff6e40; margin-right:6px">▸</span>readMemory</a>
+<a href="#runCode" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#f7df1e; margin-right:6px">▸</span>runCode</a>
+<a href="#shell" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00d4ff; margin-right:6px">▸</span>shell</a>
+<a href="#writeSkill" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00b4d8; margin-right:6px">▸</span>writeSkill</a>
+<a href="#listSkills" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00b4d8; margin-right:6px">▸</span>listSkills</a>
+<a href="#removeSkill" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00b4d8; margin-right:6px">▸</span>removeSkill</a>
+<a href="#searchSkills" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00b4d8; margin-right:6px">▸</span>searchSkills</a>
+<a href="#deriveTags" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#8b949e; margin-right:6px">▸</span>deriveTags</a>
+<a href="#telegram" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#8b949e; margin-right:6px">▸</span>telegram</a>
+<a href="#browseWeb" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00d4ff; margin-right:6px">▸</span>browseWeb</a>
+<a href="#searchWeb" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00d4ff; margin-right:6px">▸</span>searchWeb</a>
+<a href="#listSites" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00d4ff; margin-right:6px">▸</span>listSites</a>
+<a href="#loadSite" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00d4ff; margin-right:6px">▸</span>loadSite</a>
+<a href="#writeCode" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#f7df1e; margin-right:6px">▸</span>writeCode</a>
+<a href="#API" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00d4ff; margin-right:6px">▸</span>API</a>
+<a href="#readFile" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#8b949e; margin-right:6px">▸</span>readFile</a>
+<a href="#writeFile" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#f7df1e; margin-right:6px">▸</span>writeFile</a>
+<a href="#humanDecision" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#cc44ff; margin-right:6px">▸</span>humanDecision</a>
+<a href="#mongo" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#4fa836; margin-right:6px">▸</span>mongo</a>
+<a href="#python" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#f7df1e; margin-right:6px">▸</span>python</a>
+<a href="#report" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#4fa836; margin-right:6px">▸</span>report</a>
+<a href="#scramda2" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#00ff88; margin-right:6px">▸</span>scramda2</a>
+<a href="#transformData" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#f7df1e; margin-right:6px">▸</span>transformData</a>
+<a href="#workflow" style="display:block; padding:5px 12px; margin:1px 0; border-radius:4px; color:#8b949e; text-decoration:none; font-size:0.88em; font-family:monospace; transition:background 0.15s; white-space:nowrap;" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background='transparent'"><span style="color:#ff9900; margin-right:6px">▸</span>workflow</a>
+
+  </nav>
+  <main id="content">
+    <h1>Action Reference</h1>
+    <p class="subtitle">All 33 registered action types — generated from
+      <code>clay.actions.registry</code></p>
+    <div id="sendAlert"></div>
+
+<div id="card-sendAlert" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#8b949e22;
+        color:#8b949e;
+        border:1px solid #8b949e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">sendAlert</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em"></p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for alert delivery confirmation</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">channel</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Delivery channel: email, webhook, or file</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">message</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key or literal text. Supports {placeholder}</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">level</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"info"</span></td><td style="color:#e6edf3">Alert level: info, warning, or critical</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">to</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Override recipient for email channel. Supports {placeholder}</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">url</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Override URL for webhook channel. Supports {placeholder}</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "sendAlert",
+  "id": "<id>",
+  "channel": "<channel>",
+  "message": "<message>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="loadContext"></div>
+
+<div id="card-loadContext" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#8b949e22;
+        color:#8b949e;
+        border:1px solid #8b949e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">loadContext</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Load a JSON file and merge its top-level keys into the context.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Required but ignored — all keys from the file merge into context directly</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">file</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Path to a JSON file whose top-level keys are merged into the workflow context</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "loadContext",
+  "id": "<id>",
+  "file": "<file>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="createAgentAction"></div>
+
+<div id="card-createAgentAction" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#cc44ff22;
+        color:#cc44ff;
+        border:1px solid #cc44ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">createAgentAction</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Write a new Python action module to clay/actions/agent/.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the created file path</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">actionName</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">kebab-case or snake_case name matching [a-z][a-z0-9_-]{1,39}</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">content</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the Python source for the new action module</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "createAgentAction",
+  "id": "<id>",
+  "actionName": "<actionName>",
+  "content": "<content>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="sendEmail"></div>
+
+<div id="card-sendEmail" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#8b949e22;
+        color:#8b949e;
+        border:1px solid #8b949e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">sendEmail</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em"></p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the send confirmation</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">to</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Recipient email address. Supports {placeholder}</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">body</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key or literal text for email body. Supports {placeholder}</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">subject</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"No Subject"</span></td><td style="color:#e6edf3">Subject line. Supports {placeholder}</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">format</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"plain"</span></td><td style="color:#e6edf3">Email body format: 'plain' or 'html'</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "sendEmail",
+  "id": "<id>",
+  "to": "<to>",
+  "body": "<body>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="humanShell"></div>
+
+<div id="card-humanShell" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#cc44ff22;
+        color:#cc44ff;
+        border:1px solid #cc44ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">humanShell</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Propose a shell command to the human for approval before running.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for stdout</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">command</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Command template. Supports {placeholder} interpolation</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">timeout</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">60</span></td><td style="color:#e6edf3">Seconds before the process is killed</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">skipValue</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">""</span></td><td style="color:#e6edf3">If the resolved command equals this value, skip without prompting</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "humanShell",
+  "id": "<id>",
+  "command": "<command>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="loop"></div>
+
+<div id="card-loop" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#ff990022;
+        color:#ff9900;
+        border:1px solid #ff990066;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">loop</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Repeatedly run a sub-workflow file for up to N iterations.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the final iteration's outputKey value</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">file</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Path to the sub-workflow JSON file to run each iteration</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">iterations</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">0</span></td><td style="color:#e6edf3">Max iterations. 0 or absent = infinite (requires continueKey)</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">continueKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Sub-workflow output key checked for stop signal (false/done/0/no/stop/empty)</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">outputKey</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"final"</span></td><td style="color:#e6edf3">Sub-workflow output key appended to loop_history each iteration</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "loop",
+  "id": "<id>",
+  "file": "<file>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="writeMemory"></div>
+
+<div id="card-writeMemory" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#ff6e4022;
+        color:#ff6e40;
+        border:1px solid #ff6e4066;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">writeMemory</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Persist a text entry to memory/<namespace>/ as a tagged JSON file.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the saved entry ID</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">namespace</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Directory namespace to write into (e.g. developer)</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">content</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the text content to persist</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">tagsKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding a comma-separated tag string. Auto-derived if absent</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">entryId</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Override the generated entry ID. Overwrites existing entry if reused</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">source</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"workflow"</span></td><td style="color:#e6edf3">Metadata field recorded in the JSON entry</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">skillset</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">If set, also saves the content as a skill file in this skillset</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">skillExtension</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"py"</span></td><td style="color:#e6edf3">File extension for the dual-written skill file</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "writeMemory",
+  "id": "<id>",
+  "namespace": "<namespace>",
+  "content": "<content>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="searchMemory"></div>
+
+<div id="card-searchMemory" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#ff6e4022;
+        color:#ff6e40;
+        border:1px solid #ff6e4066;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">searchMemory</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Search memory entries by keyword (tag matches score 3×).</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for formatted matching entries</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">namespace</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Namespace to search</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">query</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Search query (tag matches score 3×, content matches 1×)</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">queryKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the query. Takes precedence over query</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">maxResults</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">5</span></td><td style="color:#e6edf3">Maximum entries to return</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "searchMemory",
+  "id": "<id>",
+  "namespace": "<namespace>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="listMemory"></div>
+
+<div id="card-listMemory" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#ff6e4022;
+        color:#ff6e40;
+        border:1px solid #ff6e4066;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">listMemory</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">List all entry IDs and tags in a memory namespace.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for newline-separated entry IDs with tags</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">namespace</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Namespace to list entries from</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "listMemory",
+  "id": "<id>",
+  "namespace": "<namespace>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="readMemory"></div>
+
+<div id="card-readMemory" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#ff6e4022;
+        color:#ff6e40;
+        border:1px solid #ff6e4066;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">readMemory</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Read a single memory entry by ID.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the formatted entry content</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">namespace</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Namespace the entry lives in</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">entryId</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">ID of the entry to read</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "readMemory",
+  "id": "<id>",
+  "namespace": "<namespace>",
+  "entryId": "<entryId>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="runCode"></div>
+
+<div id="card-runCode" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#f7df1e22;
+        color:#f7df1e;
+        border:1px solid #f7df1e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">runCode</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Write code to a temp file and execute it (python/bash/node/sh).</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for stdout</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">language</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"python"</span></td><td style="color:#e6edf3">Interpreter: python, bash, node, sh</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">source</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Inline source code string</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">sourceKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the source code. Takes precedence over source</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">stdin</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key whose value is piped as stdin to the process</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">timeout</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">30</span></td><td style="color:#e6edf3">Seconds before the process is killed</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "runCode",
+  "id": "<id>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="shell"></div>
+
+<div id="card-shell" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00d4ff22;
+        color:#00d4ff;
+        border:1px solid #00d4ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">shell</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Run a whitelisted shell command and capture stdout.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for stdout</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">command</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Shell command. Supports {placeholder} interpolation</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">timeout</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">30</span></td><td style="color:#e6edf3">Seconds before the process is killed</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "shell",
+  "id": "<id>",
+  "command": "<command>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="writeSkill"></div>
+
+<div id="card-writeSkill" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00b4d822;
+        color:#00b4d8;
+        border:1px solid #00b4d866;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">writeSkill</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Save content as a skill file under skills/<skillset>/.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the saved file path</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">skillset</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Skillset directory name under skills/</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">name</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Skill filename without extension. Supports {placeholder} interpolation</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">content</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the skill content to write</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">extension</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"py"</span></td><td style="color:#e6edf3">File extension: py, json, txt, sh</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">skipValue</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">""</span></td><td style="color:#e6edf3">If the resolved name equals this value, skip without writing</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "writeSkill",
+  "id": "<id>",
+  "skillset": "<skillset>",
+  "name": "<name>",
+  "content": "<content>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="listSkills"></div>
+
+<div id="card-listSkills" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00b4d822;
+        color:#00b4d8;
+        border:1px solid #00b4d866;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">listSkills</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">List all skill filenames and their derived tags.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for newline-separated filenames with tags</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">skillset</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Skillset directory name under skills/</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "listSkills",
+  "id": "<id>",
+  "skillset": "<skillset>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="removeSkill"></div>
+
+<div id="card-removeSkill" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00b4d822;
+        color:#00b4d8;
+        border:1px solid #00b4d866;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">removeSkill</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Delete a skill file from skills/<skillset>/.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the removed file path</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">skillset</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Skillset directory name under skills/</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">name</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Skill filename without extension. Supports {placeholder} interpolation</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">extension</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"py"</span></td><td style="color:#e6edf3">File extension</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "removeSkill",
+  "id": "<id>",
+  "skillset": "<skillset>",
+  "name": "<name>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="searchSkills"></div>
+
+<div id="card-searchSkills" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00b4d822;
+        color:#00b4d8;
+        border:1px solid #00b4d866;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">searchSkills</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Search skill filenames by keyword relevance.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for newline-separated matching filenames ranked by relevance</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">skillset</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Skillset directory name under skills/</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">query</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Search query — keywords matched against skill filenames</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">queryKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the query. Takes precedence over query</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "searchSkills",
+  "id": "<id>",
+  "skillset": "<skillset>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="deriveTags"></div>
+
+<div id="card-deriveTags" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#8b949e22;
+        color:#8b949e;
+        border:1px solid #8b949e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">deriveTags</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Extract keyword tags from text without an AI call.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the comma-separated tag string</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">contentKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the primary text to analyse</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">content</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Inline fallback text if contentKey is absent or empty</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">contextKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key for secondary text, weighted at 40% of primary</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">maxTags</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">6</span></td><td style="color:#e6edf3">Maximum number of tags to return</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "deriveTags",
+  "id": "<id>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="telegram"></div>
+
+<div id="card-telegram" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#8b949e22;
+        color:#8b949e;
+        border:1px solid #8b949e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">telegram</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em"></p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">telegram is an action that persists, and hosts a telegram bot channel. It does not require params other than type=telegram and runs until manually stopped</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "telegram",
+  "id": "<id>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="browseWeb"></div>
+
+<div id="card-browseWeb" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00d4ff22;
+        color:#00d4ff;
+        border:1px solid #00d4ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">browseWeb</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Fetch a URL (http/https only) and extract visible text.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the extracted page text</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">url</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">URL to fetch (http/https only). Supports {placeholder} interpolation</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">maxChars</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">4000</span></td><td style="color:#e6edf3">Maximum characters of extracted text to return</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">siteKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">If set, saves URL and 500-char preview to webactions/{siteKey}.json</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "browseWeb",
+  "id": "<id>",
+  "url": "<url>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="searchWeb"></div>
+
+<div id="card-searchWeb" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00d4ff22;
+        color:#00d4ff;
+        border:1px solid #00d4ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">searchWeb</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Search the web via DuckDuckGo, Google, or Bing.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the formatted numbered result list</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">query</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Search query string. Supports {placeholder} interpolation</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">queryKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the query. Takes precedence over query</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">engine</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"duckduckgo"</span></td><td style="color:#e6edf3">Search engine: duckduckgo, google, or bing</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">maxResults</code></td><td><code style="color:#8b949e">integer</code></td><td><span style="color:#8b949e; font-size:0.85em">5</span></td><td style="color:#e6edf3">Maximum results to return</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">apiKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Required for google and bing engines</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">cx</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Custom Search Engine ID — required for google engine</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "searchWeb",
+  "id": "<id>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="listSites"></div>
+
+<div id="card-listSites" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00d4ff22;
+        color:#00d4ff;
+        border:1px solid #00d4ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">listSites</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">List saved site profile filenames in webactions/.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for newline-separated .json filenames in webactions/</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "listSites",
+  "id": "<id>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="loadSite"></div>
+
+<div id="card-loadSite" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00d4ff22;
+        color:#00d4ff;
+        border:1px solid #00d4ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">loadSite</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Load a saved site profile JSON from webactions/.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the site profile JSON string</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">siteKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Filename stem in webactions/ (without .json)</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "loadSite",
+  "id": "<id>",
+  "siteKey": "<siteKey>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="writeCode"></div>
+
+<div id="card-writeCode" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#f7df1e22;
+        color:#f7df1e;
+        border:1px solid #f7df1e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">writeCode</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Strip markdown code fences from AI output and write to a file.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the written file path</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">contentKey</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding AI-generated content (code fences stripped automatically)</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">file</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output file path. Supports {placeholder} interpolation</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "writeCode",
+  "id": "<id>",
+  "contentKey": "<contentKey>",
+  "file": "<file>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="API"></div>
+
+<div id="card-API" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00d4ff22;
+        color:#00d4ff;
+        border:1px solid #00d4ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">API</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Make an HTTP request and store the response body.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the response body (parsed JSON or raw text)</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">endpoint</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Full URL of the API endpoint</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">method</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"get"</span></td><td style="color:#e6edf3">HTTP method: get, post, put, patch, delete</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">params</code></td><td><code style="color:#8b949e">object</code></td><td></td><td style="color:#e6edf3">URL query parameters as a JSON object</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">headers</code></td><td><code style="color:#8b949e">object</code></td><td></td><td style="color:#e6edf3">HTTP headers as a JSON object</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">data</code></td><td><code style="color:#8b949e">object</code></td><td></td><td style="color:#e6edf3">Request body, sent as JSON</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "API",
+  "id": "<id>",
+  "endpoint": "<endpoint>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="readFile"></div>
+
+<div id="card-readFile" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#8b949e22;
+        color:#8b949e;
+        border:1px solid #8b949e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">readFile</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em"></p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the file's text content</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">file</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Input path relative to root. Supports {placeholder} interpolation</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">root</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"output"</span></td><td style="color:#e6edf3">Directory the path resolves under; paths may not escape it</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">encoding</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"utf-8"</span></td><td style="color:#e6edf3">Text encoding used to read the file</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">maxBytes</code></td><td><code style="color:#8b949e">integer</code></td><td></td><td style="color:#e6edf3">Reject the read if the file exceeds this many bytes</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "readFile",
+  "id": "<id>",
+  "file": "<file>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="writeFile"></div>
+
+<div id="card-writeFile" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#f7df1e22;
+        color:#f7df1e;
+        border:1px solid #f7df1e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">writeFile</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Write a context value verbatim to a file.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the written file path</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">file</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output path relative to root. Supports {placeholder} interpolation</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">content</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the content to write verbatim</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">root</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"output"</span></td><td style="color:#e6edf3">Directory the path resolves under; paths may not escape it</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">encoding</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"utf-8"</span></td><td style="color:#e6edf3">Text encoding used to write the file</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">append</code></td><td><code style="color:#8b949e">boolean</code></td><td><span style="color:#8b949e; font-size:0.85em">false</span></td><td style="color:#e6edf3">Append instead of overwriting</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">createParent</code></td><td><code style="color:#8b949e">boolean</code></td><td><span style="color:#8b949e; font-size:0.85em">true</span></td><td style="color:#e6edf3">Create missing parent directories</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">stripCodeFence</code></td><td><code style="color:#8b949e">boolean</code></td><td><span style="color:#8b949e; font-size:0.85em">true</span></td><td style="color:#e6edf3">Strip one outer Markdown code fence from the content</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">requireCodeFence</code></td><td><code style="color:#8b949e">boolean</code></td><td><span style="color:#8b949e; font-size:0.85em">false</span></td><td style="color:#e6edf3">Fail if the content is not wrapped in a complete code fence</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">ensureFinalNewline</code></td><td><code style="color:#8b949e">boolean</code></td><td><span style="color:#8b949e; font-size:0.85em">false</span></td><td style="color:#e6edf3">Ensure the written content ends with exactly one newline</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "writeFile",
+  "id": "<id>",
+  "file": "<file>",
+  "content": "<content>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="humanDecision"></div>
+
+<div id="card-humanDecision" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#cc44ff22;
+        color:#cc44ff;
+        border:1px solid #cc44ff66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">humanDecision</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Prompt the human for free-text input; in --auto mode the AI answers.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the typed response</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">prompt</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Text shown to the human. Supports {placeholder} interpolation</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "humanDecision",
+  "id": "<id>",
+  "prompt": "<prompt>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="mongo"></div>
+
+<div id="card-mongo" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#4fa83622;
+        color:#4fa836;
+        border:1px solid #4fa83666;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">mongo</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Fetch all documents from a MongoDB collection.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the list of retrieved documents</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">url</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">MongoDB connection URI (e.g. mongodb://localhost:27017)</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">db</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Database name</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">collection</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Collection name</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "mongo",
+  "id": "<id>",
+  "url": "<url>",
+  "db": "<db>",
+  "collection": "<collection>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="python"></div>
+
+<div id="card-python" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#f7df1e22;
+        color:#f7df1e;
+        border:1px solid #f7df1e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">python</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Execute inline Python with no builtins and capture stdout.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the captured stdout</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">code</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Python source to execute. No builtins — pure computation only</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "python",
+  "id": "<id>",
+  "code": "<code>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="report"></div>
+
+<div id="card-report" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#4fa83622;
+        color:#4fa836;
+        border:1px solid #4fa83666;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">report</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Send an email via SMTP (STARTTLS).</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the send confirmation string</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">body</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the email body, or a literal string</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">to_email</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Recipient email address</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">from_email</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Sender email address</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">smtp_server</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">SMTP server hostname</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">smtp_port</code></td><td><code style="color:#8b949e">integer</code></td><td></td><td style="color:#e6edf3">SMTP server port (typically 587 for STARTTLS)</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">smtp_username</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">SMTP login username</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">smtp_password</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">SMTP login password</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">subject</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"No Subject"</span></td><td style="color:#e6edf3">Email subject line</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "report",
+  "id": "<id>",
+  "body": "<body>",
+  "to_email": "<to_email>",
+  "from_email": "<from_email>",
+  "smtp_server": "<smtp_server>",
+  "smtp_port": 0,
+  "smtp_username": "<smtp_username>",
+  "smtp_password": "<smtp_password>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="scramda2"></div>
+
+<div id="card-scramda2" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#00ff8822;
+        color:#00ff88;
+        border:1px solid #00ff8866;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">scramda2</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Send a prompt to the scramda2 AI service and store the response.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the AI response text</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">prompt</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Prompt sent to the AI. Supports {placeholder} interpolation</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">model</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Literal model ID to use for this call</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">modelProfile</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Named alias resolved from config.models[modelProfile] in context. Overrides model</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">max_tokens</code></td><td><code style="color:#8b949e">integer</code></td><td></td><td style="color:#e6edf3">Cap on response length in tokens</td></tr><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">examples</code></td><td><code style="color:#8b949e">array</code></td><td></td><td style="color:#e6edf3">Few-shot examples as [{"input": ..., "output": ...}]</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "scramda2",
+  "id": "<id>",
+  "prompt": "<prompt>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="transformData"></div>
+
+<div id="card-transformData" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#f7df1e22;
+        color:#f7df1e;
+        border:1px solid #f7df1e66;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">transformData</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Transform a context value via parseLines or map method.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the transformed result</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">source</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Context key holding the data to transform</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">method</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Transformation method: parseLines or map</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "transformData",
+  "id": "<id>",
+  "source": "<source>",
+  "method": "<method>"
+}</pre>
+    </details>
+  </div>
+</div>
+<div id="workflow"></div>
+
+<div id="card-workflow" style="
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:8px;
+    margin-bottom:20px;
+    overflow:hidden;
+">
+  <div style="padding:16px 20px; border-bottom:1px solid #30363d">
+    <span style="
+        background:#ff990022;
+        color:#ff9900;
+        border:1px solid #ff990066;
+        border-radius:4px;
+        padding:3px 10px;
+        font-size:0.9em;
+        font-family:monospace;
+        font-weight:600;
+    ">workflow</span>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:0.95em">Run another workflow JSON file as a sub-workflow.</p>
+  </div>
+  <div style="padding:16px 20px">
+    <p style="color:#ff6b6b; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Required</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">id</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Output key for the sub-workflow result</td></tr><tr><td><span style="color:#ff6b6b; font-size:1.2em">●</span> <code style="color:#00d4ff">file</code></td><td><code style="color:#8b949e">string</code></td><td></td><td style="color:#e6edf3">Path to the workflow JSON file to run</td></tr></tbody></table><p style="color:#8b949e; font-size:0.8em; text-transform:uppercase; letter-spacing:0.1em; margin:12px 0 4px">Optional</p><table style="width:100%; border-collapse:collapse; font-size:0.9em"><thead><tr><th style="color:#8b949e">Field</th><th style="color:#8b949e">Type</th><th style="color:#8b949e">Default</th><th style="color:#8b949e">Description</th></tr></thead><tbody><tr><td><span style="color:#8b949e; font-size:1.2em">●</span> <code style="color:#00d4ff">outputKey</code></td><td><code style="color:#8b949e">string</code></td><td><span style="color:#8b949e; font-size:0.85em">"final"</span></td><td style="color:#e6edf3">Key to extract from the sub-workflow's final context</td></tr></tbody></table>
+    <details style="margin-top:14px">
+      <summary style="
+          cursor:pointer;
+          color:#8b949e;
+          font-size:0.85em;
+          text-transform:uppercase;
+          letter-spacing:0.1em;
+          user-select:none;
+          outline:none;
+      ">JSON example</summary>
+      <pre style="
+          background:#1c2128;
+          border:1px solid #30363d;
+          border-radius:6px;
+          padding:12px 16px;
+          margin:10px 0 0;
+          overflow-x:auto;
+          font-size:0.88em;
+          color:#e6edf3;
+          line-height:1.5;
+      ">{
+  "type": "workflow",
+  "id": "<id>",
+  "file": "<file>"
+}</pre>
+    </details>
+  </div>
+</div>
+
+  </main>
+</div>
+<script>
+  // Highlight the sidebar link for the card currently in view
+  const links = document.querySelectorAll('#sidebar a');
+  const anchors = Array.from(links).map(l => document.getElementById(l.getAttribute('href').slice(1)));
+  function onScroll() {
+    const scrollY = window.scrollY + 80;
+    let active = null;
+    for (let i = 0; i < anchors.length; i++) {
+      if (anchors[i] && anchors[i].getBoundingClientRect().top + window.scrollY <= scrollY) {
+        active = links[i];
+      }
+    }
+    links.forEach(l => l.style.background = 'transparent');
+    if (active) active.style.background = '#1c2128';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>

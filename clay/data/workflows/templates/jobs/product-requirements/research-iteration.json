@@ -1,0 +1,88 @@
+{
+  "workflow": {
+    "steps": ["pick_angle", "search", "browse", "store", "assess"]
+  },
+
+  "actionSets": {
+
+    "pick_angle": [
+      {
+        "id": "research_angle",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "You are researching for a PRD for {product_name}. Iteration {iteration} of 5.\n\nProblem: {problem_statement}\nPersonas: {user_personas}\nConstraints: {constraints}\n\nResearch angles to cover in order:\n1. Similar products and competitive landscape\n2. User research patterns and UX best practices for this problem space\n3. Technical architecture patterns used by competitors\n4. Industry standards and compliance requirements\n5. Pricing models and go-to-market patterns\n\nPrior research:\n{recall_summary}\n\nSelect angle {iteration}. Reply with:\nANGLE: <name>\nSEARCH_QUERY: <a specific web search query>",
+        "includedData": ["product_name", "problem_statement", "user_personas", "constraints", "recall_summary", "iteration"]
+      }
+    ],
+
+    "search": [
+      {
+        "id": "search_query",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Extract only the search query from this text — the line starting with 'SEARCH_QUERY:'. Reply with the query only, nothing else.\n\n{research_angle}",
+        "includedData": ["research_angle"]
+      },
+      {
+        "id": "search_results",
+        "type": "searchWeb",
+        "query": "{search_query}",
+        "maxResults": 5,
+        "includedData": ["search_query"]
+      }
+    ],
+
+    "browse": [
+      {
+        "id": "best_url",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Pick the single most relevant URL from these search results for PRD research on {product_name}.\n\nSearch results:\n{search_results}\n\nReply with ONLY the URL, nothing else.",
+        "includedData": ["search_results", "product_name"]
+      },
+      {
+        "id": "page_content",
+        "type": "browseWeb",
+        "url": "{best_url}",
+        "maxChars": 4000,
+        "includedData": ["best_url"]
+      },
+      {
+        "id": "extracted_data",
+        "type": "scramda2",
+        "modelProfile": "orchestrator",
+        "prompt": "Research angle: {research_angle}\n\nPage content from {best_url}:\n{page_content}\n\nExtract data relevant to building a PRD for {product_name} solving: {problem_statement}\n\nFocus on:\n- Feature lists and capabilities of similar products\n- User workflow patterns and pain points\n- Technical approaches and API patterns\n- Requirements patterns (what worked, what failed)\n- Measurable metrics used by similar products\n\nBe specific and structured.",
+        "includedData": ["research_angle", "best_url", "page_content", "product_name", "problem_statement"]
+      }
+    ],
+
+    "store": [
+      {
+        "id": "finding_tags",
+        "type": "deriveTags",
+        "contentKey": "extracted_data",
+        "contextKey": "research_angle",
+        "maxTags": 6,
+        "includedData": ["extracted_data", "research_angle"]
+      },
+      {
+        "id": "finding_saved",
+        "type": "writeMemory",
+        "namespace": "product-reqs",
+        "content": "extracted_data",
+        "tagsKey": "finding_tags",
+        "includedData": ["extracted_data", "finding_tags"]
+      }
+    ],
+
+    "assess": [
+      {
+        "id": "research_continue",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "PRD research iteration {iteration} of 5 complete.\n\nAngle researched: {research_angle}\n\nIf iteration is less than 5, reply YES to continue. If iteration is 5, reply NO — all angles have been covered.",
+        "includedData": ["iteration", "research_angle"]
+      }
+    ]
+  }
+}

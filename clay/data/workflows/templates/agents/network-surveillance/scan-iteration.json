@@ -1,0 +1,110 @@
+{
+  "workflow": {
+    "steps": ["scan", "snapshot", "compare", "alert_check"]
+  },
+
+  "actionSets": {
+    "scan": [
+      {
+        "id": "arp_scan",
+        "type": "shell",
+        "command": "arp -a",
+        "timeout": 15
+      },
+      {
+        "id": "netstat_scan",
+        "type": "shell",
+        "command": "netstat -an | head -80",
+        "timeout": 15
+      },
+      {
+        "id": "lsof_scan",
+        "type": "shell",
+        "command": "lsof -i -n -P | head -60",
+        "timeout": 15
+      }
+    ],
+
+    "snapshot": [
+      {
+        "id": "snapshot_text",
+        "type": "scramda2",
+        "prompt": "Combine the three network scans below into a structured network snapshot. List: all devices (IP + MAC), all listening ports, all active connections. Format as structured text.\n\nARP scan:\n{arp_scan}\n\nNetstat scan:\n{netstat_scan}\n\nLSOF scan:\n{lsof_scan}",
+        "includedData": ["arp_scan", "netstat_scan", "lsof_scan"]
+      },
+      {
+        "id": "snapshot_tags",
+        "type": "deriveTags",
+        "contentKey": "snapshot_text",
+        "maxTags": 6,
+        "includedData": ["snapshot_text"]
+      },
+      {
+        "id": "_snapshot_saved",
+        "type": "writeMemory",
+        "namespace": "{memory_namespace}",
+        "content": "snapshot_text",
+        "tagsKey": "snapshot_tags",
+        "entryId": "current-snapshot",
+        "includedData": ["snapshot_text", "snapshot_tags", "memory_namespace"]
+      }
+    ],
+
+    "compare": [
+      {
+        "id": "previous_data",
+        "type": "searchMemory",
+        "namespace": "{memory_namespace}",
+        "query": "device connection port change",
+        "maxResults": 3
+      },
+      {
+        "id": "diff_analysis",
+        "type": "scramda2",
+        "prompt": "Compare the current network state with previous data. Identify:\n1) NEW devices not seen before\n2) NEW listening ports\n3) Unusual outbound connections\n4) Any device that disappeared\n\nBe specific with IPs and ports. If nothing changed say \"No changes detected.\"\n\nCurrent snapshot:\n{snapshot_text}\n\nPrevious data:\n{previous_data}",
+        "includedData": ["snapshot_text", "previous_data"]
+      }
+    ],
+
+    "alert_check": [
+      {
+        "id": "alert_decision",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Based on this diff analysis, should we alert? Respond with exactly \"ALERT\" if there are new devices, unexpected ports, or suspicious connections. Respond \"OK\" if everything looks normal.\n\nDiff analysis:\n{diff_analysis}",
+        "includedData": ["diff_analysis"]
+      },
+      {
+        "id": "_alert_sent",
+        "type": "sendAlert",
+        "channel": "{alert_channel}",
+        "message": "diff_analysis",
+        "level": "warning",
+        "to": "{alert_recipient}",
+        "includedData": ["diff_analysis", "alert_channel", "alert_recipient"]
+      },
+      {
+        "id": "_scan_logged",
+        "type": "writeMemory",
+        "namespace": "{memory_namespace}",
+        "content": "diff_analysis",
+        "entryId": "scan-{iteration}",
+        "includedData": ["diff_analysis", "memory_namespace", "iteration"]
+      },
+      {
+        "id": "should_stop",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "Should the scanner keep running? Always respond \"continue\" unless you detect a critical security breach that requires human intervention.\n\nDiff analysis:\n{diff_analysis}",
+        "includedData": ["diff_analysis"]
+      },
+      {
+        "id": "scan_summary",
+        "type": "scramda2",
+        "modelProfile": "chat",
+        "prompt": "One-sentence summary of this scan iteration.\n\nDiff analysis:\n{diff_analysis}",
+        "includedData": ["diff_analysis"]
+      }
+    ]
+  }
+}

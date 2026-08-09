@@ -1,0 +1,97 @@
+{
+  "workflow": {
+    "steps": ["pick", "probe", "analyse", "write_script", "validate", "save_skill", "summarise", "decide"]
+  },
+
+  "actionSets": {
+    "pick": [
+      {
+        "id": "next_protocol",
+        "type": "scramda2",
+        "prompt": "You are a network exploration agent on iteration {iteration}.\n\nSkills already built (these protocols are covered — do not repeat them):\n{skills_index}\n\nNetwork context:\n{network_context}\n\nPick ONE protocol or technique not yet covered. Reply with exactly two lines:\nPROTOCOL: <name>\nCOMMAND: <the shell command to run>",
+        "includedData": ["skills_index", "network_context"]
+      }
+    ],
+
+    "probe": [
+      {
+        "id": "probe_command",
+        "type": "scramda2",
+        "prompt": "Extract only the shell command from this text (the part after 'COMMAND:'), with no explanation:\n{next_protocol}",
+        "includedData": ["next_protocol"]
+      },
+      {
+        "id": "raw_output",
+        "type": "shell",
+        "command": "{probe_command}",
+        "timeout": 30,
+        "includedData": ["probe_command"]
+      }
+    ],
+
+    "analyse": [
+      {
+        "id": "analysis",
+        "type": "scramda2",
+        "prompt": "You ran this network probe:\n{probe_command}\n\nRaw output:\n{raw_output}\n\nWrite a concise technical analysis: what did you find? What hosts, ports, or protocol behaviour is visible?",
+        "includedData": ["probe_command", "raw_output"]
+      }
+    ],
+
+    "write_script": [
+      {
+        "id": "protocol_name",
+        "type": "scramda2",
+        "prompt": "From this text, extract only the protocol or technique name (after 'PROTOCOL:'), lowercase, hyphenated, max 30 chars. Reply with the name only:\n{next_protocol}",
+        "includedData": ["next_protocol"]
+      },
+      {
+        "id": "generated_script",
+        "type": "scramda2",
+        "prompt": "Write a standalone Python 3 script that automates this network probe:\n{probe_command}\n\nExpected output format (from analysis):\n{analysis}\n\nRequirements:\n- Use only stdlib\n- Print results to stdout\n- Handle errors gracefully\n\nReturn the complete Python script only, no explanation.",
+        "includedData": ["probe_command", "analysis"]
+      }
+    ],
+
+    "validate": [
+      {
+        "id": "validation_result",
+        "type": "runCode",
+        "language": "python",
+        "sourceKey": "generated_script",
+        "timeout": 20,
+        "includedData": ["generated_script"]
+      }
+    ],
+
+    "save_skill": [
+      {
+        "id": "skill_saved",
+        "type": "writeSkill",
+        "skillset": "network-explorer",
+        "name": "{protocol_name}",
+        "extension": "py",
+        "content": "generated_script",
+        "includedData": ["generated_script", "protocol_name"]
+      }
+    ],
+
+    "summarise": [
+      {
+        "id": "summary",
+        "type": "scramda2",
+        "prompt": "Summarise this exploration iteration in one paragraph:\n\nProtocol explored: {next_protocol}\nCommand run: {probe_command}\nFindings: {analysis}\nScript validation: {validation_result}",
+        "includedData": ["next_protocol", "probe_command", "analysis", "validation_result"]
+      }
+    ],
+
+    "decide": [
+      {
+        "id": "should_continue",
+        "type": "scramda2",
+        "prompt": "Iteration {iteration} complete. Skills built so far:\n{skills_index}\n\nIs there more meaningful protocol coverage left to explore on this machine? Reply YES or NO only.",
+        "includedData": ["iteration", "skills_index"]
+      }
+    ]
+  }
+}

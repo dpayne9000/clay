@@ -1,0 +1,211 @@
+files
+/workflows/custom/*workflow folder name*/main.json
+.../iteration.json
+.../goals.json
+.../training.json
+
+actions from actionSets can be named anything, and should be a set of objects, each object being an action
+      {
+        "id": "_context",
+        "type": "loadContext",
+        "file": "./context.json"
+      },
+
+type is the name of the action that will be performed from a list of existing actions included in schema.
+when the action is complete, its result will be made available via it's `id: "_context` field for inclusion in a subsequent action via `includedData: ["_context"]
+
+create a main.json
+```
+{
+  "autoContext": "the prompt that is run when populating templates in --auto mode",
+  "workflow": {
+    "steps": ["mainLoop"]
+  },
+  "actionSets": {
+    "loadContext": [
+      {
+        "id": "_context",
+        "type": "loadContext",
+        "file": "./context.json"
+      },
+      {
+        "id": "_training",
+        "type": "loadContext",
+        "file": "./training.json"
+      },
+      {
+        "id": "_goal",
+        "type": "loadContext",
+        "file": "./goal.json"
+      },
+      {
+        "id": "intel_log",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0, // 0 means run infinitely
+        "outputKey": "iteration_summary"
+      },
+      
+    ]
+  }
+}
+```
+
+The main loop is in iteration.json, you can define as many loops as you want
+iteration.json
+```
+{
+  "workflow": {
+    "steps": ["humanReview","remember","report"]
+  },
+  "actionSets": {
+    "humanReview": [
+      {
+        "id": "feedback",
+        "type": "humanDecision",
+        "prompt": ">"
+      },
+      {
+        "id": "prompt",
+        "type": "scramda2",
+        "prompt": "you are a helpful assistant {feedback}",
+        "examples": [   // manually enter training questions here
+          {
+            "question": "what is the weather like.",
+            "answer":"it is bright and sunny with partly cloudy skies"
+          },
+          {
+            "question": "how are you today?",
+            "answer":"I'm very good thank you"
+          },
+          {
+            "question": "whats your name?",
+            "answer":"sorry I don't give out that information"
+          },
+        ],
+        "modelProfile": "orchestrator", // this references config.json models
+        "max_tokens": 4000,
+        "includedData": ["feedback"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "memory_tags",
+        "type": "deriveTags",
+        "contentKey": "prompt",
+        "contextKey": "feedback",
+        "maxTags": 6,
+        "includedData": ["prompt", "feedback"]
+      },
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "namespace": "chatbot",
+        "content": "prompt",
+        "tagsKey": "memory_tags",
+        "includedData": ["prompt", "memory_tags"]
+      },
+      {
+        "id": "assessment_saved",
+        "type": "writeMemory",
+        "namespace": "chatbot",
+        "content": "feedback",
+        "tagsKey": "memory_tags",
+        "includedData": ["feedback", "memory_tags"]
+      }
+    ],
+
+    "report": [
+      {
+        "id": "iteration_summary",
+        "type": "scramda2",
+        "model": "qwen3:4b", // this overrides default model configurations
+        "prompt": "Summarise this conversation turn.\n\nAssistant: {target_name}\nIteration: {iteration}\nUser said: {feedback}\nAssistant replied: {prompt}", // these templates should be populated by includedData
+        ",
+        "examples": {
+          "override": "_summary_training"
+        },
+        "includedData": ["iteration", "target_name", "feedback", "prompt"]
+      },
+      {
+        "id": "iter_report",
+        "type": "writeFile",
+        "file": "{output_dir}/chatbot-iter-{iteration}.md",
+        "content": "iteration_summary",
+        "includedData": ["output_dir", "iteration", "iteration_summary"]
+      }
+    ]
+    }
+}
+```
+
+
+goal.json
+```
+{
+  "objective1": "find a baking recipe",
+  "objective2": "create an html file with the baking recipe",
+  "output_dir": "."
+}
+
+```
+
+TODO: integrate actual example training from gopher
+training.json
+```
+{
+  "training_generate_queries": [
+    {
+      "question":"Generate 5 research queries for a comprehensive research report about: the rise of remote work. Target audience: corporate real estate investors.",
+      "answer":"1. What percentage of office workers are now permanently remote vs hybrid post-2023?\n2. How has remote work affected commercial office vacancy rates in major cities?\n3. What are leading companies' stated long-term policies on office attendance?\n4. How has demand for co-working and flexible office space changed since 2020?\n5. What does the research say about productivity differences between remote and in-office work?"
+    }
+  ],
+  "training_simulate_sources": [
+    {
+      "question":"Queries about remote work: 1. Office vacancy rates post-2023. 2. Permanent vs hybrid worker split. Provide research content",
+      "answer":"OFFICE VACANCY RATES: Major US cities saw commercial vacancy rates reach 19.6% in Q3 2024 (CBRE), with San Francisco peaking at 34%. London saw vacancy rise to 9.2%, higher than pre-pandemic but cushioned by stronger return-to-office mandates in finance. Sub-let space as a share of total availability doubled between 2020-2024.\n\nWORKER SPLIT: McKinsey (2024) found 35% of knowledge workers are fully remote, 45% hybrid, and 20% fully in-office. Finance and law skew heavily toward office; tech and creative industries toward remote. Hybrid has become the dominant model in organisations with 500+ employees."
+    }
+  ],
+  "training_extract_facts": [
+    {
+      "question":"Extract facts from: US office vacancy reached 19.6% in Q3 2024. San Francisco peaked at 34%. 35% of knowledge workers are fully remote.",
+      "answer":"F: US commercial office vacancy reached 19.6% in Q3 2024 (CBRE)\nF: San Francisco office vacancy peaked at 34% post-pandemic\nF: London office vacancy rose to 9.2%, above pre-pandemic levels\nF: 35% of knowledge workers are now fully remote (McKinsey 2024)\nF: 45% of knowledge workers operate on a hybrid model\nF: Sub-let office space as a share of total availability doubled between 2020-2024"
+    }
+  ],
+  "training_exec_summary": [
+    {
+      "question":"Write executive summary for a report on remote work for real estate investors. Key finding: structural shift, 19.6% vacancy, geographic polarisation.",
+      "answer":"EXECUTIVE SUMMARY\n\nCommercial office markets are undergoing a structural reset, not a cyclical correction. US vacancy has reached 19.6% nationally with technology-concentrated markets such as San Francisco exceeding 34% — levels from which historical precedent offers little guidance on recovery timelines.\n\nThe dominant driver is a permanent redistribution of knowledge work across remote, hybrid, and in-office models. With 80% of knowledge workers now operating outside a traditional five-day office week, aggregate space demand has repriced downward.\n\nFor investors, the key distinctions are geographic and quality-based. Finance-dominated cities show meaningful resilience; premium, amenity-rich assets are capturing disproportionate occupancy. The opportunity set lies in selective repositioning and conversion, not broad recovery plays."
+    }
+  ]
+}
+
+```
+
+
+context.json
+```
+```
+
+include whatever kinds of file you want, and place them whever you want
+
+```
+      {
+        "id": "_soul",
+        "type": "loadContext",
+        "file": "./soul.json"
+      },
+```
+
+```
+      {
+        "id": "iteration_summary",
+        "type": "scramda2",
+        "model": "qwen3:4b", // this overrides default model configurations
+        "prompt": "you are {_soul}. Summarise this ...
+        "examples" : {
+          "override": "training_analysis_report"
+        },
+        "includedData": ["iteration", "target_name", "feedback", "prompt", "_soul"]
+      },
+```

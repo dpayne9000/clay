@@ -1,0 +1,45 @@
+{
+  "autoContext": "Validates loop action. Covers: file param (iteration sub-workflow), iterations param (max count), continueKey param (stops early when value is falsy: NO/false/done/stop/0/''), outputKey param (value accumulated from each iteration into history), and the 'iteration' variable auto-injected into each iteration seed.",
+
+  "workflow": {
+    "steps": ["test_early_stop", "test_fixed_iterations", "verify"]
+  },
+
+  "actionSets": {
+
+    "test_early_stop": [
+      {
+        "_comment": "PARAM: file — iteration sub-workflow JSON. PARAM: continueKey — key in iteration result; when value is 'NO', 'false', 'done', 'stop', '0', or empty, loop stops early. PARAM: outputKey — key accumulated into loop history and returned as final data.",
+        "id": "early_stop_log",
+        "type": "loop",
+        "file": "./fixtures/loop-iteration.json",
+        "iterations": 10,
+        "continueKey": "should_continue",
+        "outputKey": "iteration_output"
+      }
+    ],
+
+    "test_fixed_iterations": [
+      {
+        "_comment": "PARAM: iterations — hard cap on number of iterations (1-10000). When continueKey is absent, loop always runs to this limit. Here set to 2.",
+        "id": "fixed_loop_log",
+        "type": "loop",
+        "file": "./fixtures/loop-iteration.json",
+        "iterations": 2,
+        "outputKey": "iteration_output"
+      }
+    ],
+
+    "verify": [
+      {
+        "_comment": "Loop stores last iteration's outputKey value under action id. Confirm it is in previous_data.",
+        "id": "loop_verify",
+        "type": "shell",
+        "command": "echo loop-outputs-stored",
+        "includedData": ["early_stop_log", "fixed_loop_log"],
+        "timeout": 5
+      }
+    ]
+
+  }
+}

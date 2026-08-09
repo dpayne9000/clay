@@ -1,0 +1,21 @@
+{
+  "workflow": {
+    "steps": ["run"]
+  },
+  "actionSets": {
+    "run": [
+      {
+        "id": "sub_shell",
+        "type": "shell",
+        "command": "echo sub-workflow-ran",
+        "timeout": 5
+      },
+      {
+        "id": "final",
+        "type": "shell",
+        "command": "echo output-from-sub",
+        "timeout": 5
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "product_category": "SaaS project management tools",
+  "competitors": "Asana,Monday.com,ClickUp,Notion,Jira",
+  "our_pricing": "Starter $10/user/mo, Pro $25/user/mo, Enterprise custom",
+  "memory_namespace": "competitor-pricing",
+  "output_dir": "output/competitor-pricing"
+}
