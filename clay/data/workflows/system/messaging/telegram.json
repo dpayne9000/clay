@@ -24,27 +24,10 @@
         "id": "boot",
         "type": "telegram",
         "workflows": [
+          {"label": "Coding", "path": "workflows/system/coding/main.json"},
           {"label": "Clay", "path": "workflows/system/clay/main.json"},
           {"label": "System editor", "path": "workflows/system/editor/main.json"},
-          {"label": "Coding 2", "path": "workflows/system/coding2/main.json"},
-          {"label": "Coding 3", "path": "workflows/system/coding3/main.json"},
-          {"label": "Coding 4", "path": "workflows/system/coding4/main.json"},
-
-
-          {"label": "Chatbot", "path": "workflows/templates/agents/chatbot/main.json"},
-          {"label": "Web researcher", "path": "workflows/templates/agents/web-researcher/main.json"},
-          {"label": "Research", "path": "workflows/templates/research/main.json"},
-
-          {"label": "Debate arena", "path": "workflows/templates/skunkworks/debate-arena/main.json"},
-          {"label": "Socratic tutor", "path": "workflows/templates/skunkworks/socratic-tutor/main.json"},
-          {"label": "Persona lab", "path": "workflows/templates/skunkworks/persona-lab/main.json"},
-          {"label": "Meeting simulator", "path": "workflows/templates/skunkworks/meeting-simulator/main.json"},
-          {"label": "Decision journal", "path": "workflows/templates/skunkworks/decision-journal/main.json"},
-          {"label": "Domain translator", "path": "workflows/templates/skunkworks/domain-translator/main.json"},
-          {"label": "Red team prompt", "path": "workflows/templates/skunkworks/red-team-prompt/main.json"},
-          {"label": "Retro facilitator", "path": "workflows/templates/skunkworks/retro-facilitator/main.json"},
-          {"label": "Contract red-liner", "path": "workflows/templates/skunkworks/contract-red-liner/main.json"},
-          {"label": "Workflow builder", "path": "workflows/templates/skunkworks/workflow-builder/main.json"}
+          {"label": "Research", "path": "workflows/templates/research/main.json"}
         ]
       }
     ]

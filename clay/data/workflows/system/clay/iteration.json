@@ -30,7 +30,7 @@
         "id": "user_request",
         "type": "humanDecision",
         "_comment": "No rule lines around the question. A humanDecision prompt is printed by TerminalIO.prompt, not by a renderer, so any banner drawn here survives every display mode and is the one piece of chrome concise mode cannot take back. The question and the caret are the whole prompt.",
-        "prompt": "\nClay is listening.\n> "
+        "prompt": "\nHi, I'm clay what can I help you with?\n> "
       }
     ],
 

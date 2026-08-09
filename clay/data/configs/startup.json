@@ -3,6 +3,6 @@
         "workflows/system/messaging/telegram.json"
     ],
     "user": [
-        "workflows/system/editor/main.json"
+        "workflows/system/coding/main.json"
     ]
 }
