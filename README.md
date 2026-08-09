@@ -112,9 +112,14 @@ Every action type and every field is documented in
 
 ## Installation
 
+macOS ARM64/x86-64, Linux ARM64/x86-64, and **Windows through WSL2 only** —
+there is no native Windows package. On Windows, run these commands inside the
+WSL2 distribution; see [docs/INSTALL.md](docs/INSTALL.md#windows) for the two
+WSL2 differences (the Qt edition needs WSLg, and `clayd` does not autostart).
+
 ### HTTPS installer
 
-Install the core CLI and daemon on macOS or Linux:
+Install the core CLI and daemon:
 
 ```bash
 curl --proto '=https' --proto-redir '=https' -fsSL \
@@ -130,29 +135,25 @@ curl --proto '=https' --proto-redir '=https' -fsSL \
 
 The installer selects the correct macOS/Linux ARM64 or x86-64 release, verifies
 its SHA-256 value, and installs Clay with its bundled CPython runtime and
-offline dependency wheelhouse. WSL2 is supported as a Linux environment on a
-best-effort basis.
+offline dependency wheelhouse.
 
 ### Downloaded release archive
 
-If you download a target archive from the release page instead, extract both
-the release and its bundled Python runtime, then run the archive-local
-installer. Replace the example filename with the core or UI archive you
-downloaded:
+Extract the archive and its bundled Python runtime, then run the archive-local
+installer, substituting the version and target you downloaded:
 
 ```bash
-tar -xzf clay-0.1.2-macos-arm64-core.tar.gz
-cd clay-0.1.2-macos-arm64-core
+tar -xzf clay-<version>-<target>-<flavor>.tar.gz
+cd clay-<version>-<target>-<flavor>
 tar -xzf runtime/python.tar.gz
 python/bin/python3 install.py
 ./clay --version
 ```
 
-This manual method creates the virtual environment and `clay` launcher inside
-the extracted `clay-0.1.2-macos-arm64-core` directory. Keep that directory and
-invoke its `./clay` launcher. It does not add `clay` to `PATH`. Use the HTTPS
-installer above when you want the standard `~/.local/share/clay` installation
-and `~/.local/bin/clay` launcher.
+Run it in the directory the release will stay in; the virtual environment and
+the `./clay` launcher record absolute paths. This method does not add `clay` to
+`PATH`. Use the HTTPS installer above for the standard `~/.local/share/clay`
+installation with a `~/.local/bin/clay` launcher.
 
 ### Command path
 

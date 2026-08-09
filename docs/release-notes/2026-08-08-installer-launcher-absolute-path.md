@@ -58,6 +58,15 @@ failed.
   directory that the launcher records, and the manual archive-local procedure
   states that a release directory moved after `install.py` runs must have
   `install.py` run again.
+- `README.md` and `docs/INSTALL.md` — the supported-platform line now leads the
+  install directions and states that Windows is WSL2 only. Both files carried
+  archive examples naming `0.1.2`, a version that was never released; they now
+  use `<version>-<target>-<flavor>` placeholders.
+- `docs/INSTALL.md` — new "Windows" section: Clay runs on Windows through WSL2
+  and has no native package, the standard installer selects the Linux archive
+  from inside the distribution, the Qt edition requires WSLg, `clayd` must be
+  started manually because a WSL2 distribution has no boot event, and the
+  release belongs on the Linux filesystem rather than under `/mnt/c`.
 - `scripts/QUICKREBUILD.md` — new: build and install one local target archive
   to replace a broken installation, and the manual AWS CLI sequence for
   withdrawing a published version from S3, which `scripts.deploy` has no
