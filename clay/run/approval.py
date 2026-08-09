@@ -344,6 +344,15 @@ def confirm(gate: str, heading: str, items, prompt_id: str = '', *,
                     f'nothing approved')
         return Decision(items, [])
 
+    # The prompt dropped every front-end's busy indicator (io._floor_to_human)
+    # to keep a spinner from eating the question. The question is answered
+    # now, and the handler is about to do the actual work — execute the
+    # source, write the files, run the command — so the indicator has to come
+    # back up here. logger.busy(True) is a relabel, not a second "started"
+    # event: this is the same level output() would raise the moment the next
+    # action.output payload comes in, just not stalled until then.
+    logger.busy(True, gate)
+
     return _parse_answer(answer, items)
 
 

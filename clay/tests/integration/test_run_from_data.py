@@ -15,7 +15,15 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from ...actions import scramda2_actions
-from ...run import engine
+from ...run import engine, io
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `runCode` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 def _wf(action_sets, steps=None):
@@ -101,7 +109,8 @@ class TestRunFromDataBasic(unittest.TestCase):
     def test_multi_step_result_flows_forward(self):
         """Result from step 1 is available to step 2."""
         with patch('urllib.request.urlopen',
-                   return_value=_make_scramda2_response("summarised_content")):
+                   return_value=_make_scramda2_response("summarised_content")), \
+                patch.object(io, 'get', return_value=_ApprovingIO()):
             wf = _wf({
                 "s1": [{"id": "summary", "type": "scramda2",
                         "prompt": "Summarise", "examples": []}],
@@ -133,7 +142,8 @@ class TestRunFromDataBasic(unittest.TestCase):
     def test_label_does_not_crash(self):
         wf = _wf({"run": [{"id": "v", "type": "python", "code": "print(1)"}]})
         # Should not raise regardless of label value
-        engine.run_from_data(wf, label="my-run-label", auto=True)
+        with patch.object(io, 'get', return_value=_ApprovingIO()):
+            engine.run_from_data(wf, label="my-run-label", auto=True)
 
 
 class TestRunFromDataAutoContext(unittest.TestCase):

@@ -15,10 +15,11 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from ..actions.agent import context_actions
 from ..lib import config
-from ..run import engine
+from ..run import engine, io
 from ..run.dispatcher import _resolve_action_fields
 
 
@@ -155,6 +156,14 @@ class TestTrainingJsonStructure(unittest.TestCase):
 # loadContext handler
 # ─────────────────────────────────────────────────────────────────────────────
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. `shell` reaches approval.confirm()
+    (required=True, 573aee4) even for a plain 'echo hello'."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class TestLoadContextHandler(unittest.TestCase):
 
     def test_loads_training_json_returns_merge_true(self):
@@ -251,7 +260,8 @@ class TestLoadContextHandler(unittest.TestCase):
                        "command": "echo hello", "timeout": 5}],
             "load_training": [{"id": "_training", "type": "loadContext", "file": TRAINING_PATH}]
         }
-        result = engine.process_steps(steps, actions)
+        with patch.object(io, 'get', return_value=_ApprovingIO()):
+            result = engine.process_steps(steps, actions)
         self.assertIn("pre_existing", result,
                       "pre-existing key 'pre_existing' was lost after loadContext merge")
 
@@ -304,7 +314,8 @@ class TestTrainingExamplesWiring(unittest.TestCase):
                           "includedData": ["training_generate_queries"],
                           "timeout": 5}],
         }
-        result = engine.process_steps(steps, actions)
+        with patch.object(io, 'get', return_value=_ApprovingIO()):
+            result = engine.process_steps(steps, actions)
         self.assertIn("echo_result", result,
                       "Shell step after loadContext failed — training key not available")
 

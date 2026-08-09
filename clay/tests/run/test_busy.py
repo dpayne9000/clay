@@ -11,7 +11,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from ...run import dispatcher, engine, events, io, logger
+from ...run import approval, dispatcher, engine, events, io, logger
 from ...run.failure import WorkflowFailure
 from ...run.renderers.detail import busy_label
 
@@ -44,7 +44,20 @@ def _wf(action_sets, steps=None):
     }
 
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. `python` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class EmissionTest(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_an_action_is_bracketed_by_busy(self):
         wf = _wf({"go": [{"id": "v", "type": "python", "code": "1"}]})
@@ -213,6 +226,72 @@ class FloorToHumanTest(unittest.TestCase):
             with self.assertRaises(io.ChannelClosed):
                 channel.prompt('q', 'ready?')
         self.assertEqual(bus.actives(), [False])
+
+
+class ApprovalRelabelTest(unittest.TestCase):
+    """The indicator has to come back up once a gate's question is answered.
+
+    approval.confirm() returns straight into the handler, which then does the
+    actual work — executes the source, writes the files, runs the command —
+    so `_floor_to_human`'s drop must not be the last word: a spinner, `clay
+    ui` label or Telegram typing hint left dark for the whole of that work is
+    the bug this covers.
+    """
+
+    def setUp(self):
+        approval.reset()
+        self.addCleanup(approval.reset)
+
+    def test_the_indicator_relabels_once_the_gate_is_answered(self):
+        channel = io.QueueIO()
+        self.addCleanup(channel.close)
+
+        with _Listen() as bus:
+            threading.Timer(0.05, lambda: channel.deliver('runCode.approve', 'y')).start()
+            with patch.object(io, 'get', return_value=channel):
+                # A real action bracket: the dispatcher raises busy before the
+                # handler runs, exactly as it does for every gated type.
+                logger.busy(True, 'runCode')
+                decision = approval.confirm(
+                    'commands', 'runCode wants to execute generated python source:',
+                    [('python', 'print(1)')],
+                    prompt_id='runCode.approve', required=True)
+
+        self.assertTrue(decision.all_approved)
+        self.assertEqual(bus.actives(), [True, False, True])
+
+    def test_a_refused_prompt_still_relabels(self):
+        """A 'no' is still an answer — the handler still has bookkeeping to do."""
+        channel = io.QueueIO()
+        self.addCleanup(channel.close)
+
+        with _Listen() as bus:
+            threading.Timer(0.05, lambda: channel.deliver('runCode.approve', 'n')).start()
+            with patch.object(io, 'get', return_value=channel):
+                logger.busy(True, 'runCode')
+                decision = approval.confirm(
+                    'commands', 'runCode wants to execute generated python source:',
+                    [('python', 'print(1)')],
+                    prompt_id='runCode.approve', required=True)
+
+        self.assertFalse(decision.all_approved)
+        self.assertEqual(bus.actives(), [True, False, True])
+
+    def test_a_closed_channel_does_not_relabel(self):
+        """Nothing is about to run, so there is no work to raise busy for."""
+        channel = io.QueueIO()
+        channel.close()
+
+        with _Listen() as bus:
+            with patch.object(io, 'get', return_value=channel):
+                logger.busy(True, 'runCode')
+                decision = approval.confirm(
+                    'commands', 'runCode wants to execute generated python source:',
+                    [('python', 'print(1)')],
+                    prompt_id='runCode.approve', required=True)
+
+        self.assertFalse(decision.all_approved)
+        self.assertEqual(bus.actives(), [True, False])
 
 
 class BusyLabelTest(unittest.TestCase):

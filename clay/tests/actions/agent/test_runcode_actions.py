@@ -8,11 +8,24 @@ import unittest
 from unittest.mock import patch
 
 from ....actions.agent import runcode_actions
-from ....run import engine
+from ....run import engine, io
 from ..fixtures import write_workflow, simple_workflow
 
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. runCode reaches approval.confirm()
+    (required=True, 573aee4) for any real source, handler call or workflow."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class TestRunCodeActions(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_inline_python_runs(self):
         result = runcode_actions.handler(
@@ -95,6 +108,11 @@ class TestRunCodeActions(unittest.TestCase):
 
 
 class TestRunCodeWorkflowLayer(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_output_stored_by_action_id(self):
         with tempfile.TemporaryDirectory() as d:

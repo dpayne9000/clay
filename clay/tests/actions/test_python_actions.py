@@ -4,12 +4,27 @@ import os
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from ...actions import python_actions
 from ...run import engine
+from ...run import io as run_io
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `python` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 class TestPythonActions(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(run_io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_returns_id_and_data_keys(self):
         result = python_actions.handler({"id": "out", "code": "x = 1 + 1"}, {})

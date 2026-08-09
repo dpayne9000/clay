@@ -198,8 +198,9 @@ class ConfirmTest(_ApprovalTestCase):
 
     def test_a_required_gate_cannot_be_disabled(self):
         approval.set_manual(False)
-        decision = approval.confirm(
-            'fileWrites', 'do it', [('a', '')], required=True)
+        with patch.object(io, 'get', return_value=_FakeIO('n')):
+            decision = approval.confirm(
+                'fileWrites', 'do it', [('a', '')], required=True)
         self.assertEqual([], decision.approved)
 
     def test_an_empty_item_list_asks_nothing(self):

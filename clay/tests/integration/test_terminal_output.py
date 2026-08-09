@@ -18,20 +18,35 @@ import unittest
 from unittest.mock import patch
 
 from ...run import engine
+from ...run import io as run_io
 from ...run import termui
 from ...run.renderers.terminal import TerminalRenderer
 
 _prev_plain = termui.PLAIN
+_io_patch = None
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `python` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel — no
+    renderer here attaches an io channel, only an event listener."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 def setUpModule():
     # Force plain-mode output so assertions don't depend on whether the test
     # run happens in a TTY (rich mode uses themed banners with different chars).
     termui.set_plain(True)
+    global _io_patch
+    _io_patch = patch.object(run_io, 'get', return_value=_ApprovingIO())
+    _io_patch.start()
 
 
 def tearDownModule():
     termui.set_plain(_prev_plain)
+    _io_patch.stop()
 
 
 def _capture(fn, *args, **kwargs):

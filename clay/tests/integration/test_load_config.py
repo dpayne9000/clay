@@ -18,6 +18,15 @@ from unittest.mock import patch
 
 from clay.cli import _load_config
 from clay.lib import config as lib_config
+from clay.run import io as run_io
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `python` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 class TestLoadConfigStructure(unittest.TestCase):
@@ -133,7 +142,8 @@ class TestLoadConfigRunIntegration(unittest.TestCase):
                 {"id": "marker", "type": "python", "code": "print('ok')"},
             ]},
         }
-        result = engine.run_from_data(wf, initial_data=seed, auto=True)
+        with patch.object(run_io, 'get', return_value=_ApprovingIO()):
+            result = engine.run_from_data(wf, initial_data=seed, auto=True)
         self.assertIn('__config__', result)
         self.assertIsInstance(result['__config__'], dict)
 

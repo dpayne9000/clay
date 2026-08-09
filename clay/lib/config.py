@@ -66,7 +66,15 @@ SEEDED_DIRS = (
 _SCHEMA_PATH = os.path.join(clay_dir, 'schema.json')
 _CONFIG_PATH = os.path.join(clay_dir, 'config.json')
 _BASE_CONFIG_PATH = os.path.join(_DATA_DIR, 'configs', 'default.json')
-_STARTUP_PATH = os.path.join(_DATA_DIR, 'configs', 'startup.json')
+
+#: Which workflow bare `clay` starts is a user preference, not operating logic,
+#: so it lives beside config.json in the user directory and the packaged copy
+#: is only the initial value. The pair mirrors _CONFIG_PATH/_BASE_CONFIG_PATH
+#: exactly, including the create-if-missing rule: an installed clay may sit on
+#: a read-only path, and editing the copy inside site-packages is not something
+#: a user should have to do to change what starts.
+_STARTUP_PATH = os.path.join(clay_dir, 'startup.json')
+_BASE_STARTUP_PATH = os.path.join(_DATA_DIR, 'configs', 'startup.json')
 
 
 def data_path(*parts) -> str:
@@ -395,11 +403,54 @@ def reload_config():
     """Clear the cached config so the next access re-reads the file."""
     load_config.cache_clear()
 
-def load_startup():
-    """Return the parsed startup dict. Never raises; returns ``{}`` on any error."""
+def create_user_startup():
+    """Copy the shipped startup.json into the user directory if absent.
+
+    Create-or-fail ("xb"), the same idiom create_user_config() uses: the OS
+    decides whether the file already existed, so two clay processes starting at
+    once cannot both conclude it was missing. The user's copy always wins, and
+    an upgrade never reverts a choice someone made.
+
+    A corrupt file is recreated and said so out loud rather than silently
+    ignored — a startup.json that will not parse means bare `clay` starts
+    nothing, and failing that quietly is how it stays broken.
+    """
+    ensure_user_dir()
     try:
-        with open(_STARTUP_PATH) as f:
-            data = json.load(f)
-    except (OSError, ValueError):
-        return {}
-    return data if isinstance(data, dict) else {}
+        with open(_BASE_STARTUP_PATH, "rb") as src, \
+                open(_STARTUP_PATH, "xb") as dst:
+            dst.write(src.read())
+    except FileExistsError:
+        try:
+            with open(_STARTUP_PATH) as f:
+                valid = isinstance(json.load(f), dict)
+        except ValueError:
+            valid = False
+        if not valid:
+            print(f"config: {_STARTUP_PATH} is corrupt — recreating from "
+                  f"defaults")
+            with open(_BASE_STARTUP_PATH, "rb") as src, \
+                    open(_STARTUP_PATH, "wb") as dst:
+                dst.write(src.read())
+
+
+def load_startup():
+    """Return the parsed startup dict. Never raises; returns ``{}`` on any error.
+
+    The user's copy is authoritative. The packaged copy is read only when the
+    user directory could not be written — an installed clay on a read-only home
+    still has to start something.
+    """
+    try:
+        create_user_startup()
+    except OSError:
+        pass
+    for path in (_STARTUP_PATH, _BASE_STARTUP_PATH):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return {}

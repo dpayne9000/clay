@@ -40,9 +40,21 @@ def _write_tag(path, content):
             f'<content>\n{content}\n</content></write_file>')
 
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. applyFileWrites is a required gate (573aee4)
+    and reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class WorkspaceTestCase(unittest.TestCase):
 
     def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
+
         self._tmp = tempfile.TemporaryDirectory()
         self.root = self._tmp.name
         self.addCleanup(self._tmp.cleanup)

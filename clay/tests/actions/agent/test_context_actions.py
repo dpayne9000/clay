@@ -7,8 +7,16 @@ import unittest
 from unittest.mock import patch
 
 from ....actions.agent import context_actions
-from ....run import engine
+from ....run import engine, io
 from ..fixtures import write_workflow, simple_workflow
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `runCode` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 class TestContextActionsUnit(unittest.TestCase):
@@ -142,7 +150,8 @@ class TestLoadContextWorkflowLayer(unittest.TestCase):
                                "stdin": "project_name"}]
                 }
             })
-            with patch('builtins.print'):
+            with patch('builtins.print'), \
+                    patch.object(io, 'get', return_value=_ApprovingIO()):
                 data = engine.run(path)
         self.assertIn("my-api", data["result"])
 

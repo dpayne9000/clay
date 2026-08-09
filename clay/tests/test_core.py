@@ -38,6 +38,7 @@ from unittest.mock import patch, MagicMock
 from ..actions import scramda2_actions, workflow_actions
 from ..run import engine
 from ..run import events as run_events
+from ..run import io as run_io
 from ..run import logger as run_logger
 from ..run.failure import WorkflowFailure
 
@@ -569,8 +570,21 @@ class TestNestedWorkflowsIntegration(unittest.TestCase):
         self.assertEqual(result["final_document"]["final"], "APPROVE")
 
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. shell/runCode reach approval.confirm()
+    (required=True, 573aee4) even inside a loop iteration."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class TestLoopResultContextFlow(unittest.TestCase):
     """Integration tests: loop result stored as full dict + dot-notation extraction."""
+
+    def setUp(self):
+        self._io_patch = patch.object(run_io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def _write(self, d, tmpdir, name):
         path = os.path.join(tmpdir, name)

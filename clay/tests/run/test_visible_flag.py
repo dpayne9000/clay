@@ -6,9 +6,18 @@ through logger.emit's `show`, so the log file keeps the whole run either way.
 """
 
 import unittest
+from unittest.mock import patch
 
-from ...run import engine, events, logger
+from ...run import engine, events, io, logger
 from ...run.failure import WorkflowFailure
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `python` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 class _Listen:
@@ -76,6 +85,11 @@ class VisiblePredicateTest(unittest.TestCase):
 
 
 class HiddenActionTest(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_a_visible_action_emits_start_and_complete(self):
         wf = _wf({"go": [{"id": "v", "type": "python", "code": "1"}]})

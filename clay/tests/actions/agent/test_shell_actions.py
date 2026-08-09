@@ -22,7 +22,21 @@ from ..fixtures import write_workflow, simple_workflow
 from ...test_core import _EventLog
 
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. A whitelisted command still reaches
+    approval.confirm() (required=True, 573aee4) even when the handler is
+    called directly, so it has to reach something other than the terminal."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class TestShellActionsUnit(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_whitelisted_command_runs(self):
         result = shell_actions.handler({"id": "out", "command": "echo hello"}, {})
@@ -120,6 +134,11 @@ class TestBlockedArguments(unittest.TestCase):
     segment, so `find . -exec rm -rf {} ;` would otherwise present `find` and
     hide `rm`."""
 
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
+
     def test_find_listing_is_allowed(self):
         result = shell_actions.handler(
             {"id": "out", "command": "find . -maxdepth 1 -type f"}, {})
@@ -163,6 +182,11 @@ class TestInterpolation(unittest.TestCase):
     """Shell syntax is full of braces that are not placeholders. str.format_map
     raises ValueError on `{}`, which would kill the run rather than refuse the
     command — `find . -exec rm -rf {} ;` must reach the guard to be blocked."""
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_empty_braces_survive_interpolation(self):
         self.assertEqual(_interpolate("find . -exec ls {} ;", {}),
@@ -278,6 +302,11 @@ class TestParseCommands(unittest.TestCase):
 
 class TestRunReplyCommands(unittest.TestCase):
 
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
+
     def _run(self, action, ctx):
         with patch('builtins.print'):
             return shell_actions.run_reply_commands_handler(action, ctx)
@@ -391,6 +420,11 @@ class TestRunReplyCommands(unittest.TestCase):
 
 
 class TestShellWorkflowLayer(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_output_stored_by_action_id(self):
         with tempfile.TemporaryDirectory() as d:

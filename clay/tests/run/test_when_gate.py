@@ -6,9 +6,10 @@ each front-end draws for it is covered in test_terminal_renderer.py.
 """
 
 import unittest
+from unittest.mock import patch
 
 from ...lib.flags import FALSY_WORDS, is_truthy
-from ...run import engine, events, logger
+from ...run import engine, events, io, logger
 from ...run.dispatcher import should_run
 from ...run.failure import WorkflowFailure
 
@@ -140,7 +141,22 @@ class ShouldRunTest(unittest.TestCase):
         self.assertIn('typo', warnings[0]['message'])
 
 
+class _ApprovingIO:
+    """Answers every prompt 'y'. `_says()` always builds a `shell` action —
+    the one action type in this file that stores a value — and `shell`
+    reaches approval.confirm() (required=True, 573aee4) for any whitelisted
+    command, gated or not."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
+
+
 class DispatchTest(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_an_open_gate_runs_the_action_normally(self):
         with _Listen() as bus:

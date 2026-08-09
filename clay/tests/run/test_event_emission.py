@@ -7,9 +7,17 @@ file. The renderer's drawing is covered in test_terminal_renderer.py.
 import unittest
 from unittest.mock import patch
 
-from ...run import engine, events, logger
+from ...run import engine, events, io, logger
 from ...run.dispatcher import _action_fields
 from ...run.failure import WorkflowFailure
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `python` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 class _Listen:
@@ -41,6 +49,11 @@ def _wf(action_sets, steps=None):
 
 
 class EmissionSequenceTest(unittest.TestCase):
+
+    def setUp(self):
+        self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
+        self._io_patch.start()
+        self.addCleanup(self._io_patch.stop)
 
     def test_run_emits_expected_sequence(self):
         wf = _wf({"go": [{"id": "v", "type": "python", "code": "1"}]})

@@ -6,8 +6,16 @@ from unittest.mock import patch
 
 from ...actions import scramda2_actions
 from ...actions.scramda2_actions import _SafeMap
-from ...run import engine
+from ...run import engine, io
 from .fixtures import write_workflow, simple_workflow
+
+
+class _ApprovingIO:
+    """Answers every prompt 'y'. `runCode` is a required gate (573aee4) and
+    reaches this test's terminal for real without a scripted channel."""
+
+    def prompt(self, prompt_id, text):
+        return 'y'
 
 
 class TestScranda2SafeMap(unittest.TestCase):
@@ -168,7 +176,8 @@ class TestScramda2WorkflowLayer(unittest.TestCase):
                              "stdin": "summary"}]
                 }
             })
-            data = engine.run(path)
+            with patch.object(io, 'get', return_value=_ApprovingIO()):
+                data = engine.run(path)
         self.assertIn("SUMMARISED_CONTENT", data["result"])
 
 
