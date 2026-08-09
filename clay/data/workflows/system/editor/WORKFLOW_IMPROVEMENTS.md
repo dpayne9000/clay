@@ -14,7 +14,7 @@ left it alone and made this a new file.)
 ## Part 1 — what's actually broken in the editor right now (fix these first)
 
 1. In `main.json`, the boot step reads the tutorial file from a hardcoded
-   path: `~/projects/platformCLI/workflows/system/editor/`. Two problems —
+   path: `~/projects/clay/workflows/system/editor/`. Two problems —
    it's spelled wrong (capital "CLI", but the real folder is
    `platformCli`), and it's tied to one specific person's home directory
    instead of being relative to the project. It should just be resolved

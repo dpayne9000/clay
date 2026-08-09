@@ -87,7 +87,7 @@ python -m clay.actions.registry              # combined schema for all types
 ## Running in CI
 
 ```bash
-cd platformCLI
+cd clay
 python clay.py lint clay/data/workflows/
 echo "Exit: $?"
 ```

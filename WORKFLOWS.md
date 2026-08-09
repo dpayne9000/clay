@@ -1,11 +1,11 @@
-# platformCLI Workflow Guide
+# clay Workflow Guide
 
 Workflows are JSON files that define a sequence of **steps**, each containing one or more **actions**. The CLI executes them in order, passing outputs from earlier steps into later ones via `includedData`.
 
 ## Commands
 
 ```bash
-cd platformCLI
+cd clay
 source .venv/bin/activate
 export GOPHER_URL=http://127.0.0.1:8080     # optional; local OpenAI-compatible model server (default)
 

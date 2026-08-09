@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest import mock
 
-# Ensure platformCLI is on path
+# Ensure clay is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from clay.daemon.server import ClayDaemon, ClientHandler, SOCKET_PATH

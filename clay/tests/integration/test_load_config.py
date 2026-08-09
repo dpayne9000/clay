@@ -1,7 +1,7 @@
 """Integration tests for _load_config() in clay/cli.py.
 
 _load_config() seeds every workflow run with:
-  - '__config__' : parsed platformCLI/configs/default.json (or {} if missing/invalid)
+  - '__config__' : parsed clay/configs/default.json (or {} if missing/invalid)
   - '__schema__' : JSON string from the action registry
 
 Both keys are seeded into initial_data. Actions must list them in includedData

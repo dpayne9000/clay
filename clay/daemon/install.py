@@ -38,7 +38,7 @@ def _python_path():
 
 
 def _working_dir():
-    """The platformCLI directory (cwd for the daemon)."""
+    """The clay directory (cwd for the daemon)."""
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
