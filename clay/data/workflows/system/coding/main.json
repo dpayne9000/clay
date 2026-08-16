@@ -1,9 +1,7 @@
 {
-  "_comment": "Minimal launcher.",
+  "autoContext": "Create or modify software projects from the user's requirements. Plan the project, implement one file at a time, verify each useful increment, and report only work supported by action results.",
   "workflow": {
-    "steps": [
-      "session"
-    ]
+    "steps": ["session"]
   },
   "actionSets": {
     "session": [
@@ -13,7 +11,7 @@
         "file": "./iteration.json",
         "iterations": 0,
         "continueKey": "keep_going",
-        "outputKey": "agent_reply",
+        "outputKey": "turn_summary",
         "includedData": []
       }
     ]

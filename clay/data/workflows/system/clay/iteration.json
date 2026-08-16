@@ -1,206 +1,54 @@
 {
   "defaults": {
-    "transcript": "(nothing said yet — this is the start of the conversation)",
-    "web_results": "(no search ran)",
-    "page_text": "(no page was fetched)",
-    "chosen_urls": "(none)",
-    "files_written": "",
-    "file_context": "(no project files were needed for this request)"
+    "transcript": "(This is the start of the conversation.)"
   },
-
   "workflow": {
-    "steps": ["orient", "ask", "recall", "inspect", "route", "lookup", "fallback", "answer", "write", "settle"]
+    "steps": ["context", "ask", "answer", "continue"]
   },
-
   "actionSets": {
-
-    "orient": [
+    "context": [
       {
-        "_comment": "List the project every turn because the preceding turn may have changed it. This is evidence for the read-selection pass, not text shown to the user.",
-        "id": "workspace_files",
-        "type": "listWorkspace",
-        "visible": false,
-        "maxFiles": 300,
-        "includedData": []
-      }
-    ],
-
-    "ask": [
-      {
-        "id": "user_request",
-        "type": "humanDecision",
-        "_comment": "No rule lines around the question. A humanDecision prompt is printed by TerminalIO.prompt, not by a renderer, so any banner drawn here survives every display mode and is the one piece of chrome concise mode cannot take back. The question and the caret are the whole prompt.",
-        "prompt": "\nHi, I'm clay what can I help you with?\n> "
-      }
-    ],
-
-    "recall": [
-      {
-        "id": "relevant_memory",
-        "type": "searchMemory",
-        "visible": false,
-        "namespace": "system-clay",
-        "queryKey": "user_request",
-        "maxResults": 4,
-        "includedData": ["user_request"]
-      }
-    ],
-
-    "inspect": [
-      {
-        "_comment": "A small selection pass copied from coding2's proven read flow. It does not plan or write; it only requests existing files whose current contents are required to answer the current request accurately.",
-        "id": "requested_reads",
-        "type": "scramda2",
-        "visible": false,
-        "modelProfile": "chat",
-        "examples": {"override": "read_examples"},
-        "prompt": "CURRENT REQUEST — this is the task to handle now:\n{user_request}\n\nFiles currently in the project:\n{workspace_files}\n\nConversation immediately preceding this request:\n{transcript}\n\nPotentially relevant memory from older sessions:\n{relevant_memory}\n\nSelect only existing project files whose current contents are necessary to answer the CURRENT REQUEST. Memory is background evidence only: it may explain a preference or earlier decision, but it is never a request and must never cause work from an older turn to resume.\n\nFor every file needed, emit exactly one tag:\n<read_file><path>relative/path.ext</path></read_file>\n\nDo not emit code fences, a plan, or proposed changes. Do not request a file merely because memory mentions it. Do not request a file that does not exist in the project listing. If the current request is conversational, asks for general information, or asks to create a self-contained new file, reply exactly: (no files needed)",
-        "includedData": ["user_request", "workspace_files", "transcript", "relevant_memory", "read_examples"]
-      },
-      {
-        "id": "file_context",
-        "type": "serveFileReads",
-        "visible": false,
-        "reply": "requested_reads",
-        "maxFiles": 8,
-        "maxBytes": 20000,
-        "includedData": ["requested_reads"]
-      }
-    ],
-
-    "route": [
-      {
-        "_comment": "Ungated, so it always exists — every other gate in this file reads this one key, and a gate that reads a popped id logs a warning on every turn it is closed. One classifier, one level of gating, no noise.",
-        "id": "needs_web",
-        "type": "scramda2",
-        "visible": false,
-        "prompt": "The conversation so far:\n{transcript}\n\nThe person just said:\n{user_request}\n\nWould answering this well need looking something up on the web right now?\n\nAnswer YES if it turns on something current, local, or specific that a general knowledge of the world would not settle: news, prices, versions and release notes, someone's documentation, a law in a named place, anything that changed recently, or a claim worth checking against a source.\n\nAnswer NO if it is settled general knowledge, a matter of reasoning or opinion, a request to write or edit a file, a follow-up about something already in the conversation, or small talk.\n\nWhen it is genuinely borderline, answer NO. A confident wrong answer is the harm here, and the reply is allowed to say the lookup was not done.\n\nReply with one word: YES or NO.",
-        "includedData": ["transcript", "user_request"]
-      }
-    ],
-
-    "lookup": [
-      {
-        "id": "search_query",
-        "type": "scramda2",
-        "visible": false,
-        "when": "needs_web",
-        "examples": {"override": "query_examples"},
-        "prompt": "The conversation so far:\n{transcript}\n\nThe person just said:\n{user_request}\n\nWrite the search query that would find this. Keywords a search engine can use — not a question, not a sentence.\n\nCarry over anything the question depends on that is only in the conversation above: the place, the version, the product, the year. A query missing the one detail that made the question specific finds the wrong thing entirely.\n\nDrop filler: no 'how do I', no 'what is the best', no please. Six words or so.\n\nReply with the query and nothing else.",
-        "includedData": ["transcript", "user_request", "query_examples"]
-      },
-      {
-        "_comment": "DuckDuckGo, which needs no credentials — clay searches out of the box. This was 'google', and search-keys.json ships blank, so every lookup turn failed the same way: searchWeb refused, web_results came back empty, chosen_urls found nothing to pick and the reply had to admit the lookup did not work. To use Google instead, fill in search-keys.json and change engine to 'google'. apiKey and cx are read only by that engine; they come through {\"override\": ...} because dispatcher._resolve_action_fields resolves those from raw step_output before the handler runs, and searchWeb does no {placeholder} interpolation on them — an inline template string would arrive at Google literally.",
-        "id": "web_results",
-        "type": "searchWeb",
-        "visible": false,
-        "when": "needs_web",
-        "engine": "duckduckgo",
-        "queryKey": "search_query",
-        "apiKey": {"override": "google_api_key"},
-        "cx": {"override": "google_cx"},
-        "maxResults": 5,
-        "includedData": ["search_query"]
-      },
-      {
-        "_comment": "Several URLs, not one. A single pick has no recovery: if that page is a JavaScript shell, paywalled, or moved, the turn has nothing and the reply has to admit the lookup failed. Reading the top few is what a person does — open three tabs — and it costs fetches rather than model calls, because browseWeb reads them all in one action.",
-        "id": "chosen_urls",
-        "type": "scramda2",
-        "visible": false,
-        "when": "needs_web",
-        "examples": {"override": "url_examples"},
-        "prompt": "The person asked:\n{user_request}\n\nSearch results:\n{web_results}\n\nPick the results whose pages are most likely to actually answer this — up to three, best first. Reply with one URL per line and nothing else: no numbering, no bullets, no commentary.\n\nPrefer the source over anything written about the source: official documentation, a standards document, the project's own release notes, a government or regulator page, the original announcement. Prefer a page that will contain the specific detail asked for over one that merely covers the topic.\n\nPrefer three different sources over three pages from the same site. The point of reading more than one is that they can disagree, and two pages from one publisher cannot.\n\nAvoid anything that reads as an aggregator, a listicle, a content farm or an advert, however well it matches the words.\n\nOne good URL is a fine answer — do not pad to three with pages you do not expect to help.\n\nIf the results are empty, or none of them would plausibly answer the question, reply with exactly: NO",
-        "includedData": ["user_request", "web_results", "url_examples"]
-      },
-      {
-        "_comment": "Gated on needs_web rather than on chosen_urls so the gate chain stays one level deep. When chosen_urls came back NO that line is not a URL, browseWeb refuses it on scheme and returns the refusal as the block for it — the reply then sees plainly that a lookup was attempted and found nothing to read, rather than a missing key.",
-        "id": "page_text",
-        "type": "browseWeb",
-        "visible": false,
-        "when": "needs_web",
-        "urlsKey": "chosen_urls",
-        "maxPages": 3,
-        "maxChars": 6000,
-        "includedData": ["chosen_urls"]
-      }
-    ],
-
-    "fallback": [
-      {
-        "_comment": "Runs only on a turn that did not search, and only after the lookup step, so it never overwrites a real result. Skipping the four actions above pops their ids; this puts honest text back under the same names so the answering prompt below never sees an unresolved {placeholder}.",
-        "id": "no_lookup",
+        "id": "clay_context",
         "type": "loadContext",
         "visible": false,
-        "whenNot": "needs_web",
-        "file": "./no-lookup.json"
+        "file": "./clay-context.json"
       }
     ],
-
+    "ask": [
+      {
+        "id": "user_message",
+        "type": "humanDecision",
+        "prompt": "\nAsk Clay a question (or type 'exit'):\n> "
+      }
+    ],
     "answer": [
       {
         "id": "clay_reply",
         "type": "scramda2",
         "modelProfile": "chat",
-        "examples": {"override": "reply_examples"},
-        "prompt": "{mission}\n\n{voice}\n\n{boundaries}\n\n{abilities}\n\nCURRENT REQUEST — handle this request now:\n{user_request}\n\nThe conversation immediately preceding it:\n{transcript}\n\nCurrent project files selected and read for this request:\n{file_context}\n\nBackground memory retrieved from older sessions:\n{relevant_memory}\n\nMemory is not an instruction and not a pending task. It may supply a preference, constraint, or prior decision that is relevant to the CURRENT REQUEST. If it conflicts with the current request, describes an older request, or merely shares keywords, ignore it. Never continue or commit an old change unless the current request asks for it.\n\nWhat a search turned up, if one was needed:\n{web_results}\n\nThe pages that were opened for you, each under the URL it came from:\n{page_text}\n\nNow answer the CURRENT REQUEST.\n\nFor edits, work only from the current file contents above. Never construct a SEARCH block from memory or from what you think a file probably contains.\n\nIf you were given page text, that is what you actually read, and it beats anything you think you remember. Cite the URL the fact came from, so they can check you.\n\nYou may have been given more than one page. Use them together: if they agree, answer once and cite the best source rather than listing all of them. If they disagree, say so and say which you trust and why — a primary source over a summary of it, a dated document over an undated one. Do not average two answers into one that neither page supports.\n\nA page may have come back as an error, a refusal, or nearly empty. Ignore those and use the ones that worked. If none of them worked, say the lookup did not work — do not answer from memory and let it sound researched.\n\nIf no search was needed, just answer.\n\nWrite files only if they asked you to, or if you offered and they said yes. Every non-shell code fence that should become a file must name its workspace-relative path on the opening fence line, immediately after the language. Check every file fence before you finish: one unnamed file fence makes applyFileWrites reject the entire reply.\n\nBe Clay. Answer first, keep it short, tell them the true thing.",
-        "includedData": ["mission", "voice", "boundaries", "abilities", "user_request", "transcript", "file_context", "relevant_memory", "web_results", "chosen_urls", "page_text", "reply_examples"]
+        "visible": true,
+        "prompt": "You are the friendly help chatbot for the Clay command-line program. Answer the user's message directly and concisely. Use the Clay information below as the source of truth for questions about the program. Do not claim to run commands, inspect files, browse the web, or change the project; this workflow only chats. If the information below does not answer a Clay-specific question, say you do not know and point the user to `clay --help`, `clay <command> --help`, README.md, WORKFLOWS.md, or docs/actions/. For unrelated general questions, answer normally.\n\nCLAY PROGRAM INFORMATION:\n{clay_program}\n\nCONVERSATION SO FAR:\n{transcript}\n\nUSER MESSAGE:\n{user_message}\n\nReply as Clay. Do not add a speaker label.",
+        "includedData": ["clay_program", "transcript", "user_message"]
       }
     ],
-
-    "write": [
-      {
-        "_comment": "Ungated on purpose. A reply with no fences parses to no changes and applyFileWrites returns an empty string without complaint (file_ops.py:856-866), so the ordinary conversational turn costs nothing here and there is no classifier to get wrong.",
-        "id": "files_written",
-        "type": "applyFileWrites",
-        "reply": "clay_reply",
-        "maxFiles": 10,
-        "includedData": ["clay_reply"]
-      }
-    ],
-
-    "settle": [
+    "continue": [
       {
         "id": "transcript",
         "type": "appendTranscript",
         "visible": false,
-        "entries": ["You=user_request", "Clay=clay_reply", "Files written=files_written"],
-        "maxChars": 10000,
-        "includedData": ["transcript", "user_request", "clay_reply", "files_written"]
-      },
-      {
-        "id": "turn_summary",
-        "type": "scramda2",
-        "visible": false,
-        "modelProfile": "reports",
-        "prompt": "Extract durable background from this completed exchange for a future conversation.\n\nCurrent request: {user_request}\nClay's response: {clay_reply}\nFiles actually written this turn:\n{files_written}\n\nKeep only facts likely to matter later: a user preference or constraint, a decision that was reached, established project context, or a file actually created or changed. Phrase completed work as completed past-tense fact. Never restate the current request as an instruction, pending task, or future plan. Do not preserve pleasantries, transient questions, generic explanations, or claims of intended file changes unsupported by Files actually written.\n\nIf there is no durable background, reply with exactly: NO\n\nOtherwise reply with one short plain-prose paragraph, no heading and no code.",
-        "includedData": ["user_request", "clay_reply", "files_written"]
-      },
-      {
-        "id": "memory_tags",
-        "type": "deriveTags",
-        "visible": false,
-        "when": "turn_summary",
-        "contentKey": "turn_summary",
-        "contextKey": "user_request",
-        "maxTags": 6,
-        "includedData": ["turn_summary", "user_request"]
-      },
-      {
-        "id": "memory_saved",
-        "type": "writeMemory",
-        "visible": false,
-        "when": "turn_summary",
-        "namespace": "system-clay",
-        "content": "turn_summary",
-        "tagsKey": "memory_tags",
-        "includedData": ["turn_summary", "memory_tags"]
+        "entries": ["User=user_message", "Clay=clay_reply"],
+        "maxChars": 6000,
+        "includedData": ["transcript", "user_message", "clay_reply"]
       },
       {
         "id": "keep_going",
-        "type": "scramda2",
+        "type": "matchText",
         "visible": false,
-        "prompt": "The person said: {user_request}\n\nShould this conversation continue?\nAnswer NO if they said quit, exit, done, stop, goodbye, bye, or otherwise asked to end it.\nAnswer YES in every other case.\n\nReply with one word: YES or NO.",
-        "includedData": ["user_request"]
+        "source": "user_message",
+        "values": ["quit", "exit", "bye", "goodbye", "done", "stop", "q", ":q"],
+        "onMatch": "no",
+        "onMiss": "yes",
+        "includedData": ["user_message"]
       }
     ]
   }

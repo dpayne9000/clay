@@ -1,0 +1,54 @@
+{
+  "recall_query_examples": [
+    {
+      "input": "RECENT CONVERSATION:\n(none)\n\nCURRENT MESSAGE:\nwhat did we decide about how the config files should be organized?",
+      "output": "config files organization decision"
+    },
+    {
+      "input": "RECENT CONVERSATION:\nUser=I'm working on the Clay CLI.\nAssistant=What part are you changing?\n\nCURRENT MESSAGE:\nwhat was that command format again?",
+      "output": "Clay CLI command format"
+    },
+    {
+      "input": "RECENT CONVERSATION:\n(none)\n\nCURRENT MESSAGE:\nwhat is a Python tuple?",
+      "output": "Python tuple"
+    }
+  ],
+  "reply_examples": [
+    {
+      "input": "RECENT CONVERSATION:\n(none)\n\nRELEVANT RECOLLECTIONS:\n(no relevant recollections)\n\nCURRENT MESSAGE:\nwhat is a Python tuple?",
+      "output": "A tuple is an ordered Python sequence, like a list, but it is immutable. For example: `point = (10, 20)`."
+    },
+    {
+      "input": "RECENT CONVERSATION:\nUser=I'm changing the installer.\nAssistant=The archive signature should be checked before extraction.\n\nRELEVANT RECOLLECTIONS:\nThe current release design verifies the archive signature before extraction.\n\nCURRENT MESSAGE:\nright, and what happens if verification fails?",
+      "output": "The installer refuses to extract or install the archive. Verification is the gate before anything inside the archive is trusted."
+    }
+  ],
+  "memory_decision_examples": [
+    {
+      "input": "CURRENT MESSAGE:\nI prefer generated workflows to stay within the existing Clay syntax.\n\nRELEVANT RECOLLECTIONS:\n(no relevant recollections)",
+      "output": "REMEMBER"
+    },
+    {
+      "input": "CURRENT MESSAGE:\nthanks, that worked\n\nRELEVANT RECOLLECTIONS:\n(no relevant recollections)",
+      "output": "SKIP"
+    },
+    {
+      "input": "CURRENT MESSAGE:\nI prefer generated workflows to stay within the existing Clay syntax.\n\nRELEVANT RECOLLECTIONS:\nThe user prefers generated Clay workflows to stay within the existing workflow syntax without introducing a new orchestration language.",
+      "output": "SKIP"
+    }
+  ],
+  "memory_record_examples": [
+    {
+      "input": "CURRENT MESSAGE:\nI prefer generated workflows to stay within the existing Clay syntax.",
+      "output": "The user prefers generated Clay workflows to stay within the existing Clay syntax."
+    },
+    {
+      "input": "CURRENT MESSAGE:\nI'm building Clay as a deterministic workflow system.",
+      "output": "The user is building Clay as a deterministic workflow system."
+    },
+    {
+      "input": "CURRENT MESSAGE:\nFor this project, the current decision is to verify the release archive before extraction.",
+      "output": "The current project decision is to verify the release archive before extraction."
+    }
+  ]
+}

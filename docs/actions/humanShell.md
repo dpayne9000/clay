@@ -22,7 +22,8 @@ Proposes a shell command to the human for approval before running it. Always pau
    - Type a different command to substitute (whitelist-checked again)
 5. The approved command runs and stdout is returned.
 
-The human gate fires even in `--auto` mode — this is intentional.
+The human gate fires in `--auto` mode. An unattended daemon run refuses the
+action because no human is available.
 
 ### Developer whitelist
 
@@ -67,6 +68,7 @@ When the approval prompt appears, the human can type a corrected version of the 
 - Rejected commands return `[rejected by user]`
 - Blocked commands return `[blocked — 'cmd' not in developer whitelist]`
 - Skipped commands return `[skipped]`
+- Unattended runs return `[refused: no human available]`
 
 ## Notes
 

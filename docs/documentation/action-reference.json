@@ -1,6 +1,29 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12",
   "title": "ClayAction",
+  "$defs": {
+    "universalFields": {
+      "properties": {
+        "outputKey": {
+          "description": "Secondary storage alias for results stored under id. The engine keeps the identical value under both keys. Merge actions flatten their result instead and create neither key.",
+          "type": "string"
+        },
+        "visible": {
+          "description": "Set false to hide this action from every front-end \u2014 no start line, no result, no file/command/prompt output. The log file still records all of it, and errors are always shown.",
+          "type": "boolean",
+          "default": true
+        },
+        "when": {
+          "description": "Run this action only if the named earlier output means yes. 'false', 'done', '0', 'no', 'stop' and empty mean no; anything else means yes, so a model answering YES or NO gates directly. The key is read from the run's accumulated output and does not need to be in includedData. A skipped action stores nothing.",
+          "type": "string"
+        },
+        "whenNot": {
+          "description": "The mirror of 'when': run this action only if the named earlier output means no. Use it for the other half of a branch \u2014 the action that handles the case 'when' skips. Both fields together mean both must hold.",
+          "type": "string"
+        }
+      }
+    }
+  },
   "oneOf": [
     {
       "type": "object",
@@ -51,11 +74,11 @@
           "const": "loadContext"
         },
         "id": {
-          "description": "Required but ignored \u2014 all keys from the file merge into context directly",
+          "description": "Context key for a plain-text file's contents. Ignored for JSON objects, whose keys merge directly",
           "type": "string"
         },
         "file": {
-          "description": "Path to a JSON file whose top-level keys are merged into the workflow context",
+          "description": "Path to a file beside the workflow. A JSON object merges its top-level keys into context; anything else loads as text under `id`",
           "type": "string"
         }
       },
@@ -173,7 +196,7 @@
           "const": "loop"
         },
         "id": {
-          "description": "Output key for the final iteration's outputKey value",
+          "description": "Output key for the complete final iteration context",
           "type": "string"
         },
         "file": {
@@ -190,9 +213,14 @@
           "type": "string"
         },
         "outputKey": {
-          "description": "Sub-workflow output key appended to loop_history each iteration",
+          "description": "Secondary storage key for the complete final iteration context",
           "type": "string",
           "default": "final"
+        },
+        "merge": {
+          "description": "Publish the last iteration's action ids into the calling workflow instead of one nested dict",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [
@@ -412,6 +440,43 @@
       "properties": {
         "type": {
           "type": "string",
+          "const": "runReplyCommands"
+        },
+        "id": {
+          "description": "Output key for the transcript of commands and their output",
+          "type": "string"
+        },
+        "reply": {
+          "description": "Context key holding the model reply to scan for ```bash blocks",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Directory to run in. Supports {placeholder} interpolation",
+          "type": "string"
+        },
+        "maxCommands": {
+          "description": "Refuse to run more commands than this from one reply",
+          "type": "integer",
+          "default": 5
+        },
+        "timeout": {
+          "description": "Seconds before a command is killed",
+          "type": "integer",
+          "default": 30
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "reply"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
           "const": "writeSkill"
         },
         "id": {
@@ -580,13 +645,49 @@
           "const": "telegram"
         },
         "id": {
-          "description": "telegram is an action that persists, and hosts a telegram bot channel. It does not require params other than type=telegram and runs until manually stopped",
+          "description": "telegram is an action that persists, and hosts a telegram bot channel. It requires TELEGRAM_BOT_TOKEN plus a non-empty TELEGRAM_ALLOWED_USERS or TELEGRAM_ALLOWED_CHATS environment allowlist, and runs until manually stopped",
           "type": "string"
+        },
+        "workflows": {
+          "description": "Menu entries shown in the bot's control panel: [{\"label\": \"...\", \"path\": \"workflows/.../main.json\"}]",
+          "type": "array"
         }
       },
       "required": [
         "type",
         "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "appendTranscript"
+        },
+        "id": {
+          "description": "Output key for the updated transcript. Use the same key every iteration so the loop carries it forward",
+          "type": "string"
+        },
+        "entries": {
+          "description": "Turn lines as \"Label=ctxKey\" (bare \"ctxKey\" uses the key as the label). Entries whose value is empty are skipped",
+          "type": "array"
+        },
+        "transcriptKey": {
+          "description": "Context key holding the prior transcript. Defaults to id",
+          "type": "string"
+        },
+        "maxChars": {
+          "description": "Cap on transcript length; oldest turns are dropped at turn boundaries",
+          "type": "integer",
+          "default": 8000
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "entries"
       ],
       "additionalProperties": true
     },
@@ -605,8 +706,17 @@
           "description": "URL to fetch (http/https only). Supports {placeholder} interpolation",
           "type": "string"
         },
+        "urlsKey": {
+          "description": "Context key holding newline-separated URLs. Each is fetched and returned as its own labelled block",
+          "type": "string"
+        },
+        "maxPages": {
+          "description": "Maximum URLs read from urlsKey",
+          "type": "integer",
+          "default": 3
+        },
         "maxChars": {
-          "description": "Maximum characters of extracted text to return",
+          "description": "Maximum characters of extracted text per page",
           "type": "integer",
           "default": 4000
         },
@@ -617,8 +727,7 @@
       },
       "required": [
         "type",
-        "id",
-        "url"
+        "id"
       ],
       "additionalProperties": true
     },
@@ -642,7 +751,7 @@
           "type": "string"
         },
         "engine": {
-          "description": "Search engine: duckduckgo, google, or bing",
+          "description": "Search engine: duckduckgo (keyless), duckduckgo-instant, google, or bing",
           "type": "string",
           "default": "duckduckgo"
         },
@@ -725,6 +834,11 @@
         "file": {
           "description": "Output file path. Supports {placeholder} interpolation",
           "type": "string"
+        },
+        "root": {
+          "description": "Approved workspace root containing the relative output path",
+          "type": "string",
+          "default": "."
         }
       },
       "required": [
@@ -780,6 +894,109 @@
       "properties": {
         "type": {
           "type": "string",
+          "const": "listWorkspace"
+        },
+        "id": {
+          "description": "Output key for the newline-separated file list, one root-relative path per line",
+          "type": "string"
+        },
+        "root": {
+          "description": "Workspace directory to list. Must be an approved working directory. Supports {placeholder} interpolation",
+          "type": "string",
+          "default": "."
+        },
+        "maxFiles": {
+          "description": "Cap on listed paths; the overflow is reported as a count",
+          "type": "integer",
+          "default": 200
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "serveFileReads"
+        },
+        "id": {
+          "description": "Output key for the requested files' contents, '=== path ===' blocks (empty when nothing was requested)",
+          "type": "string"
+        },
+        "reply": {
+          "description": "Context key holding the model reply to scan for <read_file> requests",
+          "type": "string"
+        },
+        "pathsKey": {
+          "description": "Context key holding paths to serve outright, one per line, with or without a 'CREATED:'/'UPDATED:' prefix. Served before any <read_file> request, so a pass can be handed the files it is about to work on without asking for them",
+          "type": "string"
+        },
+        "root": {
+          "description": "Workspace directory paths resolve under; requests may not escape it. Must be an approved working directory. Supports {placeholder} interpolation",
+          "type": "string",
+          "default": "."
+        },
+        "maxFiles": {
+          "description": "Serve at most this many requests per turn",
+          "type": "integer",
+          "default": 8
+        },
+        "maxBytes": {
+          "description": "Per-file content cap; longer files are truncated with a marker",
+          "type": "integer",
+          "default": 20000
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "reply"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "applyFileWrites"
+        },
+        "id": {
+          "description": "Output key for the newline-separated 'CREATED:/UPDATED: <path>' list (empty when the reply changes no files)",
+          "type": "string"
+        },
+        "reply": {
+          "description": "Context key holding the model reply to scan for named code fences, <write_file> tags and SEARCH/REPLACE edits",
+          "type": "string"
+        },
+        "root": {
+          "description": "Workspace directory paths resolve under; writes may not escape it. Must be an approved working directory. Supports {placeholder} interpolation",
+          "type": "string",
+          "default": "."
+        },
+        "maxFiles": {
+          "description": "Refuse replies changing more files than this",
+          "type": "integer",
+          "default": 20
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "reply"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
           "const": "readFile"
         },
         "id": {
@@ -793,7 +1010,7 @@
         "root": {
           "description": "Directory the path resolves under; paths may not escape it",
           "type": "string",
-          "default": "output"
+          "default": "."
         },
         "encoding": {
           "description": "Text encoding used to read the file",
@@ -824,7 +1041,7 @@
           "type": "string"
         },
         "file": {
-          "description": "Output path relative to root. Supports {placeholder} interpolation",
+          "description": "Output path, relative to root or absolute as long as it resolves inside root. Supports {placeholder} interpolation",
           "type": "string"
         },
         "content": {
@@ -834,7 +1051,7 @@
         "root": {
           "description": "Directory the path resolves under; paths may not escape it",
           "type": "string",
-          "default": "output"
+          "default": "."
         },
         "encoding": {
           "description": "Text encoding used to write the file",
@@ -880,6 +1097,39 @@
       "properties": {
         "type": {
           "type": "string",
+          "const": "writeFileSet"
+        },
+        "id": {
+          "description": "Output key for the newline-separated 'CREATED: <path>' list (empty when the manifest has no files)",
+          "type": "string"
+        },
+        "manifest": {
+          "description": "Context key holding the JSON manifest: {\"files\": [{\"path\": ..., \"content\": ...}]}",
+          "type": "string"
+        },
+        "root": {
+          "description": "Directory every path resolves under; paths may not escape it. Must be an approved working directory",
+          "type": "string",
+          "default": "."
+        },
+        "maxFiles": {
+          "description": "Refuse manifests with more files than this",
+          "type": "integer",
+          "default": 20
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "manifest"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
           "const": "humanDecision"
         },
         "id": {
@@ -895,6 +1145,44 @@
         "type",
         "id",
         "prompt"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "matchText"
+        },
+        "id": {
+          "description": "Output key for the onMatch or onMiss string",
+          "type": "string"
+        },
+        "source": {
+          "description": "Context key holding the text to test",
+          "type": "string"
+        },
+        "values": {
+          "description": "Literal strings that count as a match, compared stripped and lower-cased",
+          "type": "array"
+        },
+        "onMatch": {
+          "description": "Emitted when the source equals one of `values`",
+          "type": "string",
+          "default": "yes"
+        },
+        "onMiss": {
+          "description": "Emitted when it does not",
+          "type": "string",
+          "default": "no"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "source",
+        "values"
       ],
       "additionalProperties": true
     },
@@ -943,7 +1231,7 @@
           "type": "string"
         },
         "code": {
-          "description": "Python source to execute. No builtins \u2014 pure computation only",
+          "description": "Python source to execute after explicit human approval; not a security sandbox",
           "type": "string"
         }
       },
@@ -1067,7 +1355,7 @@
           "type": "string"
         },
         "method": {
-          "description": "Transformation method: parseLines or map",
+          "description": "Legacy transformation method: parseLines or map",
           "type": "string"
         }
       },
@@ -1095,7 +1383,7 @@
           "type": "string"
         },
         "outputKey": {
-          "description": "Key to extract from the sub-workflow's final context",
+          "description": "Secondary storage key for the complete sub-workflow context",
           "type": "string",
           "default": "final"
         }

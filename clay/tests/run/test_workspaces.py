@@ -263,6 +263,45 @@ class UnattendedTest(_WorkspaceTestCase):
         self.assertEqual(workspaces.authorize(target), target)
 
 
+class DaemonAccessTest(_WorkspaceTestCase):
+    """Advance authority is a persisted grant with required gates off."""
+
+    def test_a_missing_grant_reports_every_capability(self):
+        check = workspaces.daemon_access(self.dir('project'))
+        self.assertFalse(check.allowed)
+        self.assertEqual(workspaces.DAEMON_CAPABILITIES, check.missing)
+
+    def test_only_enabled_required_gates_are_missing(self):
+        target = self.dir('project')
+        workspaces.approve(target, {
+            'fileReads': False, 'fileWrites': True, 'commands': False})
+        check = workspaces.daemon_access(target)
+        self.assertEqual(frozenset({'fileWrites'}), check.missing)
+
+    def test_grant_turns_off_only_requested_capabilities(self):
+        target = self.dir('project')
+        workspaces.approve(target, {
+            'fileReads': True, 'fileWrites': True, 'commands': True})
+        workspaces.grant_daemon_access(target, {'fileWrites'})
+        grant = workspaces.find(target)
+        self.assertTrue(grant.gates['fileReads'])
+        self.assertFalse(grant.gates['fileWrites'])
+        self.assertTrue(grant.gates['commands'])
+
+    def test_a_child_grant_does_not_weaken_its_parent(self):
+        parent = self.dir('projects')
+        child = self.dir('projects', 'client')
+        workspaces.approve(parent, {
+            'fileReads': True, 'fileWrites': True, 'commands': True})
+        workspaces.grant_daemon_access(child)
+        self.assertTrue(workspaces.find(parent).gates['commands'])
+        self.assertTrue(workspaces.daemon_access(child).allowed)
+
+    def test_unknown_capabilities_fail_closed(self):
+        with self.assertRaises(ValueError):
+            workspaces.daemon_access(self.dir('project'), {'network'})
+
+
 class GateTest(_WorkspaceTestCase):
     """A directory carries the manual-approval gates for work done in it."""
 
@@ -378,6 +417,22 @@ class ActionRefusalTest(_WorkspaceTestCase):
                               'content': 'body'}, {'body': 'print(1)'})
         self.assertIsNone(result.get('error'))
         self.assertIn('print(1)', (target / 'a.py').read_text())
+
+    def test_a_directory_designated_not_to_ask_bypasses_the_required_gate(self):
+        """The configuration saying go has to actually mean go: a directory
+        explicitly granted with fileWrites off must let writeFile through with
+        no prompt at all, even though writeFile's gate is required=True."""
+        from ...actions.core.write_file import handler
+        target = self.dir('trusted')
+        workspaces.approve(target, {'fileWrites': False})
+        approval.set_manual(True)   # the master switch alone must not matter
+        channel = _FakeIO()         # no answers queued: a prompt here would hang
+        with patch.object(io, 'get', return_value=channel):
+            result = handler({'id': 'w', 'file': 'a.py', 'root': str(target),
+                              'content': 'body'}, {'body': 'print(1)'})
+        self.assertIsNone(result.get('error'))
+        self.assertIn('print(1)', (target / 'a.py').read_text())
+        self.assertEqual([], channel.prompts)
 
     def test_an_interpolated_root_is_authorized_too(self):
         """`root` supports {placeholder}, so it can be built from context a

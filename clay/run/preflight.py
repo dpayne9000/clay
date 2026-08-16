@@ -15,6 +15,21 @@ from .failure import WorkflowFailure
 
 Check = Callable[[dict], str | None]
 HEALTH_TIMEOUT_SECONDS = 2
+LLM_ACTION_TYPES = frozenset({"scramda2", "humanDecision"})
+
+
+def _uses_llm(workflow: dict) -> bool:
+    """Return whether a workflow contains an action that may call the LLM."""
+    def visit(value) -> bool:
+        if isinstance(value, dict):
+            if value.get("type") in LLM_ACTION_TYPES:
+                return True
+            return any(visit(child) for child in value.values())
+        if isinstance(value, list):
+            return any(visit(child) for child in value)
+        return False
+
+    return visit(workflow)
 
 
 def _server_root(endpoint: str) -> str:
@@ -52,8 +67,9 @@ def _startup_instructions(endpoint: str, reason: str) -> str:
 
 
 def check_llm_endpoint(workflow: dict) -> str | None:
-    """Require a reachable model server before any root workflow action runs."""
-    del workflow  # This prerequisite intentionally applies to every workflow.
+    """Require a reachable model server for workflows with LLM-backed actions."""
+    if not _uses_llm(workflow):
+        return None
     endpoint = gopher.resolve_endpoint()
     try:
         health_url = f"{_server_root(endpoint)}/health"

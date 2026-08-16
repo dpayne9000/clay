@@ -1,197 +1,117 @@
-# 01 — Architecture
+# Architecture
 
-## Overview
+This document describes the current runtime. Historical plans and completed
+tasks are implementation records, not architecture references.
 
-`clay` is a Python CLI tool that executes JSON-defined workflows. Each workflow is a sequence of named steps; each step contains a list of action objects. Actions are dispatched by type string to dedicated Python handler functions. All persistent state between actions flows through a single dict called `step_output` (also referred to in comments as `previous_data`).
+## Runtime flow
 
----
-
-## Entry points
-
-**`clay.py`** (repo root) — thin shim that calls `clay.cli.cli()`.
-
-**`clay/cli.py`** — argument parsing and subcommand dispatch.
-
-| Function | CLI command | Notes |
-|---|---|---|
-| `create(args)` | `clay create <name>` | Interactive workflow builder (writes JSON) |
-| `run(args)` | `clay run <file>` | Loads file, calls `runWorkflow.run()` |
-| `dryrun(args)` | `clay dryrun <file>` | Loads and pretty-prints the workflow JSON |
-| `run_json(args)` | `clay run-json` | Reads full workflow JSON from stdin or `--file` |
-| `lint(args)` | `clay lint [path]` | Validates workflow + data JSON files |
-| `cli()` | _(default, no subcommand)_ | Launches `workflows/system/editor/main.json` |
-
-Global flags accepted before or after the subcommand:
-
-| Flag | Effect |
-|---|---|
-| `--daemon` | Fully unattended: AI answers all decisions, shell auto-approved |
-| `--plainStdout` / `--ci` | Disable ANSI colours and animations |
-| `--theme PATH` | Load a custom `.theme` file (overrides `CLAY_THEME` env var) |
-| `--auto` | Replace `humanDecision` steps with AI-generated answers |
-
-On every invocation `cli()` calls `_load_config()` (cli.py:119–126) which reads `configs/default.json` and the registry JSON Schema, seeds them into `__config__` and `__schema__` globals, and writes copies to `~/.clay/`. (cli.py:238–245)
-
----
-
-## Execution core — `clay/run/runWorkflow.py`
-
-```
-run(filename, ...)
-  └─ loadFile(filename)              # JSON parse, returns None on error
-  └─ _execute(data, label, ...)      # shared core — never touches disk
-       ├─ logger.start(label)     # open log file (root call only)
-       ├─ termui.startup_banner(...)
-       └─ process_steps(steps, actions, seed, ...)
-            └─ process_action(action, step_output, ...)   # per action
-                 ├─ _resolve_action_fields(...)            # {override:key} expansion
-                 ├─ _validate(action)                      # schema registry check
-                 ├─ build_ctx(step_output, action)         # includedData filter
-                 └─ <handler>(action, ctx)                 # type dispatch
+```text
+CLI / Qt / Telegram
+        |
+        v
+daemon permission preflight ----> workspaces.json
+        |
+        v
+DaemonClient ---- Unix socket ----> clayd
+                                      |
+                                      v
+                              workflow subprocess
+                                      |
+                                      v
+engine -> preflight -> dispatcher -> action handler
+   |                       |
+   +---- logger/events ----+----> terminal, Qt, Telegram
 ```
 
-`run_from_data(data, label, initial_data, auto)` (runWorkflow.py:248–251) skips file loading and calls `_execute()` directly — used by `run-json`.
+## Entry surfaces
 
-### `process_steps` — data accumulation (runWorkflow.py:171–187)
+- `clay/cli.py` parses commands, fixes the project directory, performs the
+  advisory model check, and starts local or daemon workflows.
+- `clay/ui/preflight.py` displays the Qt daemon-permission prompt.
+- `clay/actions/agent/telegram_actions.py` displays the Telegram prompt and
+  relays workflow events and replies.
+- `clay/daemon/client.py` sends commands to clayd. Commands and event
+  subscriptions use separate connections.
+- `clay/daemon/server.py` validates daemon requests and starts workflow
+  subprocesses in the caller's project directory.
 
-```python
-def process_steps(steps, actions, initial_data=None, auto=False,
-                  auto_context=None, model=None, daemon=False):
-    step_output = dict(initial_data or {})
-    for step in steps:
-        step_actions = actions.get(step, [])
-        for action in step_actions:
-            result = process_action(action, step_output, ...)
-            if result:
-                if result.get("merge") and isinstance(result.get("data"), dict):
-                    step_output.update(result["data"])
-                elif result.get("id"):
-                    step_output[result["id"]] = result["data"]
-    return step_output
-```
+## Daemon permission preflight
 
-The initial seed merges `defaults` with `initial_data`: `seed = {**defaults, **(initial_data or {})}` so `initial_data` wins on collision. (runWorkflow.py:232)
+Unattended workflows require advance permission to read files, write files,
+and run commands in their project directory.
 
-Actions returning `{"merge": True, "data": {...}}` have all their data keys merged flat (used by `loadContext`). All other actions store under `result["id"]`.
+1. `workspaces.daemon_access()` reads the effective grant from
+   `~/.clay/workspaces.json`.
+2. CLI, Qt, or Telegram shows the directory, missing permissions, and register
+   path before clayd starts.
+3. `authorize_daemon_workspace()` saves only the missing permissions and reads
+   the grant back for verification.
+4. The daemon client and server both reject unattended launches that still
+   lack permission.
 
-### `process_action` dispatch (runWorkflow.py:63–168)
+An attended workflow may ask when an action first needs a directory. An
+unattended workflow cannot add a directory by itself.
 
-1. `_resolve_action_fields` replaces `{"override": "key"}` field values with the corresponding `step_output` entry (runWorkflow.py:45–60)
-2. `_validate(action)` checks required fields; errors are printed and the action returns `None`
-3. `build_ctx(step_output, action)` applies `includedData` filtering
-4. Type dispatch via if/elif chain
+## Execution core
 
-`_SILENT_RESULT_TYPES = frozenset({'humanDecision', 'humanShell', 'loop', 'workflow'})` — these types do not have their result previewed in the log file. (runWorkflow.py:41)
+- `clay/run/engine.py` owns root-run setup, workflow loading, preflight, step
+  order, result storage, and cleanup.
+- `clay/run/preflight.py` performs blocking checks required to run a workflow.
+- `clay/run/dispatcher.py` resolves action fields, validates the action, builds
+  its context, calls the registered handler, and emits lifecycle events.
+- `clay/actions/registry.py` is the source of truth for action schemas and
+  handlers. Action modules register both with decorators.
+- `clay/lib/context.py` applies `includedData` and nested key selection.
+- `clay/run/failure.py` defines `WorkflowFailure`, the expected run-failure
+  signal used by the CLI and clients.
 
-`_PREVIEW_CHARS = 100000` — preview cap for log entries. (runWorkflow.py:42)
+Workflow state is a dictionary. `defaults` are loaded first; caller-provided
+`initial_data` wins on the same key. A normal action result is stored under its
+`id`. A result with `merge: true` merges its data into the workflow state.
 
----
+## Events and interfaces
 
-## Workflow JSON structure
+The engine and dispatcher do not draw interface output directly. They emit the
+event names defined in `clay/run/events.py` through `clay/run/logger.py`.
 
-```json
-{
-  "autoContext": "injected into every AI call in --auto mode",
-  "defaults":    { "key": "value" },
-  "model":       "optional model ID for all scramda2 calls in this file",
-  "workflow":    { "steps": ["step1", "step2"] },
-  "actionSets":  {
-    "step1": [ { "type": "...", "id": "...", ... } ],
-    "step2": [ ... ]
-  }
-}
-```
+- `clay/run/renderers/terminal.py` renders CLI output.
+- Qt consumes daemon events through its manager and panels.
+- Telegram consumes the same daemon events and renders chat messages.
+- Prompt answers return through `input.response` on the workflow event socket.
 
-`workflow.steps` is the execution order. Steps not found in `actionSets` are silently skipped.
+## Model configuration
 
----
+`clay configure`, also available as `clay config`, writes `provider.url`, the
+`models` profile map, and the default `maxTokens` response limit atomically to
+`~/.clay/config.json`. The value must be a positive integer.
 
-## Module map
+`scramda2` uses `maxTokens` when an action omits `max_tokens`. An action-level
+`max_tokens` value takes precedence. New installations seed `maxTokens` with
+`4096`; upgrades add the key without replacing existing user settings. A
+read-only older config remains usable because runtime lookup also supplies the
+built-in default.
 
-```
-clay/
-├── clay.py                       entry shim
-├── configs/default.json             model profiles, userAgent strings
-├── memory/                          per-namespace JSON entry files
-├── skills/                          per-skillset skill files
-├── webactions/                      site profile JSON files
-├── workflows/                       workflow JSON files
-└── clay/
-    ├── cli.py                       CLI parsing + subcommand dispatch
-    ├── lint.py                      workflow linter
-    ├── lib/context.py               build_ctx(), RESERVED_KEYS, PASSTHROUGH_KEYS
-    ├── run/
-    │   ├── runWorkflow.py           engine core
-    │   ├── logger.py                RunLogger + module-level helpers
-    │   └── termui/
-    │       ├── __init__.py          public API facade + auto-detect plain mode
-    │       ├── engine.py            rendering functions
-    │       ├── loader.py            theme file parser + cache
-    │       ├── spinner.py           Spinner class
-    │       └── themes/default.theme aurora colour/symbol definitions
-    └── actions/
-        ├── registry.py              schema dataclasses, validate(), export_json()
-        ├── api_actions.py           API
-        ├── file_actions.py          writeFile
-        ├── human_decision.py        humanDecision
-        ├── mongo_actions.py         mongo
-        ├── python_actions.py        python
-        ├── report_actions.py        report
-        ├── scramda2_actions.py      scramda2
-        ├── transform_data_actions.py  transformData
-        ├── workflow_actions.py      workflow
-        └── agent/
-            ├── context_actions.py   loadContext
-            ├── create_action.py     createAgentAction
-            ├── human_shell_actions.py  humanShell
-            ├── loop_actions.py      loop
-            ├── memory_actions.py    writeMemory, searchMemory, listMemory, readMemory
-            ├── runcode_actions.py   runCode
-            ├── shell_actions.py     shell
-            ├── skill_actions.py     writeSkill, listSkills, removeSkill, searchSkills
-            ├── tag_actions.py       deriveTags + shared derive_tags()
-            ├── web_actions.py       browseWeb, searchWeb, listSites, loadSite
-            └── writecode_actions.py writeCode
-```
+At CLI startup, `clay/lib/config_check.py` performs an advisory check. It uses
+`GOPHER_URL` when set, otherwise `provider.url`, reads `/v1/models`, and checks
+every configured model profile. The advisory never blocks unrelated commands.
+Workflow execution has a separate blocking preflight.
 
----
+## Shell actions
 
-## PlantUML — top-level call flow
+`clay/actions/agent/shell_actions.py` executes one argv with `shell=False`.
+The executable must be in the code-owned allowlist. Shell operators,
+redirection, substitution, newlines, and dangerous `find` flags are refused.
+Placeholder values are quoted as one argument. Every accepted command still
+passes through the approval gate.
 
-```plantuml
-@startuml
-participant "cli.py\ncli()" as cli
-participant "runWorkflow\nrun()" as rw
-participant "runWorkflow\n_execute()" as ex
-participant "runWorkflow\nprocess_steps()" as ps
-participant "runWorkflow\nprocess_action()" as pa
-participant "registry\nvalidate()" as reg
-participant "context\nbuild_ctx()" as ctx
-participant "handler" as h
+Development executables such as Python, Node, npm, make, git, and pytest are
+powerful commands, not a sandbox. The project directory controls where they
+start, not everything they can access.
 
-cli -> rw  : run(filename, ...)
-rw  -> ex  : _execute(data, label, ...)
-ex  -> ps  : process_steps(steps, actions, seed)
-loop for each action
-  ps -> pa  : process_action(action, step_output)
-  pa -> reg : validate(action) → errors
-  pa -> ctx : build_ctx(step_output, action) → filtered ctx
-  pa -> h   : handler(action, ctx)
-  h  --> pa : {"id": ..., "data": ...}
-  pa --> ps : result
-  ps -> ps  : step_output[id] = data
-end
-ps --> ex  : step_output
-ex --> rw  : result
-rw --> cli : result
-@enduml
-```
+## Canonical references
 
----
-
-## Cleanup / Old Paradigms
-
-- The working dict is `step_output` in `process_steps` but is called `previous_data` in older inline comments and early docstrings. They are the same object.
-- `workflow_actions.handler` accepts `model=None` and passes it to `runWorkflow.run()`, but the `process_action` dispatcher never passes `model` when calling `workflow_actions.handler` (runWorkflow.py:88) — the field is unused.
-- `run_from_data` does not accept a `daemon` flag; the API path does not support daemon mode.
-- `ACTION_TYPES` in `cli.py:8–18` powers only the interactive `create` wizard. It is a separate manual list and can diverge from the canonical registry in `registry.py`.
+- Current class/module diagram: `docs/plans/redesign/current.puml`
+- Workflow schema: `docs/documentation/02-workflow-schema.md`
+- Generated action schema: `docs/documentation/action-reference.json`
+- Active defects: `docs/bugs/README.md`
+- Active tasks: `docs/tasks/README.md`

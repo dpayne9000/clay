@@ -1,0 +1,260 @@
+{
+  "defaults": {
+    "transcript": "(none)",
+    "recalled_memory": "(no relevant recollections)",
+    "memory_record": "",
+    "memory_tags": "",
+    "workspace_files": "(workspace unavailable)",
+    "file_context": "(no project files were needed for this message)"
+  },
+  "workflow": {
+    "steps": [
+      "context",
+      "orient",
+      "ask",
+      "recallCue",
+      "recall",
+      "inspect",
+      "reply",
+      "memoryDecision",
+      "memoryGate",
+      "memoryRecord",
+      "memoryTags",
+      "remember",
+      "settle"
+    ]
+  },
+  "actionSets": {
+    "context": [
+      {
+        "id": "protocol",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./protocol.json"
+      },
+      {
+        "id": "training",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./training.json"
+      },
+      {
+        "id": "clay_guide",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./clay-guide.json"
+      }
+    ],
+    "orient": [
+      {
+        "id": "workspace_files",
+        "type": "listWorkspace",
+        "visible": false,
+        "maxFiles": 300,
+        "includedData": []
+      }
+    ],
+    "ask": [
+      {
+        "id": "user_message",
+        "type": "humanDecision",
+        "prompt": "\n> "
+      }
+    ],
+    "recallCue": [
+      {
+        "id": "recall_query",
+        "type": "scramda2",
+        "visible": false,
+        "examples": {
+          "override": "recall_query_examples"
+        },
+        "prompt": "RECENT CONVERSATION:\n{transcript}\n\nCURRENT MESSAGE:\n{user_message}\n\nWrite one short search phrase that represents what CURRENT MESSAGE is about. Use RECENT CONVERSATION only to resolve references such as 'that', 'it', 'the project', or 'what we decided'. Name the subject directly. Output only the search phrase.",
+        "includedData": [
+          "transcript",
+          "user_message",
+          "recall_query_examples"
+        ]
+      }
+    ],
+    "recall": [
+      {
+        "id": "recalled_memory",
+        "type": "searchMemory",
+        "visible": false,
+        "namespace": "conversation",
+        "queryKey": "recall_query",
+        "maxResults": 5,
+        "includedData": [
+          "recall_query"
+        ]
+      }
+    ],
+    "inspect": [
+      {
+        "id": "requested_reads",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "visible": false,
+        "prompt": "CURRENT MESSAGE:\n{user_message}\n\nRECENT CONVERSATION:\n{transcript}\n\nPROJECT FILES:\n{workspace_files}\n\nSelect only existing project files whose current contents are required to answer CURRENT MESSAGE accurately. This includes questions about the current project, its implementation, configuration, documentation, tests, or workflow files. For each needed file output exactly <read_file><path>relative/path</path></read_file>. Request at most eight files. If project files are not needed, output exactly: (no files needed). Output no prose, plan, or code fences.",
+        "includedData": [
+          "user_message",
+          "transcript",
+          "workspace_files"
+        ]
+      },
+      {
+        "id": "file_context",
+        "type": "serveFileReads",
+        "visible": false,
+        "reply": "requested_reads",
+        "maxFiles": 8,
+        "maxBytes": 24000,
+        "includedData": [
+          "requested_reads"
+        ]
+      }
+    ],
+    "reply": [
+      {
+        "id": "assistant_reply",
+        "type": "scramda2",
+        "examples": {
+          "override": "reply_examples"
+        },
+        "prompt": "{chat_protocol}\n\n{clay_capabilities}\n\nLIVE CLAY WORKFLOW SYNTAX:\n{__workflow_template__}\n\nCURRENT PROJECT FILES SELECTED FOR THIS MESSAGE:\n{file_context}\n\nRECENT CONVERSATION:\n{transcript}\n\nRELEVANT RECOLLECTIONS:\n{recalled_memory}\n\nCURRENT MESSAGE:\n{user_message}\n\nRespond to CURRENT MESSAGE now. For questions about Clay, prefer LIVE CLAY WORKFLOW SYNTAX and CURRENT PROJECT FILES over recollection or general knowledge. Distinguish what Clay can do from what this chat workflow actually performed.",
+        "includedData": [
+          "chat_protocol",
+          "clay_capabilities",
+          "__workflow_template__",
+          "file_context",
+          "transcript",
+          "recalled_memory",
+          "user_message",
+          "reply_examples"
+        ]
+      }
+    ],
+    "memoryDecision": [
+      {
+        "id": "memory_decision",
+        "type": "scramda2",
+        "visible": false,
+        "examples": {
+          "override": "memory_decision_examples"
+        },
+        "prompt": "{memory_protocol}\n\nCURRENT MESSAGE:\n{user_message}\n\nRELEVANT RECOLLECTIONS:\n{recalled_memory}\n\nDecide whether CURRENT MESSAGE contains one durable piece of information worth keeping for later conversations. If it does and the same information is not already represented in RELEVANT RECOLLECTIONS, output exactly REMEMBER. Otherwise output exactly SKIP. No prose.",
+        "includedData": [
+          "memory_protocol",
+          "user_message",
+          "recalled_memory",
+          "memory_decision_examples"
+        ]
+      }
+    ],
+    "memoryGate": [
+      {
+        "id": "should_remember",
+        "type": "matchText",
+        "visible": false,
+        "source": "memory_decision",
+        "values": [
+          "remember"
+        ],
+        "onMatch": "yes",
+        "onMiss": "no",
+        "includedData": [
+          "memory_decision"
+        ]
+      }
+    ],
+    "memoryRecord": [
+      {
+        "id": "memory_record",
+        "type": "scramda2",
+        "when": "should_remember",
+        "visible": false,
+        "examples": {
+          "override": "memory_record_examples"
+        },
+        "prompt": "{memory_protocol}\n\nCURRENT MESSAGE:\n{user_message}\n\nWrite the single durable fact worth remembering. State the fact directly as current context; do not write 'the user said', 'the user mentioned', or describe this conversation. Preserve important names and constraints. Output one sentence only.",
+        "includedData": [
+          "memory_protocol",
+          "user_message",
+          "memory_record_examples"
+        ]
+      }
+    ],
+    "memoryTags": [
+      {
+        "id": "memory_tags",
+        "type": "deriveTags",
+        "when": "should_remember",
+        "visible": false,
+        "contentKey": "memory_record",
+        "contextKey": "user_message",
+        "maxTags": 6,
+        "includedData": [
+          "memory_record",
+          "user_message"
+        ]
+      }
+    ],
+    "remember": [
+      {
+        "id": "memory_saved",
+        "type": "writeMemory",
+        "when": "should_remember",
+        "visible": false,
+        "namespace": "conversation",
+        "content": "memory_record",
+        "tagsKey": "memory_tags",
+        "source": "chat",
+        "includedData": [
+          "memory_record",
+          "memory_tags"
+        ]
+      }
+    ],
+    "settle": [
+      {
+        "id": "transcript",
+        "type": "appendTranscript",
+        "visible": false,
+        "entries": [
+          "User=user_message",
+          "Assistant=assistant_reply"
+        ],
+        "maxChars": 4000,
+        "includedData": [
+          "transcript",
+          "user_message",
+          "assistant_reply"
+        ]
+      },
+      {
+        "id": "keep_going",
+        "type": "matchText",
+        "visible": false,
+        "source": "user_message",
+        "values": [
+          "quit",
+          "exit",
+          "bye",
+          "goodbye",
+          "done",
+          "stop",
+          "q",
+          ":q",
+          "that's all",
+          "thats all"
+        ],
+        "onMatch": "no",
+        "onMiss": "yes",
+        "includedData": [
+          "user_message"
+        ]
+      }
+    ]
+  }
+}

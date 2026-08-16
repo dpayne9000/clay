@@ -1,0 +1,25 @@
+{
+  "autoContext": "Interactive-story session: reads the story.json canon written by clay/data/workflows/creative/story-init, then loops one turn at a time — player acts or speaks, the narrator/characters respond in character, every turn appended to a transcript file — until the player types STOP.",
+  "workflow": {
+    "steps": ["intake", "config", "walk"]
+  },
+  "actionSets": {
+    "intake": [
+      { "id": "workspace", "type": "humanDecision",
+        "prompt": "Directory containing story.json (the one you gave to story-init):" }
+    ],
+    "config": [
+      { "id": "story_doc", "type": "readFile", "file": "story.json", "root": "{workspace}" }
+    ],
+    "walk": [
+      {
+        "id": "session",
+        "type": "loop",
+        "file": "./turn.json",
+        "iterations": 0,
+        "continueKey": "continue_story",
+        "includedData": ["workspace", "story_doc"]
+      }
+    ]
+  }
+}

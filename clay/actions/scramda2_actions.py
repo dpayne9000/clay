@@ -37,6 +37,9 @@ def handler(action, ctx):
     # fallback     → config.models["default"]
     resolved_model = models.get(model_profile_name) if model_profile_name else None
     model = resolved_model or model_name or models.get('default')
+    action_max_tokens = action.get('max_tokens')
+    max_tokens = (action_max_tokens if action_max_tokens is not None
+                  else app_config.get_max_tokens())
     # The resolved prompt, not the template on the action. Until now nothing
     # showed it: dispatcher._action_fields copies action['prompt'] onto
     # action.start, which happens before this handler runs, so every prompt in
@@ -51,7 +54,7 @@ def handler(action, ctx):
                 resolved_prompt,
                 examples=action.get('examples') or [],
                 model=model,
-                max_tokens=action.get('max_tokens'),
+                max_tokens=max_tokens,
             )
             break
         except (gopher.GopherConnectionError, gopher.GopherTimeoutError) as e:

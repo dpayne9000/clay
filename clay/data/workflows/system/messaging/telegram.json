@@ -24,10 +24,12 @@
         "id": "boot",
         "type": "telegram",
         "workflows": [
+          {"label": "General chat", "path": "workflows/system/clay/main.json"},
           {"label": "Coding", "path": "workflows/system/coding/main.json"},
-          {"label": "Clay", "path": "workflows/system/clay/main.json"},
-          {"label": "System editor", "path": "workflows/system/editor/main.json"},
-          {"label": "Research", "path": "workflows/templates/research/main.json"}
+          {"label": "Build a workflow", "path": "workflows/system/editor/main.json"},
+          {"label": "Code review", "path": "workflows/creative/story-writer/main.json"},
+          {"label": "Web research", "path": "workflows/templates/agents/web-researcher/main.json"},
+          {"label": "Generate ECS Terraform", "path": "workflows/aws/ecs/main.json"}
         ]
       }
     ]

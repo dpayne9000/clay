@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clay"
-version = "0.1.0"
-description = "JSON-defined workflow automation engine | AI Pipes"
+version = "0.1.2"
+description = "Decision-based workflow automation engine | AI Pipes"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.11"
@@ -49,13 +49,9 @@ clay = [
     "data/configs/default.json",
     "data/configs/email.json",
     "data/configs/startup.json",
-    "data/skills/celeb-tracker/*",
-    "data/skills/developer/*",
-    "data/skills/network-connection-probe/*",
-    "data/skills/network-explorer/*",
-    "data/skills/system-editor/*",
     "data/workflows/system/**/*.json",
     "data/workflows/system/**/*.txt",
+    "data/workflows/system/**/*.md",
     "data/workflows/templates/**/*.json",
     "data/workflows/templates/**/*.txt",
     "run/termui/themes/*.theme",
@@ -66,6 +62,7 @@ clay = [
 files = [
     "LICENSE",
     "README.md",
+    "docs/COMMANDS.md",
     "pyproject.toml",
     "setup.py",
     "clay/__init__.py",

@@ -1,40 +1,19 @@
-+Clay Private Use Source License 1.0
+MIT License
 
-Copyright (c) 2026 Clay contributors. All rights reserved.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Permission is granted, without fee, to an individual or legal entity that
-obtains a copy of this software and associated documentation (the "Software")
-to view the source code and to copy, install, run, and modify the Software
-solely for that party's own private, internal, non-commercial purposes, subject
-to all of the following conditions:
-
-1. The Software may not be used for, on behalf of, or in connection with any
-   commercial, revenue-generating, paid, professional, governmental, or
-   organizational business activity without a separate written commercial
-   license from the copyright holder.
-
-2. The Software, modified versions, and derivative works may not be sold,
-   sublicensed, hosted as a service for third parties, or redistributed except
-   as expressly authorized in writing by the copyright holder.
-
-3. This copyright notice and license must be retained in every permitted copy
-   or substantial portion of the Software.
-
-4. No trademark rights are granted. The names "Clay" and "Gopher" and their
-   associated marks may not be used to endorse or promote a derived product
-   without prior written permission.
-
-Any use outside the permission above, including every commercial use, requires
-a separate written license. Requests may be made to the copyright holder
-through the repository's published contact channel.
-
-This license is source-available and is not an open-source license as defined
-by the Open Source Initiative.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -8,6 +8,7 @@ import tempfile
 import threading
 import time
 import unittest
+from pathlib import Path
 from unittest import mock
 
 # Ensure clay is on path
@@ -20,7 +21,10 @@ from clay.lib import config, paths
 
 
 def _test_socket_path():
-    return os.path.join(tempfile.gettempdir(), f'clayd-test-{os.getpid()}.sock')
+    # Never let the daemon chmod the shared temp root.
+    runtime_dir = os.path.join(tempfile.gettempdir(), f'clayd-test-{os.getpid()}')
+    os.makedirs(runtime_dir, mode=0o700, exist_ok=True)
+    return os.path.join(runtime_dir, 'clayd.sock')
 
 
 class TestProtocol(unittest.TestCase):
@@ -87,6 +91,22 @@ class TestProjectDirValidation(unittest.TestCase):
         self.assertIsNone(path)
         self.assertIn('not a directory', error)
 
+    def test_server_rechecks_unattended_workspace_authority(self):
+        check = mock.Mock(allowed=False, path='/project',
+                          missing={'commands', 'fileWrites'})
+        with mock.patch('clay.run.workspaces.daemon_access', return_value=check):
+            error = ClientHandler._daemon_access_error(
+                '/project', auto=True)
+        self.assertIn('/project', error)
+        self.assertIn('commands', error)
+
+    def test_server_does_not_require_advance_access_for_attended_work(self):
+        with mock.patch('clay.run.workspaces.daemon_access') as access:
+            error = ClientHandler._daemon_access_error(
+                '/project', auto=False, daemon_mode=False)
+        self.assertIsNone(error)
+        access.assert_not_called()
+
 
 class TestCallerProjectDir(unittest.TestCase):
     """The client sends its own project directory, not its cwd."""
@@ -102,23 +122,151 @@ class TestCallerProjectDir(unittest.TestCase):
         with mock.patch.object(DaemonClient, '_request',
                                side_effect=lambda msg: sent.append(msg) or {}):
             with mock.patch.object(daemon_client, '_caller_project_dir',
-                                   return_value='/somewhere'):
+                                   return_value='/somewhere'), \
+                    mock.patch.object(daemon_client, 'require_daemon_workspace'):
                 c.start_workflow('wf.json')
                 c.start_workflow_json({'workflow': {}})
         self.assertEqual([m['project_dir'] for m in sent],
                          ['/somewhere', '/somewhere'])
 
 
-class TestChildProcessInvocation(unittest.TestCase):
-    """What clayd actually spawns. Popen is mocked — no child runs.
+class TestStartWorkflowPreflightAuthorization(unittest.TestCase):
+    """Both daemon submission protocols fail closed on missing authority."""
 
-    The regression: clayd ran its children with cwd set to clay's own install,
-    so a workflow whose writeFile had no explicit `root` resolved '.' there and
-    wrote into the program.
-    """
+    def _client(self):
+        return DaemonClient.__new__(DaemonClient)
+
+    def test_neither_flag_never_asks_about_the_directory(self):
+        with mock.patch.object(daemon_client, '_caller_project_dir',
+                               return_value='/somewhere'), \
+                mock.patch.object(daemon_client, 'require_daemon_workspace') as authorize, \
+                mock.patch.object(DaemonClient, '_request', return_value={}):
+            self._client().start_workflow('wf.json')
+        authorize.assert_not_called()
+
+    def test_auto_requires_advance_access_before_sending_the_request(self):
+        with mock.patch.object(daemon_client, '_caller_project_dir',
+                               return_value='/somewhere'), \
+                mock.patch.object(daemon_client, 'require_daemon_workspace') as authorize, \
+                mock.patch.object(DaemonClient, '_request', return_value={}):
+            self._client().start_workflow('wf.json', auto=True)
+        authorize.assert_called_once_with('/somewhere')
+
+    def test_daemon_mode_authorizes_even_without_auto(self):
+        with mock.patch.object(daemon_client, '_caller_project_dir',
+                               return_value='/somewhere'), \
+                mock.patch.object(daemon_client, 'require_daemon_workspace') as authorize, \
+                mock.patch.object(DaemonClient, '_request', return_value={}):
+            self._client().start_workflow('wf.json', daemon_mode=True)
+        authorize.assert_called_once_with('/somewhere')
+
+    def test_a_denial_propagates_and_never_reaches_the_socket(self):
+        with mock.patch.object(daemon_client, '_caller_project_dir',
+                               return_value='/somewhere'), \
+                mock.patch.object(
+                    daemon_client, 'require_daemon_workspace',
+                    side_effect=daemon_client.DaemonPermissionDenied('nope')), \
+                mock.patch.object(DaemonClient, '_request') as request:
+            c = DaemonClient.__new__(DaemonClient)
+            with self.assertRaises(daemon_client.DaemonPermissionDenied):
+                c.start_workflow('wf.json', auto=True)
+        request.assert_not_called()
+
+    def test_start_workflow_json_has_the_same_fail_closed_check(self):
+        with mock.patch.object(daemon_client, '_caller_project_dir',
+                               return_value='/somewhere'), \
+                mock.patch.object(daemon_client, 'require_daemon_workspace') as authorize, \
+                mock.patch.object(DaemonClient, '_request', return_value={}):
+            self._client().start_workflow_json({'workflow': {}}, auto=True)
+        authorize.assert_called_once_with('/somewhere')
+
+
+class TestRequireDaemonWorkspace(unittest.TestCase):
+
+    def test_allowed_policy_returns_the_resolved_check(self):
+        check = mock.Mock(allowed=True, path=Path('/project'),
+                          missing=frozenset())
+        with mock.patch('clay.run.workspaces.daemon_access',
+                        return_value=check) as access:
+            result = daemon_client.require_daemon_workspace(
+                '/project', {'commands'})
+        self.assertIs(result, check)
+        access.assert_called_once_with('/project', {'commands'})
+
+    def test_denied_policy_names_the_directory_and_missing_permissions(self):
+        check = mock.Mock(
+            allowed=False,
+            path=Path('/project'),
+            missing=frozenset({'fileWrites', 'commands'}),
+        )
+        with mock.patch('clay.run.workspaces.daemon_access', return_value=check):
+            with self.assertRaisesRegex(
+                    daemon_client.DaemonPermissionDenied,
+                    r'/project.*commands, fileWrites'):
+                daemon_client.require_daemon_workspace('/project')
+
+
+class TestAuthorizeDaemonWorkspace(unittest.TestCase):
+    """The visible answer is persisted and verified before daemon startup."""
 
     def setUp(self):
-        # __init__ is pure — two dicts, a counter and a lock. No I/O.
+        from clay.run import approval, workspaces
+        self.workspaces = workspaces
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.project = os.path.realpath(self.tmp.name)
+        register = mock.patch.object(
+            workspaces, 'REGISTER_PATH', os.path.join(self.project, 'workspaces.json'))
+        register.start()
+        self.addCleanup(register.stop)
+        approval.reset()
+        workspaces.reset_session()
+        self.addCleanup(approval.reset)
+        self.addCleanup(workspaces.reset_session)
+
+    def test_sufficient_grant_never_prompts(self):
+        self.workspaces.grant_daemon_access(self.project)
+        check = daemon_client.authorize_daemon_workspace(
+            self.project, lambda request: self.fail('should not prompt'))
+        self.assertTrue(check.allowed)
+
+    def test_approval_is_persisted_and_verified(self):
+        seen = []
+        check = daemon_client.authorize_daemon_workspace(
+            self.project, lambda request: seen.append(request) or True)
+        self.assertEqual(1, len(seen))
+        self.assertTrue(check.allowed)
+        self.assertTrue(self.workspaces.daemon_access(self.project).allowed)
+
+    def test_refusal_changes_nothing(self):
+        with self.assertRaises(daemon_client.DaemonPermissionDenied):
+            daemon_client.authorize_daemon_workspace(
+                self.project, lambda request: False)
+        self.assertIsNone(self.workspaces.find(self.project))
+
+    def test_failed_post_write_verification_is_reported(self):
+        initial = mock.Mock(allowed=False, path=Path(self.project),
+                            required=frozenset({'commands'}),
+                            missing=frozenset({'commands'}))
+        failed = mock.Mock(allowed=False, path=Path(self.project),
+                           required=frozenset({'commands'}),
+                           missing=frozenset({'commands'}))
+        with mock.patch.object(self.workspaces, 'daemon_access',
+                               side_effect=[initial, failed]), \
+                mock.patch.object(self.workspaces, 'grant_daemon_access') as grant:
+            with self.assertRaisesRegex(
+                    daemon_client.DaemonPermissionDenied,
+                    'still lacks daemon permissions: commands'):
+                daemon_client.authorize_daemon_workspace(
+                    self.project, lambda request: True,
+                    required={'commands'})
+        grant.assert_called_once_with(Path(self.project),
+                                      frozenset({'commands'}))
+
+class TestChildProcessInvocation(unittest.TestCase):
+    """Verify child arguments and cwd without starting a process."""
+
+    def setUp(self):
         self.daemon = ClayDaemon()
 
         popen = mock.patch('subprocess.Popen')
@@ -126,8 +274,7 @@ class TestChildProcessInvocation(unittest.TestCase):
         self.addCleanup(popen.stop)
         self.popen.return_value.pid = 4242
 
-        # start_workflow spawns four reader threads against the child's pipes.
-        # There is no child, and they are not what this test is about.
+        # Do not start reader threads for the mocked child.
         for name in ('_read_stdout', '_read_stderr', '_read_events', '_wait_proc'):
             patcher = mock.patch.object(ClayDaemon, name, lambda *a, **k: None)
             patcher.start()
@@ -138,7 +285,7 @@ class TestChildProcessInvocation(unittest.TestCase):
 
     def _argv_and_cwd(self, **kwargs):
         wf = self.daemon.start_workflow(project_dir=self.project, **kwargs)
-        # The event socket is the one real resource start_workflow takes.
+        # Clean up the event socket created by start_workflow.
         self.addCleanup(self.daemon._cleanup_wf_socket, wf)
         args, kwargs_used = self.popen.call_args
         return args[0], kwargs_used['cwd']
@@ -173,6 +320,13 @@ class TestDaemonServer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls._client_access_patch = mock.patch.object(
+            daemon_client, 'require_daemon_workspace')
+        cls._server_access_patch = mock.patch(
+            'clay.run.workspaces.daemon_access',
+            return_value=mock.Mock(allowed=True, missing=frozenset()))
+        cls._client_access_patch.start()
+        cls._server_access_patch.start()
         cls._sock_path = _test_socket_path()
         # Monkey-patch paths so we don't clobber a real daemon
         import clay.daemon.server as srv
@@ -209,6 +363,9 @@ class TestDaemonServer(unittest.TestCase):
         for f in [cls._sock_path, cls._sock_path + '.pid']:
             if os.path.exists(f):
                 os.unlink(f)
+        shutil.rmtree(os.path.dirname(cls._sock_path), ignore_errors=True)
+        cls._server_access_patch.stop()
+        cls._client_access_patch.stop()
 
     def _client(self):
         return DaemonClient(socket_path=self._sock_path)

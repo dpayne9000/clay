@@ -1,27 +1,7 @@
-"""Telegram control channel for clay workflows.
-
-The bot is a front-end for clayd, exactly like the Qt UI: it never runs a
-workflow itself. Menu presses ask clayd to start a workflow, prompts raised by
-that workflow arrive as clayd events and are relayed to the chat, and chat
-replies are handed back to clayd as input.
-
-Nothing in this module touches the network or the environment at import time —
-clay.actions.registry.discover() imports every action module on every command,
-so a missing TELEGRAM_BOT_TOKEN must not be able to break unrelated runs. The
-token is read, and the bot built, only when the action actually executes.
-
-Workflow menu entries come from the action itself:
-
-    {
-      "type": "telegram",
-      "id": "bot",
-      "workflows": [
-        {"label": "System editor", "path": "workflows/system/editor/main.json"}
-      ]
-    }
-"""
+"""Telegram front-end for starting and controlling clayd workflows."""
 
 import os
+import secrets
 import signal
 import threading
 import time
@@ -31,9 +11,16 @@ from typing import Optional
 from ...adapters import gopher
 from ...channels.message_batcher import MessageBatcher
 from ...channels.telegram_bridge import TelegramBridge, inline_menu
-from ...daemon.client import DaemonClient, EventSubscriber, ensure_daemon
+from ...daemon.client import (
+    DaemonClient,
+    DaemonPermissionDenied,
+    EventSubscriber,
+    authorize_daemon_workspace,
+    ensure_daemon,
+)
 from ...lib import config as app_config
-from ...run import approval, events as run_events, logger
+from ...lib import paths
+from ...run import approval, events as run_events, logger, workspaces
 from ...run.renderers.chat import ConciseChatRenderer
 from ..registry import action as _action_decorator, req, opt, handler_for
 
@@ -51,13 +38,85 @@ class Telegram:
         None)
 
 
-# Telegram caps callback_data at 64 bytes, so buttons carry an index into the
-# configured entries rather than a workflow path.
+# Use short callback indices to stay under Telegram's 64-byte limit.
 _CALLBACK_PREFIX = 'wf:'
 
 DAEMON_ERRORS = (ConnectionError, ConnectionRefusedError, FileNotFoundError, OSError)
 _ALLOWED_USERS_ENV = 'TELEGRAM_ALLOWED_USERS'
 _ALLOWED_CHATS_ENV = 'TELEGRAM_ALLOWED_CHATS'
+
+
+def _authorize_daemon_over_telegram(bridge, recipients) -> bool:
+    """Show and await the pre-clayd workspace grant in an authorized chat."""
+    check = workspaces.daemon_access(paths.project_dir())
+    if check.allowed:
+        return True
+    recipients = sorted(set(recipients))
+    if not recipients:
+        return False
+
+    token = secrets.token_hex(6)
+    yes_action = f'daemon.access.yes.{token}'
+    no_action = f'daemon.access.no.{token}'
+    settled = threading.Event()
+    settle_lock = threading.Lock()
+    was_approved = False
+
+    def approve(action):
+        nonlocal was_approved
+        with settle_lock:
+            if settled.is_set():
+                return 'This daemon permission request is no longer active.'
+            try:
+                authorize_daemon_workspace(check.path, lambda _: True,
+                                           required=check.required)
+            except DaemonPermissionDenied as exc:
+                settled.set()
+                return f'Could not grant daemon permissions: {exc}'
+            except Exception:
+                # Never leave startup waiting after a callback error.
+                settled.set()
+                raise
+            was_approved = True
+            settled.set()
+            return 'Daemon workspace permissions granted.'
+
+    def refuse(action):
+        with settle_lock:
+            if settled.is_set():
+                return 'This daemon permission request is no longer active.'
+            settled.set()
+            return 'Daemon startup refused.'
+
+    bridge.on_action(yes_action)(approve)
+    bridge.on_action(no_action)(refuse)
+    bridge.start()
+
+    labels = {
+        'fileReads': 'read files',
+        'fileWrites': 'write files',
+        'commands': 'run commands',
+    }
+    missing = ', '.join(labels[gate] for gate in approval.GATES
+                        if gate in check.missing)
+    text = (
+        'CLAY needs advance permission before starting clayd.\n\n'
+        f'Directory: {check.path}\n'
+        f'Missing: {missing}\n\n'
+        f'Grant these permissions for {check.path} in '
+        f'{workspaces.REGISTER_PATH} for unattended daemon workflows?'
+    )
+    menu = inline_menu([[('✅ Grant permissions', yes_action),
+                         ('❌ Refuse', no_action)]])
+    try:
+        for chat_id in recipients:
+            bridge.send(chat_id, text, menu=menu)
+    except Exception:
+        bridge.stop()
+        raise
+
+    settled.wait()
+    return was_approved
 
 
 def _telegram_ids(environment, name: str) -> set[int]:
@@ -668,13 +727,18 @@ def handler(action=None, ctx=None):
 
     allowed_users, allowed_chats = telegram_allowlists()
     entries = menu_entries((action or {}).get('workflows'))
-    ensure_daemon()
-
     bridge = TelegramBridge(
         token,
         allowed_users=allowed_users,
         allowed_chats=allowed_chats,
     )
+    recipients = allowed_chats or allowed_users
+    if not _authorize_daemon_over_telegram(bridge, recipients):
+        bridge.stop()
+        raise DaemonPermissionDenied('daemon startup refused in Telegram')
+    if not ensure_daemon():
+        bridge.stop()
+        raise ConnectionError('clayd did not start')
     bot = TelegramWorkflowBot(bridge, entries)
     bot.run_forever()
     return {'id': (action or {}).get('id'), 'data': 'telegram channel stopped'}

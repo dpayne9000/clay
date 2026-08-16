@@ -15,9 +15,10 @@ Workflow semantics:
   - Every action passes required-field validation against the schema registry
   - Every action field is declared by that action type's schema. Undeclared
     fields are reported as warnings: the handler never reads them, so they are
-    silently ignored at runtime. 'type', 'includedData' and underscore-prefixed
-    keys ('_comment') belong to no single type and are always allowed. This is
-    a name-level check only — value types and ranges are not validated.
+    silently ignored at runtime. 'type', 'includedData', 'outputKey' and
+    underscore-prefixed keys ('_comment') belong to no single type and are
+    always allowed. This is a name-level check only — value types and ranges
+    are not validated.
   - includedData scope: every key listed in includedData must be produced by
     a preceding action (in step execution order), present in defaults, an
     engine-seeded system key (lib.context.PASSTHROUGH_KEYS), or injected by a
@@ -84,11 +85,12 @@ _SYSTEM_KEYS: frozenset[str] = PASSTHROUGH_KEYS
 _LOOP_INJECTED_KEYS: frozenset[str] = frozenset({'iteration'})
 
 # Action fields that belong to no single type: 'type' is the discriminator,
-# 'includedData' is consumed by build_ctx before the handler ever sees it, and
+# 'includedData' is consumed by build_ctx before the handler ever sees it,
+# 'outputKey' is consumed by the engine when it stores the result, and
 # 'visible' is read by clay.run.logger to decide whether this action's events
 # reach a front-end. Underscore-prefixed keys ('_comment') are a documentation
 # convention.
-_UNIVERSAL_FIELDS: frozenset[str] = frozenset({'type', 'includedData', 'visible', 'when', 'whenNot'})
+_UNIVERSAL_FIELDS: frozenset[str] = frozenset({'type', 'includedData', 'visible', 'when', 'whenNot', 'outputKey'})
 
 
 def _declared_fields(action_type: str) -> set[str]:

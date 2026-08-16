@@ -1,9 +1,7 @@
-"""clay terminal UI — aurora-themed output with swappable themes.
+"""Expose Clay's themed terminal rendering API.
 
-Imported once in cli.py:
-  • Scans sys.argv for --ci / --plainStdout and sets PLAIN accordingly
-  • intro() fires the non-blocking intro animation; cli calls it at run
-    startup. Importing this module never draws to the terminal.
+cli.py imports this module once. Importing detects plain-output flags but does
+not draw anything; intro() starts the optional animation explicitly.
 
 All callers import from here:
     from ..run import termui
@@ -15,7 +13,7 @@ import threading
 from . import engine, loader
 from .spinner import Spinner as _Spinner
 
-# Detect plain mode from argv before argparse runs
+# Detect plain mode before argparse processes the command line.
 PLAIN: bool = '--ci' in sys.argv or '--plainStdout' in sys.argv
 IS_TTY: bool = sys.stdout.isatty()
 
@@ -35,7 +33,7 @@ def _t() -> dict:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def intro():
-    """Fire the non-blocking intro animation. No-op when plain or not a TTY."""
+    """Start the intro animation when rich terminal output is available."""
     if _rich():
         threading.Thread(
             target=engine.intro_effects,

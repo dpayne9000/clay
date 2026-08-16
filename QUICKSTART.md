@@ -6,6 +6,35 @@ Everything below is the `clay` command. Installing it, and getting that name
 onto your `PATH`, is covered once in **[docs/INSTALL.md](docs/INSTALL.md)** —
 including where clay keeps its files and which install paths do not work yet.
 
+## Run local model or set up chat api host
+
+in `~/.clay/config.json` edit the following
+
+```
+"provider": {
+    "url":"http://127.0.0.1:8080"
+},
+    "models": {
+        "default": "hfuser/modelname:Q4_K_M"",
+        "code": "hfuser/modelname:Q4_K_M",
+        "chat": "unsloth/Qwen3-0.6B-GGUF:Q6_K",
+        "reports": "hfuser/modelname:Q4_K_M",
+        "orchestrator": "hfuser/modelname:Q4_K_M"",
+        "telegram":"hfuser/modelname:Q4_K_M""
+    }
+```
+
+these models can be selected by using "modelProfile": "orchestrator" inside of scramda2 LLM actions
+
+
+then start your local llm
+
+```
+llama serve -hf yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M --port 8081 -c 5200
+
+llama server -m /Users/<dir>>/.cache/huggingface/hub/models--user--DeepSeek-R1-GGUF/snapshots/a80753160e40e5c6b06824b3bb69fb6bf7577cd6/DeepSeek-R1-Q4_K_M.gguf -c 5200
+```
+
 ## Telegram remote control
 
 Go to @botfather in telegram and ask for a new token

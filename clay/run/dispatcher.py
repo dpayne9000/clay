@@ -1,4 +1,4 @@
-"""Action dispatch — validates one action and routes it to its handler.
+"""Validate actions and route them to registered handlers.
 
 All handlers are resolved via clay.actions.registry.handler_for_type(), which
 is populated by discover() importing every module under clay.actions. The few
@@ -33,40 +33,35 @@ from ..lib.flags import is_truthy
 
 _discover()
 
-# Types that handle their own output (human prompts, loops) — don't log result preview
+# These action types present their own output and need no result preview.
 _SILENT_RESULT_TYPES = frozenset({'humanDecision', 'humanShell', 'loop', 'workflow'})
 
-# Types that raise no busy indicator. The same four names as above, and
-# deliberately a second set rather than a reuse — the reason is different and
-# either list can change without the other.
+# These action types do not raise a busy indicator. Keep this set separate from
+# _SILENT_RESULT_TYPES because the two policies can change independently.
 #
-# 'workflow' and 'loop' are containers: the work is the actions inside, each of
-# which brackets itself, and the first inner active=False would drop an outer
-# indicator that nothing then brings back. 'humanDecision' and 'humanShell'
-# hand the floor to a person straight away.
+# The actions inside workflow and loop containers manage their own indicators.
+# An inner active=False event would otherwise clear the container's indicator
+# permanently. humanDecision and humanShell immediately wait for human input.
 #
-# The last two are belt and braces. The real guard is io._floor_to_human(),
-# because under manual approval an ordinary action blocks on a question too.
+# io._floor_to_human() also clears indicators when an ordinary action pauses
+# for manual approval.
 _NO_BUSY_TYPES = frozenset({'workflow', 'loop', 'humanDecision', 'humanShell'})
 
 
 def _action_fields(action: dict) -> dict:
-    """Identifying fields a front-end may want to show for this action.
+    """Return action fields that a front-end may display.
 
-    Data, not a formatted string — a Qt panel wanting the model name should
-    read a key, not parse prose. Truncation and layout are the renderer's.
+    Structured data lets each renderer select fields without parsing prose.
+    Renderers also control truncation and layout.
     """
     t = action.get('type', '')
     fields: dict = {}
-    # No prompt field, for any action type. This runs before the handler, so
-    # action['prompt'] is always the raw template with its {placeholders}
-    # unsubstituted — it was never the text anyone was actually shown or sent.
-    # The resolved text reaches front-ends on its own event instead:
+    # Exclude prompt because this function runs before handlers resolve template
+    # placeholders. Front-ends receive the resolved prompt through these events:
     #   scramda2       action.output, kind 'prompt' (from its handler)
     #   humanDecision  input.request (io.prompt), or, under --auto, the
     #                  action.output of the scramda2 it really dispatches
-    # Both humanDecision paths already carry it, so a third copy here would
-    # have put the same question on screen twice.
+    # Including it here would duplicate the humanDecision question.
     if t == 'scramda2':
         fields['model'] = action.get('modelProfile') or action.get('model') or ''
     if t in ('workflow', 'loop'):
@@ -84,7 +79,7 @@ def _action_fields(action: dict) -> dict:
 
 
 def _fields_line(fields: dict) -> str:
-    """One-line summary of _action_fields for the log file — not a front-end."""
+    """Format _action_fields as a one-line log entry."""
     parts = []
     for key, value in fields.items():
         if key == 'included':
@@ -105,11 +100,10 @@ def _data_preview(value) -> str:
 
 
 def _resolve_action_fields(action: dict, previous_data: dict) -> dict:
-    """
-    Resolve action fields whose entire value is {"override": "key"} to the
-    corresponding previous_data value of any type.
-    String fields with {placeholder} interpolation are left for each handler
-    to resolve via format_map as before.
+    """Resolve whole-field overrides from previous action data.
+
+    An exact {"override": "key"} value can resolve to any data type. Handlers
+    continue to resolve placeholders within string fields through format_map.
     """
     resolved = dict(action)
     for field, value in action.items():
@@ -123,44 +117,34 @@ def _resolve_action_fields(action: dict, previous_data: dict) -> dict:
 
 
 def _gate_value(action: dict, step_output: dict, field: str):
-    """The value a gate field names, or None if the field is absent.
+    """Return the context value named by a gate field.
 
-    Read from `step_output`, not from the built ctx: ctx is filtered by
-    `includedData`, and a gate is not data the action consumes — requiring the
-    key in `includedData` would mean pouring a value into a prompt purely to
-    be allowed to test it. `continueKey` reads the raw accumulated output for
-    the same reason.
+    Gates read `step_output` because `includedData` filters action input, not
+    control flow. Requiring a gate key in `includedData` could also expose that
+    value to a prompt unnecessarily. `continueKey` follows the same rule.
     """
     key = action.get(field)
     if not key:
         return None, ''
     key = str(key)
     if key not in step_output:
-        # Not the same as a key that exists and says no. Nothing has ever
-        # stored under this name, which in a hand-written workflow is a typo
-        # or an action id that was renamed — and the consequence is an action
-        # that silently never runs, or always runs. Saying so is what stops it
-        # being silent.
+        # A missing key usually indicates a typo or renamed action ID. Warn
+        # before treating it as false so the resulting skip is visible.
         logger.warn(f'"{field}": "{key}" on action "{action.get("id", "")}" '
                     f'names a key no action has produced — reading it as no')
     return key, step_output.get(key)
 
 
 def should_run(action: dict, step_output: dict) -> tuple[bool, str, str]:
-    """Whether the gate fields let this action run, and what decided.
+    """Return whether gate fields allow the action to run and why.
 
     `"when": "files_written"` runs the action only if the run has produced a
-    `files_written` whose value means yes (clay/lib/flags.py — the same
-    vocabulary `loop`'s continueKey has always used, so a model answering NO
-    reads as no here too). `"whenNot"` is its mirror, and exists because the
-    two halves of a branch are both real work: one action handles the case the
-    gate opens on, another handles the case it does not, and without the
-    negation the second half has nothing to hang on. Both together mean both
-    must hold. Neither field means run, which is every action written before
-    this existed.
+    `files_written` whose value is truthy according to clay/lib/flags.py.
+    `"whenNot"` provides the inverse condition for the other branch. When both
+    fields are present, both conditions must hold. An action without either
+    field runs normally.
 
-    Returns (run, key, value) so the caller can say *why* an action did not
-    happen rather than leaving a hole in the run.
+    The key and value let the caller explain why an action was skipped.
     """
     key, value = _gate_value(action, step_output, 'when')
     if key and not is_truthy(value):
@@ -181,11 +165,8 @@ def dispatch(action: dict, step_output: dict, *, auto: bool = False,
     action intentionally stores nothing. Invalid schemas and unknown action
     types raise WorkflowFailure; successful output keeps its existing shape.
     """
-    # Recorded rather than threaded: applyFileWrites, serveFileReads and
-    # runReplyCommands all need to know whether a human is reachable, and three
-    # more handler signatures carrying the same flag is how the special-case
-    # ladder below grows. The same fact humanShell reads from its `daemon`
-    # argument, kept where the approval gate can reach it.
+    # Store unattended state centrally because several handlers use it. This
+    # avoids adding the same argument to each handler signature.
     approval.set_unattended(daemon)
 
     log = logger.get()
@@ -205,30 +186,20 @@ def dispatch(action: dict, step_output: dict, *, auto: bool = False,
             + '; '.join(errors)
         )
 
-    # "visible": false — the action draws nothing at all: no start line, no
-    # done line, no payload (logger.output reads the same flag). Errors are
-    # never gated: an action you chose not to watch is still one you have to
-    # be told about when it fails. The log file keeps every event either way.
+    # "visible": false hides lifecycle events and payloads from front-ends.
+    # Errors remain visible, and the log file records every event.
     #
-    # A humanDecision's question is unaffected too — it travels as
-    # input.request through clay/run/io.py, not through this emit — because a
-    # hidden question is one nobody can answer.
+    # humanDecision questions remain visible because io.py emits input.request
+    # independently. Hiding a question would prevent the user from answering.
     show = logger.visible(action)
 
-    # "when": "key" — the gate goes here, after validation and before any
-    # lifecycle event: a skipped action must not emit a start line a renderer
-    # would hold a spinner open on, and must not store a result, or a later
-    # `when` reading its id would see the leftovers of the turn before.
-    # Validating first is deliberate — a typo in a gated action is still a
-    # typo, and finding it only on the turn the gate happens to open is how a
-    # workflow breaks in front of a user weeks later.
+    # Evaluate gates after validation but before lifecycle events. Validation
+    # must expose invalid gated actions even when their gate is closed. A skipped
+    # action must not start a renderer indicator or retain a previous result.
     run, when_key, when_value = should_run(action, step_output)
     if not run:
-        # Drop whatever this id held. Inside a loop the same actions run again
-        # each iteration, so an action skipped on pass 2 would otherwise leave
-        # pass 1's answer standing — and a later `when` reading that id would
-        # gate on a result from a turn that no longer exists. An action that
-        # did not run has no result, and that is what the store should say.
+        # Remove results from earlier loop iterations. Later gates must not read
+        # a stale value for an action that did not run in the current iteration.
         step_output.pop(action_id, None)
         logger.emit(events.ACTION_SKIPPED, id=action_id,
                     action_type=action_type, key=when_key,
@@ -246,9 +217,8 @@ def dispatch(action: dict, step_output: dict, *, auto: bool = False,
         log.log(f'ACTION  {action_type}  "{action_id}"  {_fields_line(fields)}')
 
     ctx = build_ctx(step_output, action)
-    # Engine-seeded globals are run infrastructure, not ordinary action input.
-    # A workflow/loop must inherit them even when its includedData deliberately
-    # filters user variables; actions inside the child still opt in normally.
+    # Child workflows inherit engine infrastructure even when includedData
+    # filters user variables. Their actions still select ordinary input normally.
     engine_globals = {
         key: step_output[key]
         for key in PASSTHROUGH_KEYS
@@ -256,10 +226,8 @@ def dispatch(action: dict, step_output: dict, *, auto: bool = False,
     }
 
     started = time.monotonic()
-    # Raised for every action, hidden or not. A "visible": false action emits
-    # nothing else a front-end can see, and Telegram and the Qt panel had no
-    # indicator even for visible model calls. Dropped in finally, so a handler
-    # that raises does not leave three front-ends claiming to be working.
+    # Busy state applies to visible and hidden actions. The finally block clears
+    # it even when a handler raises.
     busy = action_type not in _NO_BUSY_TYPES
     if busy:
         logger.busy(True, action_type)
@@ -284,15 +252,12 @@ def dispatch(action: dict, step_output: dict, *, auto: bool = False,
                 raise WorkflowFailure(f'Unknown action type: {action_type}')
             result = handler(action, ctx)
     except Exception as exc:
-        # The renderer holds a spinner open between action.start and
-        # action.complete. Without this the terminal is left spinning on a
-        # handler crash.
+        # Emit an error so renderers can clear indicators after a handler fails.
         logger.emit(events.ACTION_ERROR, id=action_id,
                     action_type=action_type, message=str(exc))
         raise
     finally:
-        # Also covers the unknown-type branch above, which returns from inside
-        # the try.
+        # This also covers the unknown action type raised inside the try block.
         if busy:
             logger.busy(False)
 
@@ -303,7 +268,7 @@ def dispatch(action: dict, step_output: dict, *, auto: bool = False,
                 duration_ms=int((time.monotonic() - started) * 1000),
                 show=show)
 
-    # Log result preview (log file only)
+    # Record a result preview in the log file only.
     if log and result and action_type not in _SILENT_RESULT_TYPES:
         data = result.get('data')
         if data is not None:

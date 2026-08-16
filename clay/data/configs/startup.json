@@ -1,8 +1,10 @@
 {
+    "_startupVersion": 2,
+    "_defaultManaged": true,
     "daemon": [
         "workflows/system/messaging/telegram.json"
     ],
     "user": [
-        "workflows/system/coding/main.json"
+        "workflows/system/clay/main.json"
     ]
 }

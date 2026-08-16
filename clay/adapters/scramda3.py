@@ -8,7 +8,7 @@ import sys
 import os
 import json
 
-# Unused adapter that connects to ollama docker via langchain
+# This unused adapter connects to Ollama through LangChain.
 def fire(prompt, context):
     body = {
         "message": "you are a helpful assistant who manages all aspects of everyday life. ",
@@ -49,10 +49,10 @@ def fire(prompt, context):
     chain = LLMChain(llm=azureLlm, prompt=template)
 
     if (len(prompt) > 0):
-        # langchain_visualizer.visualize(get_gpt4_response) replace the next line for visualizations.
+        # Replace the next line with langchain_visualizer to inspect the chain.
         response = chain.run(prompt["prompt"])
     else:
-        # print("usage: python langchain_gpt4.py \"This is my prompt\"")
+        # No prompt was provided.
         output = {"statusCode": 501, "body": json.dumps(chain)}
 
 

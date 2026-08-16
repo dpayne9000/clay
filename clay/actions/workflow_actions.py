@@ -11,7 +11,7 @@ _running = set()
 class Workflow:
     id:        str = req("Output key for the sub-workflow result")
     file:      str = req("Path to the workflow JSON file to run")
-    outputKey: str = opt("Compatibility field; currently ignored because the complete sub-workflow context is stored under id", "final")
+    outputKey: str = opt("Secondary storage key for the complete sub-workflow context", "final")
 
 
 @handler_for('workflow')

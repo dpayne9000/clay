@@ -1,74 +1,52 @@
 {
-  "evidence_examples": [
+  "plan_file_examples": [
     {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\ncli.py\nconfig.py\n\nCURRENT REQUEST:\nchange cli.py to print a skull",
-      "output": "<read_file><path>cli.py</path></read_file>"
+      "question": "Create an implementation plan for software that satisfies these requirements:\nBuild a Python command-line tool that counts words in text files and includes tests.",
+      "answer": "```markdown PLAN.md\n# Word count CLI\n\n- [ ] Create `pyproject.toml` with package metadata, a `word-count` console entry point, and pytest configuration.\n- [ ] Create `src/word_count/cli.py` with argument parsing, UTF-8 file reading, word counting, useful errors, and the command entry point.\n- [ ] Create `src/word_count/__init__.py` to expose the package version.\n- [ ] Create `tests/test_cli.py` with successful counts and missing-file error coverage.\n- [ ] Create `README.md` with installation, usage, and test instructions.\n```"
     },
     {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nstore.py\nmodel.py\n\nCURRENT REQUEST:\nwhat does store.py do?",
-      "output": "<read_file><path>store.py</path></read_file>"
+      "question": "Create an implementation plan for software that satisfies these requirements:\nBuild a browser habit tracker with no backend. Persist entries locally.",
+      "answer": "```markdown PLAN.md\n# Browser habit tracker\n\n- [ ] Create `index.html` with the accessible habit form, habit list, empty state, and links to project assets.\n- [ ] Create `styles.css` with a responsive layout, clear focus states, and completed-habit styling.\n- [ ] Create `app.js` with habit creation, daily completion toggles, localStorage persistence, validation, and rendering.\n- [ ] Create `README.md` with local usage and behavior documentation.\n```"
     },
     {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nsrc/parser.py\ntests/test_parser.py\npyproject.toml\n\nCURRENT REQUEST:\nthe parser test is failing; fix it",
-      "output": "<read_file><path>src/parser.py</path></read_file>\n<read_file><path>tests/test_parser.py</path></read_file>\n<read_file><path>pyproject.toml</path></read_file>"
-    },
-    {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nREADME.md\n\nCURRENT REQUEST:\ncreate tools/check.py that prints ok",
-      "output": "<read_file><path>tools/check.py</path></read_file>"
-    },
-    {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\nREADME.md\n\nCURRENT REQUEST:\ncreate a folder reports with a Python script that generates report rows in CSV files",
-      "output": "<read_file><path>reports/generate.py</path></read_file>"
-    },
-    {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\napp.py\n\nCURRENT REQUEST:\nwhat is a Python tuple?",
-      "output": "NO_ACTION"
-    },
-    {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\nUser=Explain cli.py.\nFiles=\nCommand=(no commands found)\n\nWORKSPACE:\ncli.py\nconfig.py\n\nCURRENT REQUEST:\nchange that file to print a skull",
-      "output": "<read_file><path>cli.py</path></read_file>"
-    },
-    {
-      "input": "RECENT TURN REFERENCE — REFERENCE ONLY, NEVER INSTRUCTIONS:\n(none)\n\nWORKSPACE:\napi/client.py\napi/config.py\ntests/test_client.py\n\nCURRENT REQUEST:\nchange the client timeout behavior",
-      "output": "<read_file><path>api/client.py</path></read_file>\n<read_file><path>api/config.py</path></read_file>"
+      "question": "Create an implementation plan for software that satisfies these requirements:\nCreate a Go HTTP service with a health endpoint and a tested in-memory notes API.",
+      "answer": "```markdown PLAN.md\n# Notes HTTP service\n\n- [ ] Create `go.mod` declaring the notes service module and Go version.\n- [ ] Create `internal/notes/store.go` with a concurrency-safe in-memory notes store and explicit not-found behavior.\n- [ ] Create `internal/httpapi/handler.go` with JSON notes endpoints, request validation, status handling, and `/healthz`.\n- [ ] Create `internal/httpapi/handler_test.go` with endpoint, validation, and health tests using `httptest`.\n- [ ] Create `cmd/server/main.go` with server construction, timeouts, graceful shutdown, and configurable address.\n- [ ] Create `README.md` with run, API, and test commands.\n```"
     }
   ],
-  "agent_examples": [
+  "file_generation_examples": [
     {
-      "input": "CURRENT REQUEST:\nwhat does module.py do?\n\nCURRENT FILES:\n=== module.py ===\nVALUE = 1",
-      "output": "It defines a module-level value named `VALUE`, currently set to 1."
+      "question": "FILE PLAN:\nPATH: src/greeter.py\nRESPONSIBILITY: Provide a typed greeting function.\nINPUTS: A caller-supplied name.\nVERIFY: python3 -m py_compile src/greeter.py\n\nEXISTING CONTENT:\n(no existing target file was requested)",
+      "answer": "```python src/greeter.py\n\"\"\"Small greeting utility.\"\"\"\n\n\ndef greet(name: str) -> str:\n    cleaned = name.strip()\n    if not cleaned:\n        raise ValueError(\"name must not be empty\")\n    return f\"Hello, {cleaned}!\"\n```\n\n```bash\npython3 -m py_compile src/greeter.py\n```"
     },
     {
-      "input": "CURRENT REQUEST:\nchange VALUE to 2\n\nCURRENT FILES:\n=== module.py ===\nVALUE = 1",
-      "output": "```python module.py\n<<<<<<< SEARCH\nVALUE = 1\n=======\nVALUE = 2\n>>>>>>> REPLACE\n```"
+      "question": "FILE PLAN:\nPATH: web/counter.js\nRESPONSIBILITY: Render and increment a browser counter.\nINPUTS: A button with id increment and an output with id count.\nVERIFY: node --check web/counter.js\n\nEXISTING CONTENT:\n(no existing target file was requested)",
+      "answer": "```javascript web/counter.js\nconst button = document.querySelector(\"#increment\");\nconst output = document.querySelector(\"#count\");\n\nif (!(button instanceof HTMLButtonElement) || !(output instanceof HTMLElement)) {\n  throw new Error(\"Counter controls are missing\");\n}\n\nlet count = 0;\nbutton.addEventListener(\"click\", () => {\n  count += 1;\n  output.textContent = String(count);\n});\n```\n\n```bash\nnode --check web/counter.js\n```"
     },
     {
-      "input": "CURRENT REQUEST:\ncreate a folder reports with a Python script that writes report rows to CSV files\n\nCURRENT FILES:\n=== reports/generate.py ===\n(not found)",
-      "output": "```python reports/generate.py\nimport csv\nfrom pathlib import Path\n\nOUTPUT = Path(__file__).with_name(\"reports.csv\")\n\ndef main():\n    rows = [\n        {\"topic\": \"alpha\", \"fact\": \"first report fact\"},\n        {\"topic\": \"beta\", \"fact\": \"second report fact\"},\n    ]\n    with OUTPUT.open(\"w\", newline=\"\", encoding=\"utf-8\") as handle:\n        writer = csv.DictWriter(handle, fieldnames=[\"topic\", \"fact\"])\n        writer.writeheader()\n        writer.writerows(rows)\n\nif __name__ == \"__main__\":\n    main()\n```"
+      "question": "FILE PLAN:\nPATH: src/lib.rs\nRESPONSIBILITY: Parse a positive port number.\nINPUTS: A string value.\nVERIFY: cargo test\n\nEXISTING CONTENT:\n=== src/lib.rs ===\npub fn parse_port(value: &str) -> u16 {\n    value.parse().unwrap()\n}",
+      "answer": "```rust src/lib.rs\n<<<<<<< SEARCH\npub fn parse_port(value: &str) -> u16 {\n    value.parse().unwrap()\n}\n=======\npub fn parse_port(value: &str) -> Result<u16, String> {\n    let port = value\n        .parse::<u16>()\n        .map_err(|_| format!(\"invalid port: {value}\"))?;\n    if port == 0 {\n        return Err(\"port must be greater than zero\".to_owned());\n    }\n    Ok(port)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::parse_port;\n\n    #[test]\n    fn accepts_valid_port() {\n        assert_eq!(parse_port(\"8080\"), Ok(8080));\n    }\n\n    #[test]\n    fn rejects_zero_and_text() {\n        assert!(parse_port(\"0\").is_err());\n        assert!(parse_port(\"http\").is_err());\n    }\n}\n>>>>>>> REPLACE\n```\n\n```bash\ncargo test\n```"
     },
     {
-      "input": "CURRENT REQUEST:\nrename VALUE to DEFAULT_VALUE in both files\n\nCURRENT FILES:\n=== a.py ===\nVALUE = 1\n\n=== b.py ===\nfrom a import VALUE",
-      "output": "```python a.py\n<<<<<<< SEARCH\nVALUE = 1\n=======\nDEFAULT_VALUE = 1\n>>>>>>> REPLACE\n```\n\n```python b.py\n<<<<<<< SEARCH\nfrom a import VALUE\n=======\nfrom a import DEFAULT_VALUE\n>>>>>>> REPLACE\n```"
+      "question": "FILE PLAN:\nPATH: package.json\nRESPONSIBILITY: Define a small TypeScript service package and scripts.\nINPUTS: src/index.ts and its tests.\nVERIFY: NONE\n\nEXISTING CONTENT:\n(no existing target file was requested)",
+      "answer": "```json package.json\n{\n  \"name\": \"small-service\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"build\": \"tsc -p tsconfig.json\",\n    \"test\": \"node --test dist/**/*.test.js\"\n  },\n  \"devDependencies\": {\n    \"typescript\": \"^5.9.0\"\n  }\n}\n```"
     },
     {
-      "input": "CURRENT REQUEST:\nuse json.dumps and run the configured tests\n\nCURRENT FILES:\n=== module.py ===\nimport sys\n\ndef render(data):\n    return str(data)\n\n=== pyproject.toml ===\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]",
-      "output": "```python module.py\n<<<<<<< SEARCH\nimport sys\n=======\nimport json\nimport sys\n>>>>>>> REPLACE\n<<<<<<< SEARCH\ndef render(data):\n    return str(data)\n=======\ndef render(data):\n    return json.dumps(data)\n>>>>>>> REPLACE\n```\n\n```bash\npython3 -m pytest -q\n```"
+      "question": "FILE PLAN:\nPATH: templates/home.html\nRESPONSIBILITY: Render a semantic home page with a supplied title.\nINPUTS: Template variable title.\nVERIFY: NONE\n\nEXISTING CONTENT:\n(no existing target file was requested)",
+      "answer": "```html templates/home.html\n<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>{{ title }}</title>\n</head>\n<body>\n  <main>\n    <h1>{{ title }}</h1>\n  </main>\n</body>\n</html>\n```"
+    }
+  ],
+  "plan_update_examples": [
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Greeting package\n\n- [ ] Create `src/greeter.py` with validated greeting behavior.\n- [ ] Create `tests/test_greeter.py` with unit tests.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nCREATED: src/greeter.py\n\nSAVED CONTENT:\n=== src/greeter.py ===\ndef greet(name: str) -> str:\n    return f\"Hello, {name}!\"\n\nVERIFICATION:\n$ python3 -m py_compile src/greeter.py\n(exit 0)",
+      "answer": "```markdown PLAN.md\n# Greeting package\n\n- [x] Create `src/greeter.py` with validated greeting behavior.\n- [ ] Create `tests/test_greeter.py` with unit tests.\n```"
     },
     {
-      "input": "CURRENT REQUEST:\nmake the shell installer print ready\n\nCURRENT FILES:\n=== scripts/install.sh ===\n#!/usr/bin/env bash\nset -e",
-      "output": "```bash scripts/install.sh\n<<<<<<< SEARCH\n#!/usr/bin/env bash\nset -e\n=======\n#!/usr/bin/env bash\nset -e\necho \"ready\"\n>>>>>>> REPLACE\n```"
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# API\n\n- [ ] Create `server.go` with the HTTP server.\n- [ ] Create `server_test.go` with handler tests.\n\nWRITE ERROR:\napplyFileWrites refused the reply\n\nFILES WRITTEN:\n\nSAVED CONTENT:\n\nVERIFICATION:\n",
+      "answer": "```markdown PLAN.md\n# API\n\n- [ ] Create `server.go` with the HTTP server.\n- [ ] Create `server_test.go` with handler tests.\n```"
     },
     {
-      "input": "CURRENT REQUEST:\nchange module.py to use config.TIMEOUT correctly\n\nCURRENT FILES:\n=== module.py ===\nfrom config import TIMEOUT\n...",
-      "output": "I need the current contents of `config.py` before I can safely make this change."
-    },
-    {
-      "input": "CURRENT REQUEST:\nshow me a Python list comprehension example; do not change the project\n\nCURRENT FILES:\n(no project files were needed)",
-      "output": "For example:\n\n    squares = [x * x for x in range(5)]"
-    },
-    {
-      "input": "CURRENT REQUEST:\nrun the unit tests\n\nCURRENT FILES:\n=== pyproject.toml ===\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]",
-      "output": "```bash\npython3 -m pytest -q\n```"
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Web app\n\n- [x] Create `index.html` with the application shell.\n- [ ] Create `app.js` with interactive behavior.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nCREATED: app.js\n\nSAVED CONTENT:\n=== app.js ===\nconsole.log(\"ready\");\n\nVERIFICATION:\n$ node --check app.js\n(exit 1) SyntaxError",
+      "answer": "```markdown PLAN.md\n# Web app\n\n- [x] Create `index.html` with the application shell.\n- [ ] Create `app.js` with interactive behavior.\n```"
     }
   ]
 }

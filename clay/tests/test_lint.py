@@ -414,6 +414,13 @@ class TestUnknownFieldDetection(unittest.TestCase):
         )
         self.assertEqual(self._unknown_warnings(r), [])
 
+    def test_outputKey_is_never_flagged(self):
+        r = self._lint_action(
+            {"id": "out", "type": "shell", "command": "ls",
+             "outputKey": "alias"}
+        )
+        self.assertEqual(self._unknown_warnings(r), [])
+
     def test_underscore_prefixed_keys_are_never_flagged(self):
         r = self._lint_action(
             {"id": "out", "type": "shell", "command": "ls",

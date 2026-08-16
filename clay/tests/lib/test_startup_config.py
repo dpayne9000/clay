@@ -16,6 +16,7 @@ from ...lib import config
 
 CODING = {'user': ['workflows/system/coding/main.json'], 'daemon': []}
 CLAY = {'user': ['workflows/system/clay/main.json'], 'daemon': []}
+CUSTOM = {'user': ['workflows/my-assistant/main.json'], 'daemon': []}
 
 
 class StartupSourceTest(unittest.TestCase):
@@ -51,17 +52,36 @@ class StartupSourceTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(self.user_path))
 
     def test_the_user_copy_wins_over_the_packaged_one(self):
-        self._write(self.user_path, CLAY)
-        self.assertEqual(config.load_startup(), CLAY)
+        self._write(self.user_path, CUSTOM)
+        self.assertEqual(config.load_startup(), CUSTOM)
 
     def test_an_upgrade_never_reverts_the_user_choice(self):
         """Create-or-fail, not overwrite. The packaged value changing in a new
         release must not silently move a workflow someone chose."""
-        self._write(self.user_path, CLAY)
+        self._write(self.user_path, CUSTOM)
         self._write(self.base_path, CODING)
         config.load_startup()
         with open(self.user_path, encoding='utf-8') as handle:
-            self.assertEqual(json.load(handle), CLAY)
+            self.assertEqual(json.load(handle), CUSTOM)
+
+    def test_recognized_legacy_default_moves_to_new_shipped_default(self):
+        old = {'user': ['workflows/system/coding/main.json'], 'daemon': []}
+        new = {'_startupVersion': 2, '_defaultManaged': True,
+               'user': ['workflows/system/chat/main.json'], 'daemon': []}
+        self._write(self.user_path, old)
+        self._write(self.base_path, new)
+
+        self.assertEqual(config.load_startup(), new)
+
+    def test_cli_selected_default_is_not_changed_by_upgrade(self):
+        selected = {'_startupVersion': 1, '_defaultManaged': False,
+                    'user': ['workflows/system/coding/main.json'], 'daemon': []}
+        new = {'_startupVersion': 2, '_defaultManaged': True,
+               'user': ['workflows/system/chat/main.json'], 'daemon': []}
+        self._write(self.user_path, selected)
+        self._write(self.base_path, new)
+
+        self.assertEqual(config.load_startup(), selected)
 
     def test_a_corrupt_user_copy_is_recreated_from_the_package(self):
         with open(self.user_path, 'w', encoding='utf-8') as handle:

@@ -54,12 +54,10 @@ def stop():
 
 
 def _notify(event: dict) -> None:
-    """Fan an event out to every listener.
+    """Send an event to every listener.
 
-    A listener that raises must not stop the others or kill the run — one
-    broken renderer is not a reason to lose a workflow. The failure goes
-    straight to stderr rather than through logger.error(), which would route
-    back into this function and recurse.
+    A failing listener must not stop other listeners or the workflow. Report
+    listener failures directly to stderr to avoid recursion through error().
     """
     for fn in list(_listeners):
         try:
@@ -70,7 +68,7 @@ def _notify(event: dict) -> None:
 
 
 def _emit(level: str, msg: str, show: bool):
-    """Record a log line. `show` marks it user-facing rather than internal."""
+    """Record a log line and notify listeners when `show` is true."""
     if _active:
         _active.log(f'{level}  {msg}')
     if show:
@@ -79,37 +77,35 @@ def _emit(level: str, msg: str, show: bool):
 
 
 def trace(msg: str):
-    """Detailed internal trace — log file only."""
+    """Write a detailed internal trace to the log file."""
     _emit('TRACE', msg, False)
 
 
 def debug(msg: str):
-    """Debug detail — log file only."""
+    """Write debugging detail to the log file."""
     _emit('DEBUG', msg, False)
 
 
 def info(msg: str):
-    """Informational event — log file + stdout."""
+    """Emit a user-facing informational event."""
     _emit('INFO ', msg, True)
 
 
 def warn(msg: str):
-    """Warning — log file + stdout."""
+    """Emit a user-facing warning."""
     _emit('WARN ', msg, True)
 
 
 def error(msg: str):
-    """Error — log file + stdout."""
+    """Emit a user-facing error."""
     _emit('ERROR', msg, True)
 
 
 def emit(event_type: str, *, show: bool = True, **kwargs):
     """Emit a structured event to the log file and, when shown, to listeners.
 
-    `show=False` is the "visible": false path. The log file still gets the
-    event: hiding an action is a decision about a screen, not a licence to
-    lose the evidence, and a run debugged after the fact needs the whole
-    record. Mirrors `_emit(level, msg, show)` for log lines.
+    `show=False` implements `"visible": false`. Hidden events remain in the log
+    so later debugging has a complete record. This mirrors _emit() for log lines.
     """
     event = {"type": event_type, "ts": time.time(), **kwargs}
     if _active:
@@ -118,24 +114,18 @@ def emit(event_type: str, *, show: bool = True, **kwargs):
         _notify(event)
 
 
-# Cap on the body of an action.output, in characters. 0 means uncapped.
-# One cap for every payload on the bus rather than a copy per action module —
-# file_ops and shell_actions each had their own, and a fourth was about to be
-# added for memory and skills.
+# This shared limit caps every action.output body; zero disables truncation.
 OUTPUT_MAX_CHARS = 0
 
 
 def output(action: dict, kind: str, label: str, text: str = ''):
-    """Emit a payload an action has to show a person.
+    """Emit a user-facing action payload.
 
-    Distinct from info(): a log line is a level and a string, and a front-end
-    receiving one cannot tell which action produced it. This carries the id and
-    type of the emitting action, so "show file writes but not file reads" is a
-    filter on data rather than a match on message text.
+    Unlike info(), this event includes the action ID and type. Front-ends can
+    therefore filter payloads by structured fields instead of message text.
 
-    Takes the action dict rather than an id for two reasons: a call site cannot
-    emit an unattributed payload, and the action's own "visible" flag is read
-    here, so no handler can leak a payload the workflow asked to hide.
+    Accepting the action dictionary guarantees attribution and applies its
+    visibility setting before any payload reaches a front-end.
     """
     body = str(text or '')
     if 0 < OUTPUT_MAX_CHARS < len(body):
@@ -144,41 +134,31 @@ def output(action: dict, kind: str, label: str, text: str = ''):
          action_type=action.get('type', ''), kind=kind,
          label=label, text=body, show=visible(action))
 
-    # Relabel the busy indicator now that the text exists. It has to happen
-    # here and cannot happen in the dispatcher: a prompt is resolved inside its
-    # handler (scramda2_actions.py), so action['prompt'] before the handler
-    # runs is still the template with {workspace_files} literal — the exact
-    # thing action.start stopped carrying. Emitted after action.output so a
-    # renderer that stops its spinner to print the prompt box gets it back.
+    # Relabel the busy indicator after the handler resolves the prompt. Emit the
+    # payload first because a renderer may clear its indicator while drawing it.
     if kind == 'prompt':
         busy(True, action.get('type', ''), body)
 
 
-#: How much of a resolved prompt reaches a busy indicator, in characters.
-#: A one-line label on a terminal, a chat status and a Qt row, so it is short
-#: on purpose — the full prompt travels on action.output and is in the log.
+#: Maximum resolved-prompt length in a one-line busy indicator. The complete
+#: prompt remains available through action.output and in the log.
 BUSY_PREVIEW_MAX_CHARS = 100
 
 
 def busy(active: bool, action_type: str = '', preview: str = '') -> None:
-    """Raise or drop every front-end's "still working" indicator.
+    """Set every front-end's working indicator.
 
     Not routed through emit(), for two reasons.
 
-    It never reaches the log file. The log is the record of what happened and
-    a spinner is not a thing that happened; a pair of these per action would
-    double the file and say nothing a timestamp does not already.
+    Busy events do not reach the log because they represent transient display
+    state rather than workflow activity.
 
-    It is never gated by "visible". That flag hides what an action *did*, and
-    a hidden action emitting nothing at all between start and finish is the
-    reason this event exists — every front-end simply went quiet for however
-    long it took. `preview` therefore does expose the first
-    BUSY_PREVIEW_MAX_CHARS of a hidden action's prompt: one truncated line
-    saying what the wait is for, while the prompt itself stays hidden.
+    Visibility does not suppress busy events because a hidden action can still
+    leave the interface waiting. The preview may therefore expose a truncated
+    portion of a hidden prompt while the full payload remains hidden.
 
-    `active` is a level, not a counter. Two active=True in a row is a relabel,
-    which is exactly what output() does once a prompt resolves, and a listener
-    holding a level needs no nesting arithmetic to survive it.
+    `active` is state rather than a counter. Repeating active=True relabels the
+    current operation without requiring listeners to track nesting.
     """
     text = ' '.join(str(preview or '').split())[:BUSY_PREVIEW_MAX_CHARS]
     _notify({'type': events.BUSY, 'ts': time.time(), 'active': bool(active),
@@ -186,15 +166,12 @@ def busy(active: bool, action_type: str = '', preview: str = '') -> None:
 
 
 def visible(action: dict) -> bool:
-    """Whether this action's events reach a front-end. `"visible": false` hides.
+    """Return whether an action's events should reach front-ends.
 
-    Absent means visible — a workflow that says nothing about it gets the
-    behaviour it has always had.
+    Actions are visible by default.
 
-    Strings are parsed rather than passed to bool(): workflows are hand-written
-    json and `"visible": "false"` is a plausible slip, but a non-empty string
-    is truthy, so a bare bool() would silently ignore exactly the value the
-    author meant most.
+    Parse strings explicitly because hand-written JSON may contain
+    `"visible": "false"`, which bool() would incorrectly treat as true.
     """
     flag = action.get('visible', True)
     if isinstance(flag, str):
@@ -222,9 +199,7 @@ _socket_listener = None
 
 
 def start_socket_bridge(socket_path: str):
-    """Connect to a unix domain socket, register a listener that writes
-    JSON-line events to it, and route human prompts over the same socket.
-    Called by CLI when --events-socket is passed."""
+    """Route JSON-line events and human prompts over a Unix domain socket."""
     import socket as _socket
     import threading
 
@@ -235,8 +210,7 @@ def start_socket_bridge(socket_path: str):
     sock.connect(socket_path)
     _socket_conn = sock
 
-    # Events and input.request lines share one stream; serialise every write
-    # so two threads cannot interleave halves of a JSON line.
+    # Serialize writes because events and input requests share one stream.
     send_lock = threading.Lock()
 
     def _write(event):

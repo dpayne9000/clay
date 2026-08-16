@@ -31,8 +31,7 @@ _C = {
     'active':        QColor('#00d4aa'),
     'done':          QColor('#2ecc71'),
     'error':         QColor('#e74c3c'),
-    # A `when` gate closed: dimmer than the idle border, so a skipped action
-    # reads as deliberately passed over rather than not reached yet.
+    # Use a dim border to distinguish skipped nodes from nodes not yet reached.
     'skipped':       QColor('#3c4a58'),
     'selected':      QColor('#f39c12'),
 }
@@ -43,8 +42,7 @@ _ACTION_H    = 30
 _PORT_R      = 5
 _GRID_SIZE   = 20
 
-# Default field templates for action nodes dropped from the palette.
-# scramda2 includes model/modelProfile so they're visible in the JSON editor.
+# Default fields for action nodes created through the palette.
 _ACTION_TEMPLATES = {
     'scramda2':       {'type': 'scramda2',       'id': '', 'prompt': '', 'model': None, 'modelProfile': None},
     'humanDecision':  {'type': 'humanDecision',  'id': '', 'prompt': ''},

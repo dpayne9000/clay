@@ -1,0 +1,83 @@
+{
+  "autoContext": "Generates a Python module from a user-supplied spec, held to a fixed style/interface contract loaded from style_rules.json and demonstrated to the model via few-shot examples loaded from style_examples.json — so the output format is not left to the model's discretion. Verifies the module actually compiles, then runs a two-call diagnostic/verdict compliance check against the same contract, revising (up to 5 passes) if it fails.",
+  "workflow": {
+    "steps": ["context", "intake", "render", "apply", "verify", "compliance", "polish", "final"]
+  },
+  "actionSets": {
+    "context": [
+      { "id": "_style_rules", "type": "loadContext", "visible": false, "file": "./style_rules.json" },
+      { "id": "_style_examples", "type": "loadContext", "visible": false, "file": "./style_examples.json" }
+    ],
+    "intake": [
+      { "id": "workspace", "type": "humanDecision",
+        "prompt": "Workspace root directory the module will be written under:" },
+      { "id": "module_path", "type": "humanDecision",
+        "prompt": "Output path for the module, relative to the workspace root (e.g. src/mypackage/widgets.py):" },
+      { "id": "module_spec", "type": "humanDecision",
+        "prompt": "Describe what this module does: its purpose, the classes/functions it must expose, and their exact signatures if you already know them:" }
+    ],
+    "render": [
+      {
+        "id": "module_reply",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "examples": { "override": "module_examples" },
+        "includedData": ["style_spec", "module_spec", "module_path", "module_examples"],
+        "prompt": "{style_spec}\n\nMODULE SPEC:\n{module_spec}\n\nGenerate the complete Python module implementing this spec, following the style contract above exactly — same docstring convention, same import ordering, same type-hint coverage, same error-handling shape, same naming conventions as the worked example.\n\nEmit ONE path-bearing fence at {module_path}. After it, include ONE pathless bash fence containing exactly:\npython3 -m py_compile {module_path}\nNo other commentary outside the fences."
+      }
+    ],
+    "apply": [
+      { "id": "files_written", "type": "applyFileWrites", "reply": "module_reply", "root": "{workspace}" }
+    ],
+    "verify": [
+      { "id": "compile_output", "type": "runReplyCommands", "reply": "module_reply",
+        "cwd": "{workspace}", "maxCommands": 1, "timeout": 30 }
+    ],
+    "compliance": [
+      { "id": "written_module", "type": "readFile", "file": "{module_path}", "root": "{workspace}" },
+      {
+        "id": "style_findings",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "includedData": ["style_spec", "module_spec", "written_module", "compile_output"],
+        "prompt": "{style_spec}\n\nMODULE SPEC:\n{module_spec}\n\nCOMPILE CHECK OUTPUT:\n{compile_output}\n\nACTUAL WRITTEN MODULE (the real file on disk, not a draft):\n{written_module}\n\nCompare the actual written module against the style contract and the module spec. List every deviation, one per line: missing/incorrect type hints, docstring convention violations, naming convention violations, import-order violations, an interface/signature mismatch from MODULE SPEC, or a failing compile check. If there are none, write exactly: NO ISSUES FOUND."
+      },
+      {
+        "_comment": "Diagnostic prose (style_findings) and the routing token are separate calls — matchText needs an exact whole-string match.",
+        "id": "style_verdict",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "includedData": ["style_findings"],
+        "prompt": "FINDINGS:\n{style_findings}\n\nRespond with exactly one word: PASS if FINDINGS is exactly \"NO ISSUES FOUND\", otherwise FAIL. No other text."
+      },
+      { "id": "style_passed", "type": "matchText", "source": "style_verdict",
+        "values": ["PASS"], "onMatch": "yes", "onMiss": "no" }
+    ],
+    "polish": [
+      {
+        "id": "revise_session",
+        "type": "loop",
+        "whenNot": "style_passed",
+        "file": "./revise.json",
+        "iterations": 5,
+        "continueKey": "keep_revising",
+        "merge": true,
+        "includedData": ["style_spec", "module_spec", "module_path", "workspace", "style_findings"]
+      }
+    ],
+    "final": [
+      {
+        "id": "final_report",
+        "type": "humanDecision",
+        "when": "style_passed",
+        "prompt": "{module_path} matches the style contract and compiles cleanly. Type ACK to close out."
+      },
+      {
+        "id": "final_report_failed",
+        "type": "humanDecision",
+        "whenNot": "style_passed",
+        "prompt": "{module_path} still has open style/spec deviations after revision:\n{style_findings}\n\nReview it directly, then either edit it by hand or re-run this workflow. Type ACK to end this run."
+      }
+    ]
+  }
+}

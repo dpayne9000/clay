@@ -241,6 +241,12 @@ class ApprovalRelabelTest(unittest.TestCase):
     def setUp(self):
         approval.reset()
         self.addCleanup(approval.reset)
+        # These tests are about the relabel that happens once a real prompt is
+        # answered, so the gate must actually be on — the shipped default
+        # (manual off) would otherwise bypass confirm() before any prompt is
+        # shown, which is its own, separately-tested behavior.
+        approval.set_manual(True)
+        approval.set_gate('commands', True)
 
     def test_the_indicator_relabels_once_the_gate_is_answered(self):
         channel = io.QueueIO()

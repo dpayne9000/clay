@@ -1,0 +1,45 @@
+{
+  "autoContext": "One revision pass: rewrite the module fixing every deviation the last compliance check listed, re-verify it compiles, then re-run the same two-call compliance check against the real file on disk.",
+  "workflow": {
+    "steps": ["fix", "apply", "verify", "recheck"]
+  },
+  "actionSets": {
+    "fix": [
+      {
+        "id": "fix_reply",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "includedData": ["style_spec", "module_spec", "module_path", "style_findings"],
+        "prompt": "{style_spec}\n\nMODULE SPEC:\n{module_spec}\n\nThe module at {module_path} currently has these deviations from the style contract and/or the module spec:\n{style_findings}\n\nEmit a corrected, complete version of the module that fixes every listed deviation while preserving everything that was already correct. Emit ONE path-bearing fence at {module_path}. After it, include ONE pathless bash fence containing exactly:\npython3 -m py_compile {module_path}\nNo other commentary outside the fences."
+      }
+    ],
+    "apply": [
+      { "id": "files_written", "type": "applyFileWrites", "reply": "fix_reply", "root": "{workspace}" }
+    ],
+    "verify": [
+      { "id": "compile_output", "type": "runReplyCommands", "reply": "fix_reply",
+        "cwd": "{workspace}", "maxCommands": 1, "timeout": 30 }
+    ],
+    "recheck": [
+      { "id": "written_module", "type": "readFile", "file": "{module_path}", "root": "{workspace}" },
+      {
+        "id": "style_findings",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "includedData": ["style_spec", "module_spec", "written_module", "compile_output"],
+        "prompt": "{style_spec}\n\nMODULE SPEC:\n{module_spec}\n\nCOMPILE CHECK OUTPUT:\n{compile_output}\n\nACTUAL WRITTEN MODULE (the real file on disk, not a draft):\n{written_module}\n\nCompare the actual written module against the style contract and the module spec. List every deviation, one per line. If there are none, write exactly: NO ISSUES FOUND."
+      },
+      {
+        "id": "style_verdict",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "includedData": ["style_findings"],
+        "prompt": "FINDINGS:\n{style_findings}\n\nRespond with exactly one word: PASS if FINDINGS is exactly \"NO ISSUES FOUND\", otherwise FAIL. No other text."
+      },
+      { "id": "style_passed", "type": "matchText", "source": "style_verdict",
+        "values": ["PASS"], "onMatch": "yes", "onMiss": "no" },
+      { "id": "keep_revising", "type": "matchText", "source": "style_verdict",
+        "values": ["PASS"], "onMatch": "no", "onMiss": "yes" }
+    ]
+  }
+}

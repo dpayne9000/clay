@@ -10,7 +10,12 @@ from ...run.failure import WorkflowFailure
 from ...adapters import gopher
 
 
-_WORKFLOW = {'workflow': {'steps': []}, 'actionSets': {}}
+_WORKFLOW = {
+    'workflow': {'steps': ['generate']},
+    'actionSets': {
+        'generate': [{'id': 'answer', 'type': 'scramda2', 'prompt': 'Answer'}],
+    },
+}
 
 
 class LLMPreflightTest(unittest.TestCase):
@@ -19,6 +24,36 @@ class LLMPreflightTest(unittest.TestCase):
         response = MagicMock()
         response.__enter__.return_value.status = status
         return response
+
+    @patch('clay.run.preflight.gopher.resolve_endpoint')
+    def test_workflow_without_llm_actions_skips_endpoint_check(self, endpoint):
+        workflow = {
+            'workflow': {'steps': ['read']},
+            'actionSets': {'read': [{'id': 'data', 'type': 'loadContext'}]},
+        }
+        self.assertIsNone(preflight.check_llm_endpoint(workflow))
+        endpoint.assert_not_called()
+
+    @patch('clay.run.preflight.gopher.resolve_endpoint', return_value='http://127.0.0.1:8080')
+    @patch('clay.run.preflight.urllib.request.urlopen',
+           side_effect=urllib.error.URLError(ConnectionRefusedError()))
+    def test_offline_server_warns_for_scramda2_workflow(self, urlopen, endpoint):
+        problem = preflight.check_llm_endpoint(_WORKFLOW)
+        self.assertIn('LLM preflight failed', problem)
+
+    @patch('clay.run.preflight.gopher.resolve_endpoint', return_value='http://127.0.0.1:8080')
+    @patch('clay.run.preflight.urllib.request.urlopen',
+           side_effect=urllib.error.URLError(ConnectionRefusedError()))
+    def test_offline_server_warns_for_human_decision_workflow(self, urlopen, endpoint):
+        workflow = {
+            'workflow': {'steps': ['ask']},
+            'actionSets': {
+                'ask': [{'id': 'answer', 'type': 'humanDecision',
+                         'prompt': 'Continue?'}],
+            },
+        }
+        problem = preflight.check_llm_endpoint(workflow)
+        self.assertIn('LLM preflight failed', problem)
 
     @patch('clay.run.preflight.gopher.resolve_endpoint', return_value='http://127.0.0.1:8080')
     @patch('clay.run.preflight.urllib.request.urlopen')

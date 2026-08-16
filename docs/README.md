@@ -1,9 +1,9 @@
 # Clay documentation
 
-This directory contains public guides, generated technical reference, release
-operations, and the project's internal engineering record. Start with the
-section matching what you are doing; `tasks/`, `bugs/`, `plans/`, and
-`scratch_docs/` are implementation records rather than user instructions.
+This directory contains current guides plus clearly separated engineering
+records. Runtime behavior is defined by the source and the public guides below.
+`tasks/`, `bugs/`, `plans/`, and `release-notes/` are status or history records,
+not runtime instructions.
 
 ## Install and use Clay
 
@@ -11,6 +11,8 @@ section matching what you are doing; `tasks/`, `bugs/`, `plans/`, and
   command-path setup, and launcher repair.
 - [Examples](EXAMPLES.md) — complete workflow examples.
 - [Quick command reference](../QUICKSTART.md) — common CLI operations.
+- [Complete command reference](COMMANDS.md) — every active CLI command,
+  subcommand, argument, and option.
 - [Workflow authoring](../WORKFLOWS.md) — workflow files and action composition.
 - [Workflow linting](../LINT.md) — validation commands and diagnostics.
 
@@ -45,8 +47,6 @@ section matching what you are doing; `tasks/`, `bugs/`, `plans/`, and
 - [Plans](plans/) — design proposals and completed investigations.
 - [Current class diagram](plans/redesign/current.puml) — maintained source-level
   architecture diagram.
-- `scratch_docs/` — historical working notes that may be stale and are not
-  normative documentation.
 
 ## Generated and local-only files
 

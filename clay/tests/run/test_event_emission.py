@@ -111,6 +111,45 @@ class EmissionSequenceTest(unittest.TestCase):
         self.assertNotIn(events.RUN_COMPLETE, bus.types())
         self.assertIsNone(logger.get())
 
+    def test_action_error_result_is_available_to_later_actions(self):
+        """A handler's structured refusal must not disappear after display."""
+        refusal = ('applyFileWrites refused the reply: 1 non-command code '
+                   'fence(s) had no usable file path. Nothing was written. 0 '
+                   'recognized file change(s) were also withheld because '
+                   'writes are atomic. Put a workspace-relative path on every '
+                   'fence opening line, for example: ```python relative/path.py')
+        wf = _wf({
+            "go": [
+                {"id": "write", "type": "applyFileWrites",
+                 "reply": "reply", "includedData": ["reply"]},
+                {"id": "seen", "type": "matchText",
+                 "source": "write_error", "values": [refusal],
+                 "onMatch": "yes", "onMiss": "no",
+                 "includedData": ["write_error"]},
+            ]
+        })
+        result = engine.run_from_data(
+            wf, initial_data={"reply": "```python\nprint('lost')\n```"})
+
+        self.assertIsNone(result['write'])
+        self.assertIn('no usable file path', result['write_error'])
+        self.assertEqual(result['seen'], 'yes')
+
+    def test_success_clears_an_earlier_action_error(self):
+        wf = _wf({
+            "go": [{"id": "write", "type": "matchText",
+                    "source": "answer", "values": ["ok"],
+                    "onMatch": "saved", "onMiss": "missed",
+                    "includedData": ["answer"]}]
+        })
+
+        result = engine.process_steps(
+            wf['workflow']['steps'], wf['actionSets'],
+            {"answer": "ok", "write_error": "old refusal"})
+
+        self.assertEqual(result['write'], 'saved')
+        self.assertNotIn('write_error', result)
+
     def test_invalid_action_schema_is_a_known_workflow_failure(self):
         wf = _wf({"go": [{"id": "x", "type": "python"}]})
         with _Listen() as bus:

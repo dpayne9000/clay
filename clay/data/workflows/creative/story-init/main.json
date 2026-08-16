@@ -1,0 +1,27 @@
+{
+  "autoContext": "Interactive-story setup: from a premise, invents a cast of characters and a set of scenes/locations and saves them as one canonical story.json. clay/data/workflows/creative/story-walk reads this file to run the interactive session.",
+  "workflow": {
+    "steps": ["intake", "generate", "confirm"]
+  },
+  "actionSets": {
+    "intake": [
+      { "id": "workspace", "type": "humanDecision",
+        "prompt": "Output directory for this story (e.g. output/stories/lighthouse-mystery). story-walk will need this same directory:" },
+      { "id": "premise", "type": "humanDecision",
+        "prompt": "Describe the premise — setting, situation, what kind of story this is:" }
+    ],
+    "generate": [
+      {
+        "id": "story_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["premise"],
+        "prompt": "From this premise:\n{premise}\n\nInvent a small cast (2-5) of characters and a set of scenes/locations that frame a coherent interactive story a player can step through, talking to characters and making choices.\n\nEmit ONE path-bearing fence at story.json containing exactly this JSON shape, nothing else in the fence:\n{{\n  \"premise\": \"...\",\n  \"characters\": [\n    {{\"name\": \"...\", \"voice\": \"one line describing how they speak/act\", \"motivation\": \"what they want\"}}\n  ],\n  \"scenes\": [\n    {{\"id\": \"...\", \"location\": \"...\", \"description\": \"what this place is and what's happening here at the start\"}}\n  ]\n}}\n\nThe JSON must be syntactically valid. No commentary outside the fence."
+      },
+      { "id": "story_written", "type": "applyFileWrites", "reply": "story_reply", "root": "{workspace}" }
+    ],
+    "confirm": [
+      { "id": "story_doc", "type": "readFile", "file": "story.json", "root": "{workspace}" }
+    ]
+  }
+}

@@ -13,7 +13,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class WorkflowUpgrade:
-    """One shipped workflow and the corresponding user-owned destination."""
+    """Represent a shipped workflow and its user-owned destination."""
 
     name: str
     source: Path

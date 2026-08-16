@@ -11,7 +11,7 @@ Sends a prompt to a local OpenAI-compatible model server (via the bundled **Goph
 | `examples` | no | array | Few-shot examples as `[{"question": "...", "answer": "..."}]` |
 | `model` | no | string | Literal model ID to use for this call |
 | `modelProfile` | no | string | Named alias resolved from `config.models[modelProfile]`. Takes precedence over `model` if both are set |
-| `max_tokens` | no | int | Cap on response length |
+| `max_tokens` | no | int | Cap on response length. Overrides `config.json`'s `maxTokens` default |
 
 ## Placeholder interpolation
 

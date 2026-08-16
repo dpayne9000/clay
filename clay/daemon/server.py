@@ -631,18 +631,7 @@ class ClientHandler:
 
     @staticmethod
     def _project_dir(msg):
-        """The directory a start request wants its workflow to work in.
-
-        Returns (path, error). Optional. When the client does not send one the
-        workflow works in $CLAY_HOME/workspaces (default ~/.clay/workspaces),
-        which is created if it does not exist.
-
-        The one place it never falls back to is the daemon's own cwd. clayd is
-        started from somewhere unrelated to any caller — often clay's own
-        checkout — and a workflow with no explicit `root` landing there is how
-        file actions used to write into the program instead of the user's work.
-        A directory of clay's own under $CLAY_HOME is a real answer; cwd is not.
-        """
+        """Return (project directory, error). Default to $CLAY_HOME/workspaces."""
         raw = (msg.get('project_dir') or '').strip()
         if not raw:
             fallback = config.user_path('workspaces')
@@ -655,6 +644,19 @@ class ClientHandler:
         if not os.path.isdir(raw):
             return None, f'start: project_dir is not a directory: {raw}'
         return raw, None
+
+    @staticmethod
+    def _daemon_access_error(project_dir, *, auto=False, daemon_mode=False):
+        """Reject unattended work even if a client bypassed its preflight."""
+        if not (auto or daemon_mode):
+            return None
+        from ..run import workspaces
+        check = workspaces.daemon_access(project_dir)
+        if check.allowed:
+            return None
+        missing = ', '.join(sorted(check.missing))
+        return (f'start: {check.path} lacks advance daemon permissions: '
+                f'{missing}')
 
     def _handle(self, msg):
         cmd = msg.get('cmd', '')
@@ -674,6 +676,11 @@ class ClientHandler:
 
         elif cmd == 'start':
             project_dir, error = self._project_dir(msg)
+            error = error or self._daemon_access_error(
+                project_dir,
+                auto=msg.get('auto', False),
+                daemon_mode=msg.get('daemon', False),
+            )
             if error:
                 self.send({'ok': False, 'error': error})
                 return
@@ -688,6 +695,11 @@ class ClientHandler:
 
         elif cmd == 'start-json':
             project_dir, error = self._project_dir(msg)
+            error = error or self._daemon_access_error(
+                project_dir,
+                auto=msg.get('auto', True),
+                daemon_mode=msg.get('daemon', False),
+            )
             if error:
                 self.send({'ok': False, 'error': error})
                 return

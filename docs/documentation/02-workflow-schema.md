@@ -40,7 +40,8 @@ A workflow file is the primary authoring artifact in clay. It is a plain JSON fi
 
 ## `defaults`
 
-Values in `defaults` are placed into `step_output` before any action runs. They are overridden by `initial_data` passed from the caller (e.g. a parent workflow). The merge is: `seed = {**defaults, **(initial_data or {})}` (runWorkflow.py:232).
+Values in `defaults` enter workflow state before any action runs. Caller-provided
+`initial_data` wins on the same key (`clay/run/engine.py`).
 
 ```json
 {
@@ -85,6 +86,7 @@ Every action in an `actionSets` array is a JSON object. Common fields:
 |---|---|---|---|
 | `type` | string | yes | Action type identifier (e.g. `"scramda2"`, `"shell"`) |
 | `id` | string | yes (for most types) | Key under which the action result is stored in `step_output` |
+| `outputKey` | string | no | Secondary storage key for the identical action result; `id` remains available |
 | `includedData` | array of strings | no | If present, limits which context keys are passed to the handler |
 
 Additional fields are type-specific. See `docs/documentation/action-reference.json` for the full JSON Schema.
@@ -109,7 +111,9 @@ Engine-seeded globals (`__config__`, `__schema__`) are only delivered when expli
 
 ## `override` field resolution
 
-Any field value of the form `{"override": "key"}` is replaced with `step_output[key]` before the action runs. This allows non-string fields (arrays, objects) to be sourced from previous action results. (runWorkflow.py:45–60)
+Any field value of the form `{"override": "key"}` is replaced with the named
+workflow-state value before dispatch. This supports arrays and objects as well
+as strings (`clay/run/dispatcher.py`).
 
 ```json
 {
@@ -124,7 +128,9 @@ Any field value of the form `{"override": "key"}` is replaced with `step_output[
 
 ## Sub-workflow invocation
 
-The `workflow` action type runs another workflow file and stores its full `step_output` dict under the action's `id`. The `outputKey` field (default `"final"`) is logged but the stored value is always the complete dict. (workflow_actions.py, test_core.py:228–256)
+The `workflow` action type runs another workflow file and stores its full
+`step_output` dict under the action's `id`. If `outputKey` is present, the
+engine stores the identical dict under that secondary key as well.
 
 The `loop` action runs a sub-workflow repeatedly. See `04-context-and-scope.md` for context propagation details.
 
@@ -187,5 +193,6 @@ stop
 ## Cleanup / Old Paradigms
 
 - Early workflow files used a `"template"` field on `report` actions. The `report_actions.handler` does not read that field; it reads `body`, `to_email`, etc. directly.
-- `model` at the workflow root is read by `_execute` (runWorkflow.py:231) but the per-action `model` and `modelProfile` fields on `scramda2` take precedence in `scramda2_actions.handler`.
-- The `outputKey` field on `workflow` actions is present in the schema but the stored result is always the full sub-workflow `step_output` dict, not the extracted value. `outputKey` default is `"final"` (registry.py:80) but the extraction only happens if the caller explicitly uses dot-notation in `includedData`.
+- A model selected by an action or model profile takes precedence over the
+  workflow-level model.
+- `outputKey` never extracts a nested value. It stores the same complete action result under a second context key.

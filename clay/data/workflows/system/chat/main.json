@@ -1,0 +1,22 @@
+{
+  "_comment": "Minimal conversational client with short-turn continuity and selective long-term recollection.",
+  "workflow": {
+    "steps": [
+      "session"
+    ]
+  },
+  "actionSets": {
+    "session": [
+      {
+        "id": "session",
+        "type": "loop",
+        "file": "./iteration.json",
+        "iterations": 0,
+        "continueKey": "keep_going",
+        "outputKey": "assistant_reply",
+        "merge": true,
+        "includedData": []
+      }
+    ]
+  }
+}

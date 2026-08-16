@@ -1,0 +1,174 @@
+{
+  "defaults": {
+    "user_request": "",
+    "design_contract": "",
+    "plan_file_written": "",
+    "file_rules": "",
+    "generation_rules": "",
+    "file_generation_examples": [],
+    "plan_update_examples": [],
+    "file_context": "(no existing target file was requested)",
+    "files_written": "",
+    "files_written_error": "",
+    "verification_output": "",
+    "written_file_context": "",
+    "construction_review": "",
+    "construction_decision": "no",
+    "build_progress": "(nothing has been built for this request)"
+  },
+  "workflow": {
+    "steps": ["read_plan", "plan_one", "route", "read", "generate", "apply", "verify", "inspect", "review", "decide", "remember", "update_plan", "write_plan"]
+  },
+  "actionSets": {
+    "read_plan": [
+      {
+        "id": "plan_contents",
+        "type": "serveFileReads",
+        "visible": false,
+        "reply": "plan_file_written",
+        "pathsKey": "plan_file_written",
+        "maxFiles": 1,
+        "maxBytes": 16000,
+        "includedData": ["plan_file_written"]
+      }
+    ],
+    "plan_one": [
+      {
+        "id": "file_plan",
+        "type": "scramda2",
+        "modelProfile": "code",
+        "max_tokens": 900,
+        "prompt": "REQUIREMENTS:\n{user_request}\n\nDESIGN CONTRACT:\n{design_contract}\n\nBUILD RECORD:\n{build_progress}\n\nFILE RULES:\n{file_rules}\n\nChoose the next unfinished file from the contract. Return four lines labeled PATH, RESPONSIBILITY, INPUTS, and VERIFY. PATH must be one exact workspace-relative filename copied from the contract. VERIFY is one safe, non-interactive command that validates this file or the project, or NONE when no useful command exists yet. Return COMPLETE only when every contracted file has a successful write record and every applicable verification passed. For an explicitly requested modification, append `<read_file><path>the filename</path></read_file>` after the four lines, replacing `the filename` with the PATH value. Return plain text only.",
+        "includedData": ["user_request", "design_contract", "build_progress", "file_rules"]
+      }
+    ],
+    "route": [
+      {
+        "id": "has_file",
+        "type": "matchText",
+        "visible": false,
+        "source": "file_plan",
+        "values": ["COMPLETE"],
+        "onMatch": "no",
+        "onMiss": "yes",
+        "includedData": ["file_plan"]
+      }
+    ],
+    "read": [
+      {
+        "id": "file_context",
+        "type": "serveFileReads",
+        "when": "has_file",
+        "visible": false,
+        "reply": "file_plan",
+        "maxFiles": 1,
+        "maxBytes": 16000,
+        "includedData": ["file_plan"]
+      }
+    ],
+    "generate": [
+      {
+        "id": "file_reply",
+        "type": "scramda2",
+        "when": "has_file",
+        "modelProfile": "code",
+        "max_tokens": 5000,
+        "examples": {"override": "file_generation_examples"},
+        "prompt": "REQUIREMENTS:\n{user_request}\n\nDESIGN CONTRACT:\n{design_contract}\n\nFILE PLAN:\n{file_plan}\n\nEXISTING CONTENT:\n{file_context}\n\nGENERATION RULES:\n{generation_rules}\n\nWrite the complete code file selected by FILE PLAN. Output one fenced block and nothing else. Put the actual filename from the PATH line on the opening fence line. Example opening line: \"```python src/main.py\". Use the filename selected in FILE PLAN, not the example filename and not the word PATH. Do not put the filename inside the block. Use no other fences or edit markers. Follow the design and supplied generation rules.",
+        "includedData": ["user_request", "design_contract", "file_plan", "file_context", "generation_rules", "file_generation_examples"]
+      }
+    ],
+    "apply": [
+      {
+        "id": "files_written",
+        "type": "applyFileWrites",
+        "when": "has_file",
+        "reply": "file_reply",
+        "maxFiles": 1,
+        "includedData": ["file_reply"]
+      }
+    ],
+    "verify": [
+      {
+        "id": "verification_output",
+        "type": "runReplyCommands",
+        "when": "files_written",
+        "reply": "file_reply",
+        "maxCommands": 1,
+        "timeout": 120,
+        "includedData": ["file_reply"]
+      }
+    ],
+    "inspect": [
+      {
+        "id": "written_file_context",
+        "type": "serveFileReads",
+        "when": "files_written",
+        "visible": false,
+        "reply": "file_reply",
+        "pathsKey": "files_written",
+        "maxFiles": 1,
+        "maxBytes": 16000,
+        "includedData": ["file_reply", "files_written"]
+      }
+    ],
+    "review": [
+      {
+        "id": "construction_review",
+        "type": "scramda2",
+        "when": "has_file",
+        "modelProfile": "code",
+        "max_tokens": 100,
+        "prompt": "DESIGN CONTRACT:\n{design_contract}\n\nPRIOR BUILD RECORD:\n{build_progress}\n\nFILE PLAN:\n{file_plan}\n\nWRITE ERROR:\n{files_written_error}\n\nFILES WRITTEN:\n{files_written}\n\nSAVED CONTENT:\n{written_file_context}\n\nVERIFICATION:\n{verification_output}\n\nOutput exactly DONE when every required file has a successful write record, the current write has no error, saved content fulfills the plan, and every applicable verification passed. Otherwise output exactly CONTINUE.",
+        "includedData": ["design_contract", "build_progress", "file_plan", "files_written_error", "files_written", "written_file_context", "verification_output"]
+      }
+    ],
+    "decide": [
+      {
+        "id": "construction_decision",
+        "type": "matchText",
+        "when": "has_file",
+        "visible": false,
+        "source": "construction_review",
+        "values": ["DONE"],
+        "onMatch": "no",
+        "onMiss": "yes",
+        "includedData": ["construction_review"]
+      }
+    ],
+    "remember": [
+      {
+        "id": "build_progress",
+        "type": "appendTranscript",
+        "when": "has_file",
+        "visible": false,
+        "entries": ["Plan=file_plan", "WriteError=files_written_error", "Files=files_written", "Verification=verification_output", "Review=construction_review", "Decision=construction_decision"],
+        "maxChars": 6000,
+        "includedData": ["build_progress", "file_plan", "files_written_error", "files_written", "verification_output", "construction_review", "construction_decision"]
+      }
+    ],
+    "update_plan": [
+      {
+        "id": "plan_update",
+        "type": "scramda2",
+        "when": "has_file",
+        "modelProfile": "code",
+        "max_tokens": 1800,
+        "examples": {"override": "plan_update_examples"},
+        "outputKey": "design_contract",
+        "prompt": "SAVED PLAN:\n{plan_contents}\n\nWRITE ERROR:\n{files_written_error}\n\nFILES WRITTEN:\n{files_written}\n\nSAVED CONTENT:\n{written_file_context}\n\nVERIFICATION:\n{verification_output}\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, SAVED CONTENT contains that file, and any requested verification passed. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+        "includedData": ["plan_contents", "files_written_error", "files_written", "written_file_context", "verification_output", "plan_update_examples"]
+      }
+    ],
+    "write_plan": [
+      {
+        "id": "plan_update_written",
+        "type": "applyFileWrites",
+        "when": "plan_update",
+        "reply": "plan_update",
+        "maxFiles": 1,
+        "includedData": ["plan_update"]
+      }
+    ]
+  }
+}

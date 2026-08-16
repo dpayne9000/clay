@@ -1,0 +1,95 @@
+{
+  "autoContext": "Generates or revises a multi-stage Dockerfile (one stage per declared build step, one final stage per declared environment), grounded in evidence from any existing Dockerfiles in the repo (shared base image discovery) and any existing target Dockerfile (revision instead of blind overwrite), then runs a two-call security audit gated PASS/FAIL/FORCE before writing.",
+  "workflow": {
+    "steps": ["intake", "discover", "existing", "render", "audit", "gate", "apply", "verify", "postread"]
+  },
+  "actionSets": {
+    "intake": [
+      { "id": "dockerfile_path", "type": "humanDecision",
+        "prompt": "Path to the Dockerfile, relative to the repo root (e.g. services/api/Dockerfile):" },
+      { "id": "build_steps", "type": "humanDecision",
+        "prompt": "Build steps in order, comma-separated (e.g. install-deps, compile, run-tests, prune-devdeps). Each becomes its own build stage:" },
+      { "id": "environments", "type": "humanDecision",
+        "prompt": "Target environments, comma-separated (e.g. dev, staging, production). Each gets its own final stage built FROM the last build stage:" },
+      { "id": "base_image_hint", "type": "humanDecision",
+        "prompt": "Preferred base image and tag if you already know it (e.g. node:20-slim), or NONE to let discovery decide:" }
+    ],
+    "discover": [
+      { "id": "repo_files", "type": "listWorkspace", "root": "." },
+      { "id": "filter_script", "type": "loadContext", "file": "./filter_dockerfiles.py" },
+      {
+        "id": "dockerfile_paths",
+        "type": "runCode",
+        "language": "python",
+        "sourceKey": "filter_script",
+        "stdin": "repo_files"
+      },
+      { "id": "existing_dockerfiles", "type": "serveFileReads", "reply": "dockerfile_paths",
+        "pathsKey": "dockerfile_paths", "root": ".", "maxFiles": 8 },
+      {
+        "id": "shared_image_findings",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["existing_dockerfiles", "base_image_hint"],
+        "prompt": "Below is the content of any existing Dockerfiles found in this repository:\n{existing_dockerfiles}\n\nBase image hint from the user: {base_image_hint}\n\nIdentify whether any existing Dockerfile in this repo already establishes a base image that the new Dockerfile should share, for build-cache and consistency reasons. Respond with exactly one line: either \"SHARED_BASE: <image:tag>\" citing the file it came from, or \"NO_SHARED_BASE\" if none of the existing Dockerfiles are a good match or none exist. No other text."
+      }
+    ],
+    "existing": [
+      { "id": "current_dockerfile", "type": "readFile", "file": "{dockerfile_path}", "root": "." }
+    ],
+    "render": [
+      {
+        "id": "dockerfile_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["dockerfile_path", "build_steps", "environments", "base_image_hint", "shared_image_findings", "current_dockerfile"],
+        "prompt": "Generate or revise a single multi-stage Dockerfile at path {dockerfile_path}.\n\nSPECS:\n  build steps, in order: {build_steps}\n  target environments: {environments}\n  base image hint: {base_image_hint}\n  shared-base-image discovery result: {shared_image_findings}\n\nIf a Dockerfile already exists at this path, its current content is shown below — REVISE it in place, preserving any working, still-relevant instructions, rather than discarding it wholesale:\n{current_dockerfile}\n\nRules:\n1. Create ONE build stage per entry in build_steps, in the given order, each named after its step (e.g. \"AS install-deps\"), each stage building FROM the previous stage (first stage FROM the base image).\n2. Base image selection: if shared_image_findings starts with \"SHARED_BASE:\", use that exact image:tag for the first stage unless base_image_hint explicitly overrides it. Otherwise use base_image_hint if it is not NONE. If both are unavailable, choose a minimal, actively-maintained official image appropriate to the project and say which one you picked in a comment at the top of the file.\n3. Create ONE final stage per entry in environments, each named after its environment (e.g. \"AS production\"), each FROM the last build stage, containing only what that environment needs to run (no build toolchain, no test artifacts, no dev dependencies) — production-like environments must be the leanest.\n4. Every stage that doesn't need root must run as a non-root USER. Never embed secrets, API keys, or credentials as ARG/ENV literals — reference build secrets via --mount=type=secret or runtime env injection instead, and say so in a comment.\n5. Pin base image tags to a specific version, never :latest.\n\nEmit the Dockerfile as one path-bearing fence at {dockerfile_path}.\n\nAfter the Dockerfile fence, include ONE pathless bash fence that builds the FIRST stage listed in target environments ({environments}) as a smoke test, in exactly this form (substitute the real stage name and path):\ndocker build -f {dockerfile_path} --target <first-environment-name> -t dockerfile-builder-smoke-test .\nNo other commentary outside the fences."
+      }
+    ],
+    "audit": [
+      {
+        "id": "audit_findings",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["dockerfile_reply"],
+        "prompt": "Security-audit the following proposed Dockerfile content (path-bearing fence(s)):\n{dockerfile_reply}\n\nCheck specifically for: running as root in any stage meant to serve traffic, use of :latest or unpinned base image tags, secrets/credentials embedded as ARG or ENV literals, unnecessary build toolchain or dev dependencies leaking into a non-dev final stage, overly broad COPY (e.g. \"COPY . .\" pulling in .git, .env, node_modules, credentials files) instead of explicit paths or a .dockerignore reference, and missing HEALTHCHECK for long-running service stages. List every issue found, one per line, with the stage name and a one-sentence fix. If there are none, write exactly: NO ISSUES FOUND."
+      },
+      {
+        "id": "audit_verdict",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["audit_findings"],
+        "prompt": "Findings from a Dockerfile security audit:\n{audit_findings}\n\nRespond with exactly one word: PASS if the findings are exactly \"NO ISSUES FOUND\" or contain nothing that is an actual security or correctness defect, otherwise FAIL. No other text."
+      }
+    ],
+    "gate": [
+      { "id": "audit_passed", "type": "matchText", "source": "audit_verdict",
+        "values": ["PASS"], "onMatch": "yes", "onMiss": "no" },
+      {
+        "id": "force_decision",
+        "type": "humanDecision",
+        "whenNot": "audit_passed",
+        "prompt": "Security audit FAILED for {dockerfile_path}:\n{audit_findings}\n\nType FORCE to write the Dockerfile anyway, or STOP to abort without writing so the issues can be addressed first."
+      },
+      { "id": "force_confirmed", "type": "matchText", "source": "force_decision",
+        "values": ["FORCE"], "onMatch": "yes", "onMiss": "no", "whenNot": "audit_passed" }
+    ],
+    "apply": [
+      { "id": "files_written", "type": "applyFileWrites", "reply": "dockerfile_reply", "when": "audit_passed" },
+      { "id": "files_written_forced", "type": "applyFileWrites", "reply": "dockerfile_reply",
+        "whenNot": "audit_passed", "when": "force_confirmed" }
+    ],
+    "verify": [
+      { "id": "build_smoke_test", "type": "runReplyCommands", "reply": "dockerfile_reply",
+        "when": "files_written" },
+      { "id": "build_smoke_test_forced", "type": "runReplyCommands", "reply": "dockerfile_reply",
+        "when": "files_written_forced" }
+    ],
+    "postread": [
+      { "id": "written_contents", "type": "serveFileReads", "reply": "dockerfile_reply",
+        "pathsKey": "files_written", "when": "files_written" },
+      { "id": "written_contents_forced", "type": "serveFileReads", "reply": "dockerfile_reply",
+        "pathsKey": "files_written_forced", "when": "files_written_forced" }
+    ]
+  }
+}

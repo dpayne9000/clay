@@ -204,6 +204,13 @@ def schema(type_name: str) -> dict:
 # type is a field paid for 39 times. Every entry sets additionalProperties:
 # true, so these validate wherever they appear.
 _UNIVERSAL_PROPERTIES: dict = {
+    "outputKey": {
+        "description": (
+            "Secondary storage key for this action's result. The engine keeps "
+            "the identical value under id and outputKey."
+        ),
+        "type": "string",
+    },
     "visible": {
         "description": (
             "Set false to hide this action from every front-end — no start "

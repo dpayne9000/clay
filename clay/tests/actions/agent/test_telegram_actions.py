@@ -7,8 +7,12 @@ running daemon.
 """
 
 import os
+import threading
+import time
 import unittest
-from unittest.mock import patch
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from clay.actions.agent import telegram_actions as tg
 from clay.run import events as run_events
@@ -247,10 +251,11 @@ class ImportSafetyTest(unittest.TestCase):
             tg.telegram_allowlists({'TELEGRAM_ALLOWED_CHATS': '0'})
 
     @patch.object(tg, 'ensure_daemon')
+    @patch.object(tg, '_authorize_daemon_over_telegram', return_value=True)
     @patch.object(tg, 'TelegramWorkflowBot')
     @patch.object(tg, 'TelegramBridge')
     def test_handler_passes_required_allowlists_to_bridge(
-        self, bridge, bot_class, _ensure_daemon
+        self, bridge, bot_class, authorize, _ensure_daemon
     ):
         with patch.dict(os.environ, {
             'TELEGRAM_BOT_TOKEN': '1:token',
@@ -262,11 +267,139 @@ class ImportSafetyTest(unittest.TestCase):
         bridge.assert_called_once_with(
             '1:token', allowed_users={11}, allowed_chats={-10022}
         )
+        authorize.assert_called_once_with(bridge.return_value, {-10022})
         bot_class.assert_called_once_with(bridge.return_value, [])
         bot_class.return_value.run_forever.assert_called_once_with()
 
     def test_module_exposes_no_bot_at_import_time(self):
         self.assertFalse(hasattr(tg, 'bot'))
+
+
+class DaemonPreflightTest(unittest.TestCase):
+
+    def _check(self):
+        return SimpleNamespace(
+            path=Path('/project'),
+            required=frozenset(tg.approval.GATES),
+            missing=frozenset(tg.approval.GATES),
+            allowed=False,
+        )
+
+    def test_telegram_approval_is_visible_before_preflight_completes(self):
+        bridge = _FakeBridge()
+        result = []
+        with patch.object(tg.workspaces, 'daemon_access', return_value=self._check()), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'), \
+                patch.object(tg, 'authorize_daemon_workspace') as authorize:
+            thread = threading.Thread(
+                target=lambda: result.append(
+                    tg._authorize_daemon_over_telegram(bridge, {-100})))
+            thread.start()
+            deadline = time.time() + 1
+            while not bridge.sent and time.time() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(bridge.sent)
+            self.assertIn('/project', bridge.sent[0][1])
+            callback = next(name for name in bridge.actions
+                            if name.startswith('daemon.access.yes.'))
+            bridge.press(callback, chat_id=-100)
+            thread.join(timeout=1)
+
+        self.assertEqual([True], result)
+        authorize.assert_called_once()
+
+    def test_telegram_refusal_does_not_grant(self):
+        bridge = _FakeBridge()
+        result = []
+        with patch.object(tg.workspaces, 'daemon_access', return_value=self._check()), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'), \
+                patch.object(tg, 'authorize_daemon_workspace') as authorize:
+            thread = threading.Thread(
+                target=lambda: result.append(
+                    tg._authorize_daemon_over_telegram(bridge, {99})))
+            thread.start()
+            deadline = time.time() + 1
+            while not bridge.sent and time.time() < deadline:
+                time.sleep(0.01)
+            callback = next(name for name in bridge.actions
+                            if name.startswith('daemon.access.no.'))
+            bridge.press(callback)
+            thread.join(timeout=1)
+
+        self.assertEqual([False], result)
+        authorize.assert_not_called()
+
+    def test_existing_permissions_do_not_start_or_prompt_the_bridge(self):
+        bridge = _FakeBridge()
+        check = self._check()
+        check.allowed = True
+        check.missing = frozenset()
+        with patch.object(tg.workspaces, 'daemon_access', return_value=check), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'):
+            self.assertTrue(tg._authorize_daemon_over_telegram(bridge, {99}))
+        self.assertFalse(bridge.sent)
+
+    def test_missing_recipients_fails_closed_without_waiting(self):
+        bridge = _FakeBridge()
+        with patch.object(tg.workspaces, 'daemon_access', return_value=self._check()), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'):
+            self.assertFalse(tg._authorize_daemon_over_telegram(bridge, set()))
+        self.assertFalse(bridge.started)
+        self.assertFalse(bridge.sent)
+
+    def test_send_failure_stops_the_bridge(self):
+        bridge = _FakeBridge()
+        bridge.send = Mock(side_effect=RuntimeError('offline'))
+        bridge.stop = Mock()
+        with patch.object(tg.workspaces, 'daemon_access', return_value=self._check()), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'):
+            with self.assertRaisesRegex(RuntimeError, 'offline'):
+                tg._authorize_daemon_over_telegram(bridge, {99})
+        bridge.stop.assert_called_once_with()
+
+    def test_failed_grant_settles_the_wait_as_refused(self):
+        bridge = _FakeBridge()
+        result = []
+        with patch.object(tg.workspaces, 'daemon_access', return_value=self._check()), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'), \
+                patch.object(
+                    tg, 'authorize_daemon_workspace',
+                    side_effect=tg.DaemonPermissionDenied('write failed')):
+            thread = threading.Thread(
+                target=lambda: result.append(
+                    tg._authorize_daemon_over_telegram(bridge, {99})))
+            thread.start()
+            deadline = time.time() + 1
+            while not bridge.sent and time.time() < deadline:
+                time.sleep(0.01)
+            callback = next(name for name in bridge.actions
+                            if name.startswith('daemon.access.yes.'))
+            response = bridge.press(callback)
+            thread.join(timeout=1)
+
+        self.assertIn('Could not grant', response)
+        self.assertEqual([False], result)
+
+    def test_unexpected_grant_error_releases_the_wait_before_propagating(self):
+        bridge = _FakeBridge()
+        result = []
+        with patch.object(tg.workspaces, 'daemon_access', return_value=self._check()), \
+                patch.object(tg.paths, 'project_dir', return_value='/project'), \
+                patch.object(tg, 'authorize_daemon_workspace',
+                             side_effect=RuntimeError('bug')):
+            thread = threading.Thread(
+                target=lambda: result.append(
+                    tg._authorize_daemon_over_telegram(bridge, {99})))
+            thread.start()
+            deadline = time.time() + 1
+            while not bridge.sent and time.time() < deadline:
+                time.sleep(0.01)
+            callback = next(name for name in bridge.actions
+                            if name.startswith('daemon.access.yes.'))
+            with self.assertRaisesRegex(RuntimeError, 'bug'):
+                bridge.press(callback)
+            thread.join(timeout=1)
+        self.assertEqual([False], result)
 
 
 class MenuEntryTest(unittest.TestCase):

@@ -1,11 +1,10 @@
-"""WorkflowManager — Qt UI client for the clayd system daemon.
+"""Connect the Qt UI to the clayd system daemon.
 
-The manager does NOT spawn or manage subprocesses. It connects to clayd
-over ~/.clay/clayd.sock and relays events to Qt widgets.
+The manager does not spawn subprocesses. It relays events from clayd's Unix
+socket to Qt widgets.
 
-IMPORTANT: All Qt widget access happens on the main thread via signals.
-The EventSubscriber callback fires on a background thread and only emits
-a signal — the actual widget updates happen in the connected slot.
+All widget access occurs on the main thread. The background EventSubscriber
+emits a signal whose connected slot performs updates.
 """
 import json
 import time
@@ -30,7 +29,7 @@ _COLUMNS = ['Name', 'ID', 'Status', 'Runtime', 'Step', 'Action', 'Iters', 'Event
 
 
 class _WfRow:
-    """Local mirror of a workflow's state from the daemon."""
+    """Store a local copy of workflow state reported by the daemon."""
     __slots__ = (
         'wf_id', 'name', 'filename', 'pid', 'status', 'started_at',
         'iterations', 'current_step', 'current_action', 'events_received',
@@ -161,7 +160,7 @@ class ProcessModel(QAbstractTableModel):
 # ── Per-daemon terminal ───────────────────────────────────────────────────────
 
 class DaemonTerminal(QWidget):
-    """Terminal-like widget for a single daemon: stdout + input field."""
+    """Display one daemon workflow's output and input field."""
 
     input_submitted = Signal(str, str)   # wf_id, text
 
@@ -183,10 +182,8 @@ class DaemonTerminal(QWidget):
         )
         layout.addWidget(self._output)
 
-        # A daemon workflow can spend minutes inside one model call. The
-        # prompt is an output event, not evidence that execution stopped; busy
-        # is the level that says the call is still active without appending a
-        # new terminal line for every relabel.
+        # Busy state shows long model calls without appending persistent output
+        # for each status relabel.
         self._busy = QLabel('')
         self._busy.setStyleSheet(
             'color: #7fa8c9; padding: 2px 6px; font-family: Menlo;'
@@ -194,7 +191,7 @@ class DaemonTerminal(QWidget):
         self._busy.hide()
         layout.addWidget(self._busy)
 
-        # Input bar (shown when prompt is pending)
+        # Show the input bar only while a prompt is pending.
         self._input_bar = QWidget()
         ib_layout = QHBoxLayout(self._input_bar)
         ib_layout.setContentsMargins(0, 0, 0, 0)
@@ -237,14 +234,14 @@ class DaemonTerminal(QWidget):
         layout.addWidget(self._workspace_bar)
         self._workspace_bar.hide()
 
-        # Flush buffered output every 50 ms — avoids per-line repaints
+        # Flush buffered output every 50 ms to reduce repaints.
         self._flush_timer = QTimer(self)
         self._flush_timer.setInterval(50)
         self._flush_timer.timeout.connect(self._flush_output)
         self._flush_timer.start()
 
     def append_output(self, text):
-        """Queue a line — flushed in batch by the timer."""
+        """Queue a line for the timer's next batched update."""
         self._pending_lines.append(text)
 
     def _flush_output(self):
@@ -299,11 +296,11 @@ class DaemonTerminal(QWidget):
 # ── Manager (daemon client) ─────────────────────────────────────────────────
 
 class WorkflowManager(QObject):
-    """Connects to clayd and relays events to Qt models/widgets.
+    """Connect to clayd and relay events to Qt models and widgets.
 
-    The EventSubscriber fires on a background thread. We use _raw_event
-    (a signal carrying a JSON string) to cross the thread boundary safely.
-    All widget manipulation happens in _handle_event on the main thread.
+    EventSubscriber runs on a background thread. _raw_event carries serialized
+    JSON across the thread boundary, and _handle_event updates widgets on the
+    main thread.
     """
 
     # Public signals
@@ -311,8 +308,7 @@ class WorkflowManager(QObject):
     daemon_finished = Signal(str)        # wf_id
     connection_lost = Signal()
 
-    # Internal: thread-safe bridge (carries serialized JSON, not a dict,
-    # because Qt signal with 'dict' across threads can cause issues)
+    # Serialized JSON crosses the Qt thread boundary more reliably than dict.
     _raw_event = Signal(str)
 
     def __init__(self):
@@ -322,19 +318,19 @@ class WorkflowManager(QObject):
         self._subscriber = None
         self._connected = False
 
-        # Connect the internal signal to the main-thread handler
+        # Route background events to the main-thread handler.
         self._raw_event.connect(self._handle_event, Qt.QueuedConnection)
 
         self._tick = QTimer(self)
         self._tick.timeout.connect(self._refresh_runtimes)
         self._tick.start(1000)
 
-        # Poll for connection every 5s if disconnected
+        # Retry daemon connections every five seconds.
         self._reconnect = QTimer(self)
         self._reconnect.timeout.connect(self._try_connect)
         self._reconnect.start(5000)
 
-        # Try initial connection
+        # Attempt the initial connection after UI initialization.
         QTimer.singleShot(100, self._try_connect)
 
     def _try_connect(self):
@@ -356,7 +352,7 @@ class WorkflowManager(QObject):
             self._subscriber = None
 
     def _sync_list(self):
-        """Pull current workflow list from daemon (called on main thread)."""
+        """Load the current daemon workflow list on the main thread."""
         try:
             with DaemonClient() as c:
                 workflows = c.list_workflows()
@@ -373,8 +369,7 @@ class WorkflowManager(QObject):
     # ── Thread-safe event bridge ─────────────────────────────────────────
 
     def _on_subscriber_event(self, event):
-        """Called on EventSubscriber's background thread. Do NOT touch widgets.
-        Serialize and emit signal to cross to main thread."""
+        """Serialize a background event and emit it to the main thread."""
         try:
             self._raw_event.emit(json.dumps(event, default=str))
         except Exception:
@@ -382,7 +377,7 @@ class WorkflowManager(QObject):
 
     @Slot(str)
     def _handle_event(self, raw):
-        """Runs on the main Qt thread. Safe to touch all widgets."""
+        """Process a serialized event on the main Qt thread."""
         try:
             event = json.loads(raw)
         except json.JSONDecodeError:
@@ -397,7 +392,7 @@ class WorkflowManager(QObject):
                 self.connection_lost.emit()
             return
 
-        # Ensure row + terminal exist
+        # Ensure the workflow has a model row and terminal.
         if ev == 'started':
             self.model.find_or_add(wf_id, event)
             if wf_id not in self._terminals:
@@ -405,11 +400,11 @@ class WorkflowManager(QObject):
                 term.input_submitted.connect(self._on_input)
                 self._terminals[wf_id] = term
 
-        # Update model from status events
+        # Update model state from daemon status events.
         if ev in ('started', 'status'):
             self.model.update_row(wf_id, event)
 
-        # Feed terminal
+        # Render the event in the workflow terminal.
         term = self._terminals.get(wf_id)
         if ev == 'stdout' and term:
             term.append_output(event.get('line', ''))
@@ -448,8 +443,8 @@ class WorkflowManager(QObject):
                     term.append_output(f'  !! {data.get("message", "")}')
                     term.clear_busy()
                 elif t == 'action.output':
-                    # File contents, command output and model prompts used to
-                    # arrive as log events and were drawn by the branch below.
+                    # Structured output events now carry content that previously
+                    # arrived through log events.
                     term.append_output(payload_lines(data))
                 elif t == 'action.skipped':
                     term.append_output(f'  ▸ skipped  {data.get("id", "")}  '
@@ -476,7 +471,7 @@ class WorkflowManager(QObject):
     # ── Commands (use short-lived DaemonClient connections) ──────────────
 
     def start_daemon(self, filename, auto=True, daemon_mode=True):
-        """Ask clayd to start a workflow. Returns (wf_id, error_msg)."""
+        """Ask clayd to start a workflow and return (workflow ID, error)."""
         if not self._connected:
             self._try_connect()
         if not self._connected:
@@ -530,7 +525,7 @@ class WorkflowManager(QObject):
 
     @Slot(str, str)
     def _on_input(self, wf_id, text):
-        """User typed into a terminal — relay to daemon."""
+        """Relay terminal input to the daemon."""
         self.send_input(wf_id, text)
 
     def send_input(self, wf_id, text) -> bool:
@@ -560,7 +555,7 @@ class WorkflowManager(QObject):
 # ── Process panel widget ──────────────────────────────────────────────────────
 
 class ProcessPanel(QWidget):
-    """Table of daemons + per-daemon terminal tabs."""
+    """Display daemon workflows and their terminal tabs."""
 
     open_workflow_requested = Signal(str)
 
@@ -574,7 +569,7 @@ class ProcessPanel(QWidget):
 
         splitter = QSplitter(Qt.Horizontal)
 
-        # Left: table
+        # Place the workflow table on the left.
         left = QWidget()
         left_layout = QVBoxLayout(left)
         left_layout.setContentsMargins(4, 4, 4, 4)
@@ -604,7 +599,7 @@ class ProcessPanel(QWidget):
 
         splitter.addWidget(left)
 
-        # Right: terminal tabs
+        # Place workflow terminals on the right.
         self._term_tabs = QTabWidget()
         self._term_tabs.setDocumentMode(True)
         self._term_tabs.setTabsClosable(False)
@@ -620,7 +615,7 @@ class ProcessPanel(QWidget):
 
         layout.addWidget(splitter)
 
-        # Auto-add terminal tabs when daemon events arrive
+        # Create terminal tabs as daemon events arrive.
         self._tabbed_ids = set()   # O(1) check — avoids scanning tabs on every event
         manager.daemon_event.connect(self._ensure_tab)
 

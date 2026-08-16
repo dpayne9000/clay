@@ -1,15 +1,4 @@
-"""Client library for connecting to clayd.
-
-Used by CLI commands, Qt UI, and any other consumer.
-
-Design:
-    DaemonClient      — synchronous, one connection, request/response or streaming
-    EventSubscriber    — dedicated event-only connection with callbacks (for Qt UI)
-
-The Qt UI uses DaemonClient for commands (start/stop/list) and a separate
-EventSubscriber for the live event stream. Never mix commands and events
-on the same connection.
-"""
+"""Synchronous clayd commands and a separate event subscriber."""
 
 import json
 import os
@@ -27,18 +16,44 @@ from ..lib import config
 SOCKET_PATH = config.user_path('run', 'clayd.sock')
 
 
+class DaemonPermissionDenied(Exception):
+    """The target workspace lacks advance unattended-run authority."""
+
+
+def authorize_daemon_workspace(project_dir, confirm, required=None):
+    """Prompt, save, and verify daemon permissions before startup."""
+    from ..run import workspaces
+
+    check = workspaces.daemon_access(project_dir, required)
+    if check.allowed:
+        return check
+    if not confirm(check):
+        raise DaemonPermissionDenied(
+            f'{check.path} was not granted daemon workspace permissions')
+
+    workspaces.grant_daemon_access(check.path, check.missing)
+    verified = workspaces.daemon_access(check.path, check.required)
+    if not verified.allowed:
+        missing = ', '.join(sorted(verified.missing))
+        raise DaemonPermissionDenied(
+            f'{verified.path} still lacks daemon permissions: {missing}')
+    return verified
+
+
+def require_daemon_workspace(project_dir, required=None):
+    """Fail closed when an already-running clayd receives an unsafe launch."""
+    from ..run import workspaces
+
+    check = workspaces.daemon_access(project_dir, required)
+    if not check.allowed:
+        missing = ', '.join(sorted(check.missing))
+        raise DaemonPermissionDenied(
+            f'{check.path} lacks advance daemon permissions: {missing}')
+    return check
+
+
 def _caller_project_dir():
-    """The directory a workflow started through clayd should work in.
-
-    This client's own project directory, not its cwd: a client is often itself
-    running inside a workflow (the Telegram bot is one), and that workflow was
-    already told where it works. Reading cwd here would hand the daemon
-    whatever directory that process happened to be launched from.
-
-    clayd cannot infer this. It is a long-lived process started from somewhere
-    unrelated to any caller, and a subprocess does not inherit the cwd of a
-    peer that merely sent it a message — so the answer has to be sent.
-    """
+    """Return the project directory that clayd must pass to the workflow."""
     from ..lib import paths
     return paths.project_dir()
 
@@ -53,12 +68,7 @@ def daemon_running(socket_path=None):
 
 
 def ensure_daemon(socket_path=None, timeout=3.0):
-    """Start clayd in the background if it isn't already running.
-
-    Returns True once the daemon answers. Callers that need the daemon (the
-    CLI, the Qt UI, the telegram action) use this rather than assuming it is
-    up.
-    """
+    """Start clayd if needed and return whether it responds before timeout."""
     if daemon_running(socket_path):
         return True
 
@@ -149,17 +159,32 @@ class DaemonClient:
         return self._request({'cmd': 'info', 'id': wf_id})
 
     def start_workflow(self, filename, auto=False, daemon_mode=False):
+        """Start a workflow through clayd.
+
+        Authorizing the working directory happens here, in the client, before
+        the request ever reaches clayd: this process is the one with a human
+        attached, and the spawned subprocess may not be — daemon_mode makes it
+        outright unattended, where workspaces.authorize() refuses rather than
+        prompts (see its own docstring). Asking now, while someone is still
+        here to answer, is the only point in this flow where that is possible.
+        """
+        project_dir = _caller_project_dir()
+        if auto or daemon_mode:
+            require_daemon_workspace(project_dir)
         return self._request({
             'cmd': 'start', 'workflow': filename,
             'auto': auto, 'daemon': daemon_mode,
-            'project_dir': _caller_project_dir(),
+            'project_dir': project_dir,
         })
 
     def start_workflow_json(self, data, label=None, auto=True, daemon_mode=False):
+        project_dir = _caller_project_dir()
+        if auto or daemon_mode:
+            require_daemon_workspace(project_dir)
         return self._request({
             'cmd': 'start-json', 'data': data,
             'label': label, 'auto': auto, 'daemon': daemon_mode,
-            'project_dir': _caller_project_dir(),
+            'project_dir': project_dir,
         })
 
     def stop_workflow(self, wf_id):

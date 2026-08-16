@@ -80,5 +80,4 @@ Sub-workflows are the primary reuse mechanism — extract repeated multi-step pa
 - Engine-seeded `__config__`, `__schema__`, and `__workflow_template__` values
   are reseeded into the sub-workflow even when this action's `includedData`
   filters ordinary parent variables
-decision: fix autoContext recursion, along with other top level config / schema, its ok to change this to a properly seeded "global" (but local to the particular running workflow) to accomplish this
 - Cycle detection currently warns but does not refuse recursion; see F-07

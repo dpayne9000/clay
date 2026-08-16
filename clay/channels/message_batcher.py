@@ -1,44 +1,36 @@
-"""Coalesces a stream of short lines into whole chat messages.
+"""Combine short event lines into bounded chat messages.
 
-A workflow turn emits a dozen or more events — a step header, an action line
-per action, the model prompt echo, the file-written logs. The terminal can
-draw each one the instant it arrives because a terminal line costs nothing. A
-chat thread cannot: one message per event is a dozen notifications, which is
-why the Telegram front-end used to drop progress events entirely rather than
-relay them.
+A workflow turn can emit many progress events. A terminal can display each
+event immediately, but sending each event as a chat message creates excessive
+notifications.
 
-Dropping them was the wrong half of the trade. This class keeps the events and
-fixes the cost: lines accumulate, and go out as one message once the stream
-goes quiet for `interval` seconds or the buffer grows past `max_chars`.
+This class retains those events while batching them. It sends accumulated lines
+after `interval` seconds of inactivity or when the buffer reaches `max_chars`.
 
-The front-end must flush() before anything that depends on ordering — a
-question put to the user, or the closing summary — so the narration cannot
-arrive after the thing it was narrating.
+The front-end must call flush() before ordered output such as a question or
+closing summary, ensuring earlier progress appears first.
 
-Thread-safe. add() is called from the daemon subscriber's reader thread while
-the worker thread drains.
+The class is thread-safe because the daemon reader adds lines while a worker
+thread drains them.
 """
 
 import threading
 import time
 
-#: How often the worker wakes to check whether the stream has gone quiet.
+#: Interval between checks for an inactive input stream.
 TICK = 0.25
 
 
 def _split(text: str, limit: int) -> list:
-    """`text` as messages of at most `limit` characters, in order.
+    """Split `text` into ordered messages of at most `limit` characters.
 
-    Breaks on line boundaries so a file echo or a command's output stays
-    readable across the split. A single line longer than the limit — minified
-    JSON, a base64 blob — is cut at the limit, because the alternative is a
-    message the transport refuses whole.
+    Prefer line boundaries to preserve readable file and command output. Split
+    an individual oversized line at the exact limit so transports can accept it.
     """
     if len(text) <= limit:
         return [text]
 
-    # `current` is None rather than '' so a blank line joins the chunk it
-    # belongs to instead of being dropped as falsy.
+    # None distinguishes an empty chunk from a blank line that must be retained.
     chunks, current = [], None
     for line in text.split('\n'):
         while len(line) > limit:
@@ -56,12 +48,12 @@ def _split(text: str, limit: int) -> list:
             current = line
     if current is not None:
         chunks.append(current)
-    # An all-blank chunk is nothing to send and some transports reject it.
+    # Remove all-blank chunks because some transports reject them.
     return [chunk for chunk in chunks if chunk.strip()]
 
 
 class MessageBatcher:
-    """Buffers lines and hands them to `send` as one joined message."""
+    """Buffer lines and pass joined messages to `send`."""
 
     def __init__(self, send, *, interval: float = 1.5, max_chars: int = 3500):
         if interval <= 0:
@@ -84,7 +76,7 @@ class MessageBatcher:
     # ── lifecycle ────────────────────────────────────────────────────────
 
     def start(self) -> 'MessageBatcher':
-        """Start the drain thread. Idempotent."""
+        """Start the drain thread if it is not already running."""
         if self._thread is not None:
             return self
         self._stopped.clear()
@@ -104,7 +96,7 @@ class MessageBatcher:
     # ── buffering ────────────────────────────────────────────────────────
 
     def add(self, text) -> None:
-        """Queue one line. Sends immediately if the buffer is already full."""
+        """Queue one line and flush when the buffer reaches its limit."""
         if text is None:
             return
         line = str(text).strip()
@@ -121,12 +113,10 @@ class MessageBatcher:
             self.flush()
 
     def flush(self) -> None:
-        """Send everything buffered. Safe when empty.
+        """Send all buffered content, doing nothing when the buffer is empty.
 
-        One message where it fits. A single add() can be far larger than
-        max_chars on its own — a file echo or a command's whole output — and a
-        transport with a per-message limit rejects the send outright, so
-        oversized content is split rather than handed over to fail.
+        Send one message when possible. Split oversized content before passing
+        it to a transport with a per-message limit.
         """
         with self._lock:
             if not self._pending:
@@ -154,10 +144,8 @@ class MessageBatcher:
                 )
             if not quiet:
                 continue
-            # A send that raises must not kill the drain thread — every later
-            # line would then sit in the buffer forever with nothing to
-            # report it. The caller's send is responsible for reporting its
-            # own failure; here the buffer has already been drained.
+            # Keep the drain thread alive after a send failure. The send callback
+            # reports its own errors, and flush() has already drained the buffer.
             try:
                 self.flush()
             except Exception:

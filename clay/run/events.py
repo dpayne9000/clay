@@ -1,18 +1,17 @@
-"""The engine event vocabulary.
+"""Define the shared engine event vocabulary.
 
-One definition shared by every emitter and every front-end. A consumer that
-misspells an event name does not raise — its branch just never matches and the
-output silently disappears — so the names must not be retyped per module.
+Emitters and front-ends share these constants. A misspelled event name would
+silently fail to match, so modules must not redefine the strings.
 
-Payloads carry data, never formatted text. Rendering, truncation and colour are
-the front-end's business.
+Payloads carry structured data. Front-ends control formatting, truncation, and
+color.
 
     run.start        label, auto, log_path
     run.complete     label, log_path
     run.cancelled    —
     run.error        message, + label/log_path for a failed root execution
     step.start       step
-    action.start     id, action_type, + identifying fields (prompt, model, …)
+    action.start     id, action_type, + identifying fields (model, file, …)
     action.complete  id, action_type, data, duration_ms
     action.error     id, action_type, message
     action.output    id, action_type, kind, label, text
@@ -23,32 +22,23 @@ the front-end's business.
     input.request    id, prompt      (io.SocketIO for clayd-managed UI runs)
     input.response   id, text        (sent by clayd send_input; read by io._handle_line)
 
-`action.output` is what an action has to *show a person*: the resolved prompt
-going to a model, the contents of a file just written, the output of a command.
-It carries its own provenance — which action, which id, which kind of payload —
-so a front-end can decide per action what it draws. A `log` event cannot: it is
-a level and a string, and three handlers emitting through logger.info produced
-events no consumer could tell apart.
+`action.output` contains user-facing action data such as resolved prompts, file
+content, and command output. Its action type, ID, and payload kind let a
+front-end filter structured fields. A `log` event contains only a level and
+message.
 
 `kind` is a stable token, not display text: 'prompt', 'file', 'command',
 'read'. `label` is the one-line header ('greet.py written (3 lines)',
 '$ python3 greet.py'); `text` is the body, and may be empty.
 
-An action carrying `"visible": false` emits none of these to a front-end —
-not action.start, not action.complete, not action.output. The log file still
-records all of them (logger.emit's `show` parameter), and action.error is
-never gated: an action you chose not to watch is still one you have to be
-told about when it fails. See logger.visible().
+`"visible": false` suppresses action lifecycle and output events from
+front-ends but not from the log. Errors always remain visible. See
+logger.visible().
 
-`busy` is the other thing `"visible": false` does not gate, and it exists
-because of it. A hidden action used to emit nothing at all between its start
-and its finish, so every front-end sat silent for however long it took — and
-Telegram and the Qt panel sat silent for *visible* model calls too, having no
-indicator of any kind. It carries no id and nothing an action did: `active` is
-a level a front-end holds an indicator on, `action_type` says what is being
-waited for, and `preview` is up to logger.BUSY_PREVIEW_MAX_CHARS of the
-resolved prompt on one line. It is the only event that never reaches the log
-file — a spinner is not a thing that happened. See logger.busy().
+Visibility does not suppress `busy` events because hidden actions still need a
+working indicator. `active` holds the indicator state, `action_type` identifies
+the operation, and `preview` contains a bounded one-line prompt. Busy events
+are transient UI state and do not enter the log. See logger.busy().
 
 An action carrying `"when": "some_key"` runs only if that key's value in the
 run's accumulated output means yes (clay/lib/flags.py). When it does not, the
@@ -75,15 +65,10 @@ LOG            = 'log'
 INPUT_REQUEST  = 'input.request'
 INPUT_RESPONSE = 'input.response'
 
-# A front-end changing a setting on a *running* workflow. It travels the same
-# socket as input.response because it answers the same problem: the front-end
-# and the workflow are separate processes, and clayd is already the one relay
-# between them. It is not an answer to a question, which is why it is not an
-# input.response with a magic body.
+# option.set carries cross-process setting changes over the existing clayd
+# socket. It remains distinct from input.response because it does not answer a
+# prompt.
 OPTION_SET     = 'option.set'
 
-# There is deliberately no "events a chat front-end relays" subset here. A set
-# like that decides what a user sees, which is a rendering decision, and having
-# it in the vocabulary is what let the Telegram front-end quietly show less
-# than the CLI. What each front-end draws now lives with the front-end:
-# clay/run/renderers/terminal.py and clay/run/renderers/chat.py.
+# Rendering modules decide which events to display. Keep visibility policies
+# out of this vocabulary so terminal and chat behavior cannot diverge silently.

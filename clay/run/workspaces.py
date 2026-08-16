@@ -1,36 +1,32 @@
-"""Which directories clay may touch at all, and what it asks about in each.
+"""Authorize the directories that Clay may access.
 
 Every file action resolves paths under a `root` and refuses to escape it. That
-guard is sound, but it only ever bounded paths *within* a root — the root
-itself came straight out of a workflow file, `{placeholder}`-interpolated from
-context, so `"root": "~"` was honoured and every check below it was then
-satisfied while the whole home directory was in scope.
+guard constrains paths within a root, but the workflow can provide that root.
+Without this outer boundary, `"root": "~"` would place the entire home
+directory in scope while satisfying the inner path checks.
 
-This is the outer boundary. A root is usable when it is a registered directory
-or beneath one; anything else asks a human once and is remembered.
+A root is usable when it is registered or contained by a registered directory.
+Any other root requires human approval.
 
     ~/.clay/workspaces.json
 
 Grants are by subtree: approving /Users/me/projects covers everything under it.
-Containment is decided by resolve() then relative_to(), the same primitive the
-path guards already use, so there is one escape story rather than two — and
-resolve() collapses `..` and follows symlinks before the comparison is made.
+Containment uses resolve() followed by relative_to(), matching the file action
+guards. resolve() removes `..` segments and follows symlinks before comparison.
 
-Each grant also carries the manual-approval gates a session starts with while
-working there, so "this directory is mine, don't ask about writes in it" and
-"this one is shared, ask every time" are the same mechanism rather than two.
-The keys and their polarity are exactly approval.GATES': ``fileWrites: true``
-means *ask before writing*, here as everywhere else. One word, one meaning.
+Each grant defines the session's initial manual-approval gates for that
+directory. The keys and polarity match approval.GATES: `fileWrites: true`
+means that writes require approval.
 
-Nothing is approved implicitly — not the launch directory, not the process CWD.
-A CLI grants the directory it was started in the moment someone answers for it,
-which is a decision worth seeing once, and `clay run` from a home directory
-would otherwise put an entire account in scope without ever drawing a prompt.
+Neither the launch directory nor the process working directory is approved
+implicitly. This prevents a run launched from a home directory from gaining
+access to the entire account without confirmation.
 """
 
 import json
 import os
 import threading
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,39 +35,29 @@ from . import approval, logger
 
 REGISTER_PATH = os.path.join(clay_dir, 'workspaces.json')
 
-#: Where an action with no explicit `root` works: the project directory, the
-#: one clay was started in. Previously "output", which resolved to $CWD/output —
-#: so the same workflow wrote to a different place depending on where it was
-#: launched, and a coding workflow read its sources from one directory and
-#: wrote to another. One string here rather than a copy per module, which is how
-#: the four resolvers came to disagree in the first place.
-#:
-#: Resolved by _base_for against lib.paths.project_dir(), not against live cwd.
+#: Actions without an explicit root use the fixed project directory. _base_for
+#: resolves this value through lib.paths.project_dir(), not the live CWD.
 DEFAULT_ROOT = '.'
 
-#: Bumped only if the on-disk shape changes incompatibly. A register written by
-#: a newer clay is left alone rather than silently rewritten to this shape.
+#: Increment this version only for incompatible changes to the on-disk format.
 VERSION = 1
 
 _lock = threading.RLock()
 
-#: Directories approved for this process only ("allow once"). Not written to
-#: the register, and gone when the run ends — the same session model approval
-#: uses, for the same reason: a one-off answer must not outlive its run.
+#: Directories approved only for this process through "allow once".
 _session: set = set()
 
-#: Directories whose gates have already been applied this session. Applied on
-#: first use rather than on every action, so a `/manual` toggle typed mid-run
-#: is not overwritten by the next file action in the same directory.
+#: Directories whose gates have been applied during this session. Applying each
+#: directory once preserves later /manual changes.
 _gates_applied: set = set()
 
 
 class WorkspaceDenied(Exception):
-    """A root outside every approved directory. Never a silent no-op."""
+    """Indicate that a root is outside every approved directory."""
 
 
 class Grant:
-    """One approved directory and the gates that apply beneath it."""
+    """Represent an approved directory and its descendant approval gates."""
 
     def __init__(self, path, gates=None, added: str = ''):
         self.path = Path(path).expanduser().resolve()
@@ -79,7 +65,7 @@ class Grant:
         self.added = added or _now()
 
     def covers(self, candidate: Path) -> bool:
-        """Whether `candidate` is this directory or lives under it."""
+        """Return whether `candidate` is this directory or a descendant."""
         try:
             candidate.relative_to(self.path)
         except ValueError:
@@ -105,10 +91,10 @@ def _now() -> str:
 
 
 def _clean_gates(gates) -> dict:
-    """Only the known gates, only booleans, defaults for anything missing.
+    """Return known Boolean gates, using configured defaults when absent.
 
-    A directory written by hand is as likely to carry a typo as a config file,
-    and a gate that silently reads as false is one that stops asking.
+    Ignore invalid values so a hand-written grant cannot disable approval by
+    supplying a malformed false value.
     """
     settled = {key: bool(value) for key, value in get_approval_defaults().items()
                if key in approval.GATES}
@@ -122,12 +108,10 @@ def _clean_gates(gates) -> dict:
 # ── the register ─────────────────────────────────────────────────────────
 
 def load() -> list:
-    """Every approved directory. Never raises; an unreadable register is empty.
+    """Load approved directories, treating an unreadable register as empty.
 
-    Empty means everything asks, which is the safe direction to fail in: a
-    corrupt file must not be read as a grant. It says so rather than failing
-    silently, because "why is it suddenly asking about my project" needs an
-    answer.
+    An empty result requires approval for every directory. Report unreadable
+    data so users can identify why previously approved directories prompt again.
     """
     try:
         with open(REGISTER_PATH, encoding='utf-8') as handle:
@@ -147,11 +131,10 @@ def load() -> list:
 
 
 def save(grants) -> None:
-    """Write the register, replacing it atomically.
+    """Replace the workspace register atomically.
 
-    Via a temp file in the same directory and os.replace: a register truncated
-    by a crash mid-write would read as empty, and empty means every directory a
-    person already approved starts asking again.
+    Write a temporary file in the same directory and use os.replace() so a
+    crash cannot leave a truncated register.
     """
     payload = {'version': VERSION,
                'approved': [grant.to_json() for grant in grants]}
@@ -163,11 +146,10 @@ def save(grants) -> None:
 
 
 def find(path) -> Grant | None:
-    """The approved directory covering `path`, deepest first, or None.
+    """Return the deepest grant covering `path`, or None.
 
-    Deepest wins so a specific directory's gates beat the broad grant it sits
-    inside — approving all of ~/projects and then saying "ask about writes in
-    ~/projects/client" has to mean the narrower thing.
+    The deepest grant wins so a specific directory can override gates inherited
+    from a broader approved directory.
     """
     candidate = Path(path).expanduser().resolve()
     covering = [grant for grant in load() if grant.covers(candidate)]
@@ -192,7 +174,7 @@ def approve(path, gates=None) -> Grant:
 
 
 def forget(path) -> bool:
-    """Remove one exact directory. True when something was removed."""
+    """Remove an exact directory grant and report whether it existed."""
     target = Path(path).expanduser().resolve()
     with _lock:
         grants = load()
@@ -206,34 +188,68 @@ def forget(path) -> bool:
 
 
 def reset_session() -> None:
-    """Drop allow-once grants and let gates re-apply. For tests and for reuse
-    of a process across runs."""
+    """Clear allow-once grants and applied-gate state between runs."""
     _session.clear()
     _gates_applied.clear()
 
 
 # ── the gate ─────────────────────────────────────────────────────────────
 
-#: Answers, kept apart from approval's word lists on purpose. A blank line
-#: approves everything at an approval prompt — the sensible default when the
-#: question is "these three files, yes?". Here the question is "may clay have
-#: this directory", and a stray newline must not answer it.
+#: Explicit workspace approvals. Keep these separate from approval answer words
+#: because blank input must not grant access to a directory.
 _YES = frozenset({'y', 'yes', 'approve', 'always'})
 _ONCE = frozenset({'o', 'once'})
 
 PROMPT_ID = 'workspace.approve'
+DAEMON_CAPABILITIES = frozenset(approval.GATES)
+
+
+@dataclass(frozen=True)
+class DaemonAccess:
+    """Required and missing permissions for an unattended workflow."""
+
+    path: Path
+    required: frozenset[str]
+    missing: frozenset[str]
+    grant: Grant | None
+
+    @property
+    def allowed(self) -> bool:
+        return not self.missing
+
+
+def daemon_access(root, required=None) -> DaemonAccess:
+    """Read-only daemon permission check against the effective disk grant."""
+    base = _base_for(root)
+    needed = DAEMON_CAPABILITIES if required is None else frozenset(required)
+    unknown = needed.difference(approval.GATES)
+    if unknown:
+        raise ValueError(f'unknown daemon capabilities: {", ".join(sorted(unknown))}')
+
+    grant = find(base)
+    missing = needed if grant is None else frozenset(
+        gate for gate in needed if grant.gates.get(gate, True))
+    return DaemonAccess(base, needed, missing, grant)
+
+
+def grant_daemon_access(root, capabilities=None) -> Grant:
+    """Allow selected daemon permissions on one exact directory."""
+    base = _base_for(root)
+    requested = (DAEMON_CAPABILITIES if capabilities is None
+                 else frozenset(capabilities))
+    unknown = requested.difference(approval.GATES)
+    if unknown:
+        raise ValueError(f'unknown daemon capabilities: {", ".join(sorted(unknown))}')
+
+    covering = find(base)
+    gates = dict(covering.gates) if covering is not None else _clean_gates(None)
+    for gate in requested:
+        gates[gate] = False
+    return approve(base, gates=gates)
 
 
 def _base_for(root) -> Path:
-    """The absolute directory `root` names, relative ones against the project.
-
-    A relative root — including DEFAULT_ROOT, which is what an action with no
-    `root` at all gets — belongs to the directory clay was started in, not to
-    whatever cwd happens to be when the action runs. Those are the same thing
-    for `clay run` in a terminal and are not the same thing under clayd, which
-    sets its children's cwd to clay's own checkout: a workflow with no `root`
-    was writing into the program instead of into the caller's project.
-    """
+    """Resolve a workspace root against the fixed project directory."""
     from ..lib import paths
 
     path = Path(str(root or DEFAULT_ROOT)).expanduser()
@@ -243,12 +259,7 @@ def _base_for(root) -> Path:
 
 
 def authorize(root) -> Path:
-    """Return `root` resolved, once it is known to be an approved directory.
-
-    Raises WorkspaceDenied otherwise. Every file action calls this before it
-    resolves anything, so a new file action cannot quietly skip the boundary by
-    forgetting a check — there is one check.
-    """
+    """Return an approved root, or raise WorkspaceDenied."""
     base = _base_for(root)
 
     if base in _session:
@@ -260,10 +271,7 @@ def authorize(root) -> Path:
         return base
 
     if approval.unattended():
-        # Deliberately not approval.confirm()'s choice. That decides whether an
-        # action proceeds inside a boundary a human already drew; this decides
-        # where the boundary is, and a scheduled run must not be able to widen
-        # its own reach because nobody was watching.
+        # An unattended run has no human who can approve a new directory.
         raise WorkspaceDenied(
             f'{base} is not an approved working directory, and this run has no '
             f'human to ask. Approve it with:  clay dirs add {base}')
@@ -295,17 +303,14 @@ def _ask(base: Path) -> Path:
         logger.info(f'workspaces: allowing {base} for this run only')
         return base
 
-    # Anything else refuses, blank included. A typo must not hand over a
-    # directory, and there is no cost to being asked twice.
+    # Reject blank or unrecognized input rather than treating a typo as consent.
     raise WorkspaceDenied(f'{base} was not approved')
 
 
 def _apply_gates(grant: Grant) -> None:
-    """Seed the session's approval gates from the directory being entered.
+    """Initialize session approval gates from a directory grant.
 
-    Once per directory per session: applying on every action would overwrite a
-    `/manual` toggle typed mid-run with the file on disk, every time the next
-    file action came round.
+    Apply each directory once per session so later /manual changes persist.
     """
     with _lock:
         if grant.path in _gates_applied:

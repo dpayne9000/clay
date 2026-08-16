@@ -186,6 +186,14 @@ class DispatchTest(unittest.TestCase):
         out = engine.run_from_data(_gated('no'), label='store', auto=True)
         self.assertNotIn('gated', out)
 
+    def test_output_key_stores_the_same_result_under_a_second_key(self):
+        wf = _wf({"go": [
+            _says("primary", "value", outputKey="secondary"),
+        ]})
+        out = engine.run_from_data(wf, label='output-key', auto=True)
+
+        self.assertEqual(out['primary'], out['secondary'])
+
     def test_a_skipped_action_clears_a_stale_value_under_its_id(self):
         # The loop case: the same actions run again each iteration, so an
         # action skipped on pass 2 must not leave pass 1's answer standing for
@@ -197,6 +205,17 @@ class DispatchTest(unittest.TestCase):
         ]})
         out = engine.run_from_data(wf, label='stale', auto=True)
         self.assertNotIn('gated', out)
+
+    def test_a_skipped_action_clears_a_stale_output_key(self):
+        wf = _wf({"go": [
+            _says("first", "stale", outputKey="secondary"),
+            _says("verdict", "no"),
+            _says("replacement", "fresh", outputKey="secondary",
+                  when="verdict"),
+        ]})
+        out = engine.run_from_data(wf, label='stale-output-key', auto=True)
+
+        self.assertNotIn('secondary', out)
 
     def test_a_gated_action_is_still_validated(self):
         # Finding a typo only on the turn the gate happens to open is how a

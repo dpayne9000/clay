@@ -21,6 +21,51 @@ ACTION_TYPES = [
     "deriveTags", "loadContext", "writeCode",
 ]
 
+
+def _confirm_model_mismatch(problem):
+    """Ask before a command uses a model outside its configured profiles."""
+    print(f'clay: {problem}', file=sys.stderr)
+    try:
+        answer = input('Continue with the loaded model? [y/N] ')
+    except (EOFError, KeyboardInterrupt):
+        print('', file=sys.stderr)
+        return False
+    return answer.strip().lower() in {'y', 'yes'}
+
+
+def _check_configuration(args, profiles):
+    """Check only the models the pending command can use."""
+    from .lib import config_check
+    status = config_check.configuration_status(profiles)
+    if status.model_mismatch and not getattr(args, 'events_socket', None):
+        return _confirm_model_mismatch(status.problem)
+    if status.problem:
+        print(f'clay: {status.problem} — run `clay configure`.',
+              file=sys.stderr)
+    return True
+
+
+def _pending_workflow(args, startup):
+    """Resolve a pending file workflow without producing command output."""
+    from .lib import paths
+
+    command = getattr(args, 'command', None)
+    if command == 'run' or (command == 'daemon'
+                            and getattr(args, 'daemon_sub', None) == 'run'):
+        explicit = getattr(args, 'file', None)
+        segments = list(getattr(args, 'workflow_name', None) or [])
+        if explicit and not segments:
+            return paths.workflow_file(explicit)
+        if segments and not explicit:
+            return paths.find_workflow(*segments)
+        return None
+    if command is None:
+        refs = startup.get('user') if isinstance(startup, dict) else None
+        if refs and isinstance(refs[0], str):
+            ref = refs[0].strip()
+            return paths.workflow_file(ref) or paths.find_workflow(ref)
+    return None
+
 def _prompt_action():
     print(f"\n  Action types: {', '.join(ACTION_TYPES)}")
     action_type = input("  Action type: ").strip()
@@ -107,6 +152,79 @@ def create(args):
         json.dump(workflow, f, indent=4)
 
     print(f"\nWorkflow saved to '{output_file}'")
+
+def configure_cmd(args):
+    """Interactive wizard for provider, model, and generation settings.
+
+    Writes straight to ~/.clay/config.json via app_config.write_user_config()
+    — the one writer that module exposes. Ends by re-running the same
+    advisory check `cli()` runs on every command, so leaving with no server
+    running still says so, with the exact command to start one.
+    """
+    from .lib import config_check
+
+    cfg = app_config.load_config()
+    provider = dict(cfg.get('provider') or {})
+    models = dict(cfg.get('models') or {})
+
+    current_url = (provider.get('url') or 'http://127.0.0.1:8080').strip()
+    url = input(f'Model server URL [{current_url}]: ').strip() or current_url
+
+    current_default = (models.get('default') or 'unsloth/Qwen3-0.6B-GGUF:Q6_K').strip()
+    default_model = input(
+        f'Default model, as a Hugging Face repo:quant id [{current_default}]: '
+    ).strip() or current_default
+    models['default'] = default_model
+
+    current_max_tokens = app_config.get_max_tokens()
+    while True:
+        entered = input(
+            f'Default maximum response tokens [{current_max_tokens}]: '
+        ).strip()
+        if not entered:
+            max_tokens = current_max_tokens
+            break
+        try:
+            max_tokens = int(entered)
+        except ValueError:
+            max_tokens = 0
+        if max_tokens > 0:
+            break
+        print('Maximum response tokens must be a positive whole number.')
+
+    print("\nOther profiles clay looks for: code, chat, reports, orchestrator, "
+          "telegram (or any name you choose) — selected in a workflow action "
+          "with \"modelProfile\": \"<name>\".\n")
+    while True:
+        answer = input('Define or update another model profile? [y/N]: ').strip().lower()
+        if answer not in ('y', 'yes'):
+            break
+        key = input('  Profile name: ').strip()
+        if not key:
+            print('  Skipped: no profile name given.')
+            continue
+        current = models.get(key, '')
+        suffix = f' [{current}]' if current else ''
+        value = input(f"  Model for '{key}'{suffix}: ").strip() or current
+        if not value:
+            print('  Skipped: no value given.')
+            continue
+        models[key] = value
+
+    new_cfg = dict(cfg)
+    new_cfg['provider'] = {**provider, 'url': url}
+    new_cfg['models'] = models
+    new_cfg['maxTokens'] = max_tokens
+    app_config.write_user_config(new_cfg)
+    print(f'\nSaved: {app_config._CONFIG_PATH}')
+
+    problem = config_check.configuration_problem()
+    if problem is None:
+        print('Model server reachable and serving every configured model profile.')
+    else:
+        print(f'\n{problem}.\n')
+        print(config_check.startup_instructions(url, default_model))
+
 
 def _load_config():
     """Seed engine globals for a workflow run.
@@ -438,12 +556,82 @@ def workflows_cmd(args):
     return None
 
 
+def _stored_workflow_reference(workflow):
+    """Return a stable startup reference for a resolved workflow path."""
+    workflow = os.path.abspath(workflow)
+    for root in (app_config.clay_dir, app_config.data_path()):
+        try:
+            relative = os.path.relpath(workflow, root)
+        except ValueError:
+            continue
+        if relative != os.pardir and not relative.startswith(os.pardir + os.sep):
+            return relative
+    return workflow
+
+
+def default_cmd(args):
+    """Show, set, or reset the workflow started by bare `clay`."""
+    operation = getattr(args, 'default_operation', None)
+    if operation is None:
+        startup = app_config.load_startup()
+        selected = startup.get('user') if isinstance(startup, dict) else None
+        if not isinstance(selected, list) or not selected:
+            print('No default workflow configured.')
+            return 1
+        print(selected[0])
+        return None
+
+    if operation == 'reset':
+        try:
+            with open(app_config._BASE_STARTUP_PATH, encoding='utf-8') as source:
+                shipped = json.load(source)
+            startup = app_config.load_startup()
+            startup = dict(startup) if isinstance(startup, dict) else {}
+            startup['user'] = list(shipped['user'])
+            startup['_startupVersion'] = shipped.get('_startupVersion', 0)
+            startup['_defaultManaged'] = True
+            app_config.write_user_startup(startup)
+        except (OSError, ValueError) as error:
+            print(f'clay default: cannot load shipped default: {error}',
+                  file=sys.stderr)
+            return 1
+        print(f'Default workflow reset to {startup["user"][0]}')
+        return None
+
+    workflow = _resolve_workflow_arg(args)
+    if workflow is None:
+        return 1
+    startup = app_config.load_startup()
+    startup = dict(startup) if isinstance(startup, dict) else {}
+    reference = _stored_workflow_reference(workflow)
+    startup['user'] = [reference]
+    startup['_defaultManaged'] = False
+    try:
+        with open(app_config._BASE_STARTUP_PATH, encoding='utf-8') as source:
+            shipped = json.load(source)
+        startup['_startupVersion'] = shipped.get('_startupVersion', 0)
+        app_config.write_user_startup(startup)
+    except (OSError, ValueError) as error:
+        print(f'clay default: could not save {app_config._STARTUP_PATH}: {error}',
+              file=sys.stderr)
+        return 1
+    print(f'Default workflow set to {reference}')
+    return None
+
+
 def run(args):
     import os
     from .run import termui, logger as run_logger
 
     workflow = _resolve_workflow_arg(args)
     if workflow is None:
+        return 1
+
+    daemon = getattr(args, 'daemon', False)
+    auto   = daemon or getattr(args, 'auto', False)
+    if daemon and not _authorize_daemon_project_dir():
+        return 1
+    if auto and not daemon and not _authorize_project_dir():
         return 1
 
     if getattr(args, 'theme', None):
@@ -455,8 +643,6 @@ def run(args):
         termui.intro()
 
     _start_event_socket(args)
-    daemon = getattr(args, 'daemon', False)
-    auto   = daemon or getattr(args, 'auto', False)
     try:
         engine.run(workflow, auto=auto, daemon=daemon,
                    initial_data=_load_config())
@@ -468,20 +654,26 @@ def run(args):
             renderer.detach()
 
 
+def _authorize_project_dir() -> bool:
+    """Authorize the project before the run becomes unattended."""
+    from .lib import paths
+    from .run import workspaces
+    try:
+        workspaces.authorize(paths.project_dir())
+        return True
+    except workspaces.WorkspaceDenied as exc:
+        print(f'clay: {exc}', file=sys.stderr)
+        return False
+
+
+def _authorize_daemon_project_dir() -> bool:
+    """Persist all unattended capabilities before a direct daemon run."""
+    return _authorize_current_daemon_workspace(
+        _terminal_daemon_permission_prompt)
+
+
 def run_json(args):
-    """Run a workflow from a JSON payload (API-triggered path).
-
-    Reads from --file PATH when provided so stdin stays open for interactive
-    responses; otherwise reads from stdin (closes it after JSON is consumed).
-
-    This is how clayd spawns every daemon-managed workflow, so it seeds the
-    same engine globals as `clay run` — without them, daemon-run workflows
-    ship a literal {__schema__} to the model, since build_ctx drops missing
-    includedData keys silently.
-
-    In non-auto mode, prompts travel over the events socket as
-    input.request / input.response (clay/run/io.py), not over stdin.
-    """
+    """Run workflow JSON from --file or stdin. Prompts use the event socket."""
     import sys
     file_path = getattr(args, 'file', None)
     if file_path:
@@ -489,6 +681,9 @@ def run_json(args):
             data = json.load(f)
     else:
         data = json.load(sys.stdin)
+    from .lib import config_check
+    if not _check_configuration(args, config_check.model_profiles_in_data(data)):
+        return 1
     from .run import logger as run_logger
     label = data.get('name', 'api-run')
     auto = not getattr(args, 'no_auto', False)
@@ -519,17 +714,15 @@ def ui(args):
         raise
     from .lib import paths
 
-    # Auto-start the daemon if not running
-    _ensure_daemon()
-
     app = QApplication(sys.argv[:1])
     app.setApplicationName('clay')
     app.setOrganizationName('clay')
+    from .ui.preflight import ensure_daemon_with_qt
+    if not ensure_daemon_with_qt():
+        return 1
     win = WorkflowWindow()
     win.show()
-    # Each argument opens its own tab, so they are resolved one at a time
-    # rather than joined into segments — `clay ui a.json b.json` opens two
-    # workflows, and either of them may also be named `templates/research`.
+    # Open each workflow argument in its own tab.
     for ref in getattr(args, 'workflows', []) or []:
         path = paths.workflow_file(ref) or paths.find_workflow(ref)
         if path:
@@ -539,10 +732,49 @@ def ui(args):
     sys.exit(app.exec())
 
 
-def _ensure_daemon():
-    """Start clayd in background if it isn't running."""
+def _terminal_daemon_permission_prompt(check) -> bool:
+    """Ask visibly before persisting unattended access for this directory."""
+    from .run import approval, workspaces
+    labels = {
+        'fileReads': 'read files',
+        'fileWrites': 'write files',
+        'commands': 'run commands',
+    }
+    missing = ', '.join(labels[gate] for gate in approval.GATES
+                        if gate in check.missing)
+    text = (
+        'CLAY needs advance permission for an unattended daemon workflow.\n\n'
+        f'Directory: {check.path}\n'
+        f'Missing:   {missing}\n\n'
+        f'Grant these permissions for {check.path} in '
+        f'{workspaces.REGISTER_PATH}? [y/N] '
+    )
+    try:
+        answer = input(text)
+    except EOFError:
+        return False
+    return str(answer or '').strip().lower() in ('y', 'yes')
+
+
+def _ensure_daemon(confirm=None):
+    """Authorize the current project, then start clayd if needed."""
     from .daemon.client import ensure_daemon
-    ensure_daemon()
+    if not _authorize_current_daemon_workspace(
+            confirm or _terminal_daemon_permission_prompt):
+        return False
+    return ensure_daemon()
+
+
+def _authorize_current_daemon_workspace(confirm) -> bool:
+    """Translate daemon permission refusal into the CLI's status contract."""
+    from .daemon.client import authorize_daemon_workspace, DaemonPermissionDenied
+    from .lib import paths
+    try:
+        authorize_daemon_workspace(paths.project_dir(), confirm)
+    except DaemonPermissionDenied as exc:
+        print(f'clay: {exc}', file=sys.stderr)
+        return False
+    return True
 
 
 # ── Daemon CLI commands ──────────────────────────────────────────────────────
@@ -552,7 +784,8 @@ def daemon_cmd(args):
     sub = args.daemon_sub
 
     if sub == 'start':
-        _ensure_daemon()
+        if not _ensure_daemon():
+            return 1
         print('clayd is running')
 
     elif sub == 'stop':
@@ -602,14 +835,16 @@ def daemon_cmd(args):
             ))
 
     elif sub == 'run':
-        from .daemon.client import DaemonClient
+        from .daemon.client import DaemonClient, DaemonPermissionDenied
+        from .run import workspaces
         # Resolved here, before it goes over the wire: clayd resolves nothing,
         # and it does not share this process's working directory, so a
         # relative reference would mean something different on the far side.
         workflow = _resolve_workflow_arg(args)
         if workflow is None:
             return 1
-        _ensure_daemon()
+        if not _ensure_daemon():
+            return 1
         try:
             with DaemonClient() as c:
                 resp = c.start_workflow(
@@ -623,6 +858,12 @@ def daemon_cmd(args):
                 print(f'Error: {resp.get("error", "unknown")}', file=sys.stderr)
         except (ConnectionRefusedError, FileNotFoundError, OSError) as e:
             print(f'Cannot connect to clayd: {e}', file=sys.stderr)
+        except workspaces.WorkspaceDenied as e:
+            print(f'clay: {e}', file=sys.stderr)
+            return 1
+        except DaemonPermissionDenied as e:
+            print(f'clay: {e}', file=sys.stderr)
+            return 1
 
     elif sub == 'kill':
         from .daemon.client import DaemonClient
@@ -660,7 +901,8 @@ def daemon_cmd(args):
     elif sub == 'attach':
         from .daemon.client import DaemonClient
         from .run.renderers.detail import payload_lines, skipped_reason
-        _ensure_daemon()
+        if not _ensure_daemon():
+            return 1
         try:
             client = DaemonClient()
             client.connect()
@@ -779,6 +1021,29 @@ def lint(args):
     return report(_lint(target))
 
 
+def check_context_cmd(args):
+    """Report resolved scramda2 prompt sizes without running the workflow."""
+    from .context_check import inspect_workflow, report
+
+    workflow = _resolve_workflow_arg(args)
+    if workflow is None:
+        return 1
+
+    context = {}
+    context_file = getattr(args, 'context_file', None)
+    if context_file:
+        try:
+            with open(context_file, encoding='utf-8') as source:
+                context = json.load(source)
+            if not isinstance(context, dict):
+                raise ValueError('top-level value must be a JSON object')
+        except (OSError, ValueError) as exc:
+            print(f'check context: cannot load {context_file}: {exc}', file=sys.stderr)
+            return 1
+
+    return report(inspect_workflow(workflow, context), workflow)
+
+
 # ── Auth & sync commands ─────────────────────────────────────────────────────
 
 def login_cmd(args):
@@ -871,6 +1136,17 @@ def cli():
     parser_workflows.add_argument("--paths", action="store_true",
         help="Also show the file each one resolves to")
     parser_workflows.set_defaults(func=workflows_cmd)
+
+    parser_default = subparsers.add_parser(
+        "default", help="Show or select the workflow bare `clay` starts")
+    default_subs = parser_default.add_subparsers(dest="default_operation")
+    default_set = default_subs.add_parser("set", help="Select a default workflow")
+    _add_workflow_arg(default_set, "set as the default")
+    default_set.set_defaults(func=default_cmd)
+    default_reset = default_subs.add_parser(
+        "reset", help="Follow Clay's shipped default again")
+    default_reset.set_defaults(func=default_cmd)
+    parser_default.set_defaults(func=default_cmd)
 
     # Run-json parser — reads full workflow JSON, used by the API
     parser_run_json = subparsers.add_parser(
@@ -977,6 +1253,12 @@ def cli():
         help="Offer upgrades for the template workflows seeded at install")
     parser_build.set_defaults(func=build)
 
+    # Configure parser — provider, models, and token limit in config.json.
+    parser_configure = subparsers.add_parser(
+        "configure", aliases=["config"],
+        help="Set model server, profiles, and token limit in ~/.clay/config.json")
+    parser_configure.set_defaults(func=configure_cmd)
+
     # Lint parser
     parser_lint = subparsers.add_parser("lint", help="Validate workflow and data JSON files")
     parser_lint.add_argument(
@@ -986,6 +1268,18 @@ def cli():
         help="File, directory, or workflow segments to lint (default: your workflow folder)",
     )
     parser_lint.set_defaults(func=lint)
+
+    # Check parser — read-only workflow diagnostics.
+    parser_check = subparsers.add_parser(
+        "check", help="Inspect workflow runtime inputs without running it")
+    check_subs = parser_check.add_subparsers(dest="check_operation", required=True)
+    parser_check_context = check_subs.add_parser(
+        "context", help="Show resolved scramda2 prompt character counts")
+    _add_workflow_arg(parser_check_context, "check")
+    parser_check_context.add_argument(
+        "--context", dest="context_file", metavar="FILE",
+        help="JSON object containing representative runtime values")
+    parser_check_context.set_defaults(func=check_context_cmd)
 
     # ── Auth & sync subcommands ──────────────────────────────────────────────
 
@@ -1048,6 +1342,19 @@ def cli():
         print(f'clay: prepared {app_config.clay_dir} ({len(seeded)} files)')
 
     startup = app_config.load_startup()
+
+    # Connection and configuration problems remain advisory. A confirmed
+    # model-identity mismatch is different: stop before doing work unless the
+    # user explicitly accepts the loaded model. An event-socket child inherits
+    # the choice already made by the client that launched it and cannot prompt.
+    command = getattr(args, 'command', None)
+    if command not in {'configure', 'run-json', 'check'}:
+        from .lib import config_check
+        pending = _pending_workflow(args, startup)
+        profiles = (config_check.model_profiles_in_workflow(pending)
+                    if pending else set())
+        if not _check_configuration(args, profiles):
+            return 1
 
     # Returned, not discarded: this function is the console-script entry point
     # (`clay = "clay.cli:cli"`), so what it returns becomes the process exit

@@ -49,13 +49,18 @@ class WebInstallerOrderingTest(unittest.TestCase):
         selected = self.script.index('"$INSTALL_ROOT/current.next"')
         self.assertLess(installed, selected)
 
+    def test_release_installation_runs_config_migrations(self):
+        installer = (ROOT / 'scripts' / 'build' / 'install_release.py').read_text(
+            encoding='utf-8')
+        self.assertIn('create_user_config; create_user_config()', installer)
+
 
 class InstallDocumentationPathTest(unittest.TestCase):
 
     def test_readme_verifies_path_immediately_after_install(self):
         readme = README.read_text(encoding='utf-8')
         install = readme.index('## Install')
-        configure = readme.index('## Configure a model')
+        configure = readme.index('## Model server')
         section = readme[install:configure]
         self.assertIn('export PATH="$HOME/.local/bin:$PATH"', section)
         self.assertIn('clay --version', section)

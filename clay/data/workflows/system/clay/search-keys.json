@@ -1,6 +1,0 @@
-{
-  "_comment": "Optional. Clay searches with DuckDuckGo by default and needs nothing here. These are only read if you change the 'web_results' action in iteration.json to engine 'google', which gives better ranking on technical queries at the cost of a Google Cloud project and a quota. Both are required together — searchWeb's google engine refuses loudly with 'searchWeb(google): missing apiKey or cx' when either is blank and does not fall back to another engine. The key at https://console.cloud.google.com/apis/credentials with Custom Search API enabled; the cx at https://programmablesearchengine.google.com after creating an engine set to search the entire web.",
-
-  "google_api_key": "",
-  "google_cx": ""
-}

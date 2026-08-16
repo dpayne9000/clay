@@ -1,4 +1,4 @@
-"""Action palette — drag node types onto the canvas."""
+"""Provide action types that users can drag onto the canvas."""
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem, QLineEdit,
 )
@@ -19,7 +19,7 @@ _ACTION_TYPES = [
 
 
 class PalettePanel(QWidget):
-    """Draggable list of action types grouped by category."""
+    """Display draggable action types grouped by category."""
 
     def __init__(self):
         super().__init__()
@@ -72,14 +72,14 @@ class PalettePanel(QWidget):
             item = self._list.item(i)
             data = item.data(Qt.UserRole)
             if data is None:
-                # Group header — show if any child matches
+                # Show a group header when any child matches the filter.
                 item.setHidden(bool(text))
             else:
                 item.setHidden(text not in data.lower())
 
 
 class _DragList(QListWidget):
-    """QListWidget that starts a drag with MIME data on mouse move."""
+    """Start a MIME-data drag when the user moves a list item."""
 
     def __init__(self):
         super().__init__()

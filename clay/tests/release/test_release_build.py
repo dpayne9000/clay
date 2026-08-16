@@ -12,6 +12,40 @@ from scripts.build import release
 
 
 class ReleaseConfigurationTest(unittest.TestCase):
+    def test_build_refuses_to_overwrite_a_stable_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dist = Path(directory)
+            release_dir = dist / "releases" / "0.1.0"
+            release_dir.mkdir(parents=True)
+            (release_dir / "release.json").write_text(
+                json.dumps({"version": "0.1.0", "stable": True}))
+            args = type("Args", (), {
+                "version": None,
+                "notes_file": None,
+                "signing_key": None,
+            })()
+            project = {"version": "0.1.0"}
+            with patch.object(release, "DIST", dist), \
+                    patch.object(release, "_load_configuration",
+                                 return_value=({}, project, {})), \
+                    self.assertRaisesRegex(release.BuildError,
+                                                "refusing to overwrite stable"):
+                release.build(args)
+
+    def test_build_rejects_a_notes_directory_before_signing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = type("Args", (), {
+                "version": None,
+                "notes_file": Path(directory),
+                "signing_key": None,
+            })()
+            project = {"version": "0.1.1"}
+            with patch.object(release, "_load_configuration",
+                              return_value=({}, project, {})), \
+                    self.assertRaisesRegex(release.BuildError,
+                                                "not a file"):
+                release.build(args)
+
     def test_setup_specifies_exact_runtime_packages(self):
         project = tomllib.loads((release.ROOT / "pyproject.toml").read_text())
         packages = project["tool"]["setuptools"]["packages"]
@@ -43,7 +77,6 @@ class ReleaseConfigurationTest(unittest.TestCase):
         self.assertNotIn("tests/", joined)
         for required in (
             "data/configs/default.json",
-            "data/skills/system-editor/*",
             "data/workflows/system/**/*.json",
             "data/workflows/templates/**/*.json",
             "run/termui/themes/*.theme",
@@ -65,6 +98,8 @@ class ReleaseConfigurationTest(unittest.TestCase):
         self.assertFalse(any(path.startswith("clay/tests") for path in paths))
         self.assertFalse(any("data/workflows/dev" in path for path in paths))
         self.assertFalse(any("data/workflows/test" in path for path in paths))
+        self.assertFalse(any("data/skills/" in path and path !=
+                             "clay/data/skills/README.md" for path in paths))
 
     def test_source_allowlist_accepts_production_files_not_development_files(self):
         self.assertTrue(
@@ -82,9 +117,6 @@ class ReleaseConfigurationTest(unittest.TestCase):
         expected = {
             "clay/actions", "clay/adapters", "clay/auth", "clay/channels",
             "clay/daemon", "clay/lib", "clay/run", "clay/ui", "clay/vendor",
-            "clay/data/skills/celeb-tracker", "clay/data/skills/developer",
-            "clay/data/skills/network-connection-probe",
-            "clay/data/skills/network-explorer", "clay/data/skills/system-editor",
             "clay/data/workflows/system", "clay/data/workflows/templates",
         }
         self.assertEqual(expected, set(release.SOURCE_ARCHIVE_DIRECTORIES))

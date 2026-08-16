@@ -189,6 +189,17 @@ export GOPHER_URL=http://127.0.0.1:8080
 Model profiles live in `$CLAY_HOME/config.json`, normally
 `~/.clay/config.json`. An action can select a configured profile:
 
+Run the interactive configuration command to set the server URL, model
+profiles, and default `maxTokens` response limit. An action-level `max_tokens`
+value overrides that default. Clay verifies the default profile and the
+profiles used by the workflow about to run against the server's
+OpenAI-compatible `/v1/models` response:
+
+```bash
+clay configure
+# `clay config` is an alias
+```
+
 ```json
 {
   "type": "scramda2",
@@ -199,6 +210,24 @@ Model profiles live in `$CLAY_HOME/config.json`, normally
 ```
 
 ## Workflows
+
+The five broadly useful shipped workflows are:
+
+1. `system chat` — general conversation, Clay/project questions, and memory.
+2. `system coding` — inspect, change, and verify a project.
+3. `system process_builder` — create a workflow using Clay's current syntax.
+4. `templates agents code-review` — structured code review.
+5. `templates agents web-researcher` — sourced web research and reporting.
+
+Bare `clay` starts `system chat`. A recognized older shipped default is updated
+on upgrade; a workflow selected by the user is preserved.
+
+```bash
+clay default                         # show the current selection
+clay default set system chat         # select a shipped workflow
+clay default set -f ./workflow.json  # select an exact workflow file
+clay default reset                   # follow Clay's managed default again
+```
 
 ### Find and run
 
@@ -336,8 +365,11 @@ action:
   "id": "bot",
   "type": "telegram",
   "workflows": [
-    {"label": "Coding", "path": "workflows/system/coding4/main.json"},
-    {"label": "Research", "path": "workflows/templates/research/main.json"}
+    {"label": "General chat", "path": "workflows/system/chat/main.json"},
+    {"label": "Coding", "path": "workflows/system/coding/main.json"},
+    {"label": "Build a workflow", "path": "workflows/system/process_builder/main.json"},
+    {"label": "Code review", "path": "workflows/templates/agents/code-review/main.json"},
+    {"label": "Web research", "path": "workflows/templates/agents/web-researcher/main.json"}
   ]
 }
 ```

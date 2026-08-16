@@ -1,9 +1,7 @@
-"""
-telegram_bridge.py
-==================
+"""Provide a dependency-free Telegram Bot API integration.
 
-Dependency-free, importable Telegram Bot API module for two-way chat, command
-hooks, inline/reply menus, and application actions.
+The module supports two-way chat, command hooks, inline and reply menus, and
+application actions.
 
 Typical use from another file:
 
@@ -34,12 +32,10 @@ Typical use from another file:
             "user_id": ctx.user_id,
         })
 
-    bot.start()                  # non-blocking background thread
-    bot.send(CHAT_ID, "Online")  # outbound from the parent application
+    bot.start()                  # Start a non-blocking background thread.
+    bot.send(CHAT_ID, "Online")  # Send from the parent application.
     ...
     bot.stop()
-
-No third-party packages are required.
 """
 
 from __future__ import annotations
@@ -64,7 +60,7 @@ HandlerResult = Any
 
 @dataclass(slots=True)
 class Action:
-    """An application-level event emitted by Telegram or by a hook."""
+    """Represent an application event emitted by Telegram or a hook."""
 
     name: str
     chat_id: Optional[int] = None
@@ -76,7 +72,7 @@ class Action:
 
 @dataclass(slots=True)
 class MessageContext:
-    """Convenient wrapper around a Telegram message update."""
+    """Provide convenient access to a Telegram message update."""
 
     bot: "TelegramBridge"
     update: Json
@@ -125,7 +121,7 @@ class MessageContext:
 
 @dataclass(slots=True)
 class MenuContext:
-    """Context for an inline keyboard callback."""
+    """Provide context for an inline keyboard callback."""
 
     bot: "TelegramBridge"
     update: Json
@@ -169,11 +165,10 @@ class TelegramAPIError(RuntimeError):
 def inline_menu(
     rows: Sequence[Sequence[tuple[str, str] | dict[str, Any]]],
 ) -> Json:
-    """
-    Build an inline button menu.
+    """Build an inline button menu.
 
-    Tuple buttons are (label, callback_action). Dict buttons may use Telegram's
-    full InlineKeyboardButton fields, such as {"text": "Site", "url": "..."}.
+    Tuple buttons contain (label, callback_action). Dictionary buttons may use
+    any Telegram InlineKeyboardButton fields.
     """
     keyboard: list[list[Json]] = []
     for row in rows:
@@ -211,8 +206,7 @@ def remove_reply_menu(*, selective: bool = False) -> Json:
 
 
 class TelegramBridge:
-    """
-    Importable Telegram integration.
+    """Connect application hooks to the Telegram Bot API.
 
     Hooks:
         @bot.command("name", description="...")
@@ -405,7 +399,7 @@ class TelegramBridge:
     # ----------------------------- public actions ----------------------------
 
     def trigger(self, action: Action | str, **data: Any) -> None:
-        """Dispatch an application action immediately and enqueue it for polling."""
+        """Dispatch an application action and enqueue it for polling."""
         if isinstance(action, str):
             action = Action(action, data=data)
         elif data:
@@ -424,10 +418,7 @@ class TelegramBridge:
                 self._handle_error(exc, action.update)
 
     def get_action(self, timeout: Optional[float] = None) -> Optional[Action]:
-        """
-        Retrieve the next emitted action. Useful when the parent application
-        prefers a polling/event-loop integration instead of decorators.
-        """
+        """Return the next action for a polling or event-loop integration."""
         try:
             return self._action_queue.get(timeout=timeout)
         except queue.Empty:
@@ -498,11 +489,10 @@ class TelegramBridge:
         return self.send(chat_id, text, menu=inline_menu(rows), **kwargs)
 
     def chat_action(self, chat_id: int, action: str = "typing") -> bool:
-        """Show one of Telegram's transient status hints in a chat.
+        """Display a transient Telegram status in a chat.
 
-        Telegram clears it after about five seconds, or as soon as the bot
-        sends a message — whichever comes first. A wait longer than that has to
-        re-send, so this is a single call and the repeating is the caller's.
+        Telegram clears the status after about five seconds or when the bot
+        sends a message. Callers must repeat it during longer waits.
         """
         return bool(self.api("sendChatAction",
                              {"chat_id": chat_id, "action": action}))

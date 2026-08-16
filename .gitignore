@@ -4,7 +4,7 @@
 *.pyo
 *.pyd
 .Python
-CLAUDE.md
+# CLAUDE.md
 # Virtual environments
 .venv/
 
@@ -15,7 +15,6 @@ output
 # Distribution / packaging
 build/
 dist/
-web/
 .release-cache/
 .clay-deploy.json
 *release-signing-private*.pem
@@ -43,7 +42,7 @@ skip-*
 # Local dev
 api
 api2/
-clay/data/workflows/dev/
+# clay/data/workflows/dev/
 
 # OS
 .DS_Store

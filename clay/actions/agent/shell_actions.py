@@ -13,10 +13,7 @@ class Shell:
     timeout: int = opt("Seconds before the process is killed", 30)
 
 
-# ---------------------------------------------------------------------------
-# Hardcoded whitelist — immutable, not readable from workflow JSON or AI data.
-# Add entries here (in code) to allow additional commands.
-# ---------------------------------------------------------------------------
+# Workflows cannot extend this code-owned allowlist.
 ALLOWED_COMMANDS = frozenset({
     # Network inspection
     'ifconfig', 'netstat', 'arp', 'ping', 'ping6', 'traceroute', 'traceroute6',
@@ -29,28 +26,12 @@ ALLOWED_COMMANDS = frozenset({
     'find',
     # DNS / discovery
     'avahi-browse',
-    # ---------------------------------------------------------------------
-    # Development toolchain.
-    #
-    # These are not read-only and no argument guard can make them so: an
-    # interpreter runs whatever it is handed, and `python3 -c '...'` is
-    # arbitrary code execution by construction. They are here because a coding
-    # workflow that cannot run the code it just wrote is not a coding
-    # workflow — an explicit decision, not an oversight. `runReplyCommands`
-    # pins cwd to the workspace, which bounds where they run but not what
-    # they can do.
-    # ---------------------------------------------------------------------
+    # Development tools can execute or modify code. Workspace cwd limits their
+    # starting directory; it does not sandbox them.
     'python3', 'python', 'node', 'pytest', 'npm', 'make', 'git',
 })
 
-# ---------------------------------------------------------------------------
-# Arguments that make an allowed command run *another* command, or write.
-#
-# The whitelist above checks only the first token of each segment, so a flag
-# that takes a command as its argument would smuggle an unlisted executable
-# past it: `find . -exec rm -rf {} ;` presents `find` in first position and
-# never shows `rm` there. These flags are refused wherever they appear.
-# ---------------------------------------------------------------------------
+# Dangerous flags on otherwise allowed commands.
 BLOCKED_ARGUMENTS = frozenset({
     '-exec', '-execdir', '-ok', '-okdir',        # run a command
     '-delete',                                    # destructive
@@ -61,22 +42,7 @@ _PLACEHOLDER = re.compile(r'\{([A-Za-z_][A-Za-z0-9_]*)\}')
 
 
 def _interpolate(template: str, ctx: dict, quote: bool = True) -> str:
-    """Substitute {vars} from previous_data into a command template.
-
-    Only named placeholders are substituted. str.format_map cannot be used
-    here: shell syntax is full of braces that are not placeholders — `{}` in
-    `find -exec`, `${VAR}` in a shell expansion, `{1..3}` in a brace
-    expansion — and format_map raises ValueError on the first of those,
-    killing the run instead of refusing the command. A regex that matches only
-    identifiers leaves every one of them untouched.
-
-    With `quote`, values go through shlex.quote() so they become a single
-    shell word regardless of content, making injection via substitution
-    structurally impossible rather than a matter of stripping characters.
-    Without it the value is passed through raw — for arguments handed to
-    subprocess directly, such as cwd, where quotes would become part of the
-    path. An unknown key is left as written, not blanked.
-    """
+    """Replace named placeholders. Quote values used in command strings."""
     def replace(match):
         key = match.group(1)
         if key not in ctx:
@@ -88,75 +54,82 @@ def _interpolate(template: str, ctx: dict, quote: bool = True) -> str:
 
 
 def _blocked_arguments_in(command: str) -> list[str]:
-    """Return any BLOCKED_ARGUMENTS token appearing anywhere in the command.
-
-    Checked against the resolved command, so a flag arriving through
-    {placeholder} interpolation is caught too — interpolation quotes values
-    into a single word, but a quoted `-exec` is still `-exec` to find.
-    """
+    """Return blocked argument tokens from a valid command."""
     try:
         tokens = shlex.split(command)
     except ValueError:
-        tokens = command.split()
+        # refusal_for() rejects malformed commands.
+        return []
     return [t for t in tokens if t in BLOCKED_ARGUMENTS]
 
 
-def _executables_in(command: str) -> list[str]:
-    """
-    Return the basename of every executable in a compound shell command.
-    Splits on &&, ||, ; and | then takes the first token of each segment.
-    """
-    parts = re.split(r'&&|\|\||[;|]', command)
-    names = []
-    for part in parts:
-        part = part.strip()
-        if not part:
+def _command_tokens(command: str) -> list[str]:
+    """Tokenize the argv exactly as execute() will."""
+    return shlex.split(command)
+
+
+def _has_unquoted_shell_operator(command: str) -> bool:
+    """Detect shell punctuation while respecting quotes and backslash escapes."""
+    quote = None
+    escaped = False
+    for char in command:
+        if escaped:
+            escaped = False
             continue
-        try:
-            tokens = shlex.split(part)
-        except ValueError:
-            tokens = part.split()
-        if tokens:
-            names.append(os.path.basename(tokens[0]))
-    return names
+        if char == '\\' and quote != "'":
+            escaped = True
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+            continue
+        if char in "'\"":
+            quote = char
+        elif char in ';&|<>':
+            return True
+    return False
+
+
+def _executables_in(command: str) -> list[str]:
+    """Return the executable for a valid single command, otherwise none."""
+    try:
+        tokens = _command_tokens(command)
+    except ValueError:
+        return []
+    if not tokens or _has_unquoted_shell_operator(command):
+        return []
+    return [os.path.basename(tokens[0])]
 
 
 def refusal_for(command: str):
-    """Return why this command may not run, or None if it may.
+    """Return the refusal reason, or None when the command is allowed."""
+    if any(token in command for token in ('\n', '\r', '$(', '`')):
+        return 'shell newlines and substitution are not allowed'
 
-    The single gate every execution path goes through — the `shell` action
-    and any action that runs commands a model wrote. A second, weaker copy of
-    these checks is how a whitelist stops meaning anything.
-    """
-    if any(token in command for token in ('\n', '\r', '&&', '||', ';', '|',
-                                           '>', '<', '$(', '`')):
-        return 'shell operators, redirection and substitution are not allowed'
-
-    executables = _executables_in(command)
-    if not executables:
-        return "could not parse any executable from command"
-
-    blocked = [e for e in executables if e not in ALLOWED_COMMANDS]
-    if blocked:
-        return f"'{', '.join(blocked)}' not in whitelist"
-
+    try:
+        tokens = _command_tokens(command)
+    except ValueError:
+        return 'could not parse command'
     blocked_args = _blocked_arguments_in(command)
     if blocked_args:
         return f"argument '{', '.join(blocked_args)}' can run or write"
+
+    if _has_unquoted_shell_operator(command):
+        return 'shell operators and redirection are not allowed'
+
+    if not tokens:
+        return "could not parse any executable from command"
+
+    executable = os.path.basename(tokens[0])
+    if executable not in ALLOWED_COMMANDS:
+        return f"'{executable}' not in whitelist"
 
     return None
 
 
 def execute(command: str, timeout: int = 30, cwd: str = None,
             include_stderr: bool = False) -> str:
-    """Run an already-validated command and return its output.
-
-    Callers must have cleared `refusal_for` first. A non-zero exit is not an
-    exception: the output carries an [exit code: N] marker. `include_stderr`
-    folds the error stream into the returned text — a model that ran a failing
-    command needs to see the traceback, whereas the plain `shell` action logs
-    it and keeps stdout clean for the next action to consume.
-    """
+    """Run a validated command. Mark non-zero exits in the returned output."""
     try:
         result = subprocess.run(
             shlex.split(command),
@@ -188,7 +161,6 @@ def handler(action, ctx):
         logger.error("shell: missing 'command' field")
         return None
 
-    # Substitute variables — values are shell-quoted
     command = _interpolate(command_template, ctx)
 
     refusal = refusal_for(command)
@@ -219,18 +191,11 @@ class RunReplyCommands:
 
 _FENCE = re.compile(r'```(?:bash|sh|shell|zsh|console)\s*\n(.*?)```', re.DOTALL)
 
-# Every line a command prints is echoed onto the event bus, so the CLI and the
-# chat both show what ran and what came back. The cap on that body is
-# logger.OUTPUT_MAX_CHARS, shared with every other payload.
+# Send command output to front-ends through the event bus.
 
 
 def parse_commands(text) -> list:
-    """Command lines from every ```bash fence in the text, in order.
-
-    One command per line. Comments and blank lines are dropped; a trailing
-    backslash continuation is joined onto the next line so a wrapped command
-    is validated and run as the single command it is.
-    """
+    """Read one command per line from shell fences; join continuations."""
     commands = []
     for block in _FENCE.findall(str(text or '')):
         pending = ''
@@ -268,8 +233,7 @@ def run_reply_commands_handler(action, ctx):
 
     cwd = action.get('cwd')
     if cwd:
-        # Quoting is for values embedded *inside* a command string; a cwd is
-        # passed to subprocess directly, so it must not be quoted.
+        # cwd is passed directly to subprocess, not through a shell.
         cwd = _interpolate(str(cwd), ctx, quote=False)
         if not os.path.isdir(cwd):
             msg = f"runReplyCommands: cwd '{cwd}' does not exist"
@@ -283,9 +247,7 @@ def run_reply_commands_handler(action, ctx):
     transcript = []
     for index, command in enumerate(commands):
         if index not in approved:
-            # In the transcript rather than dropped, because the transcript is
-            # what the next pass reads: a command that quietly vanished would
-            # have it conclude the check passed.
+            # Keep skipped commands visible to the next workflow step.
             transcript.append(f'$ {command}\n[skipped: not approved]')
             continue
         refusal = refusal_for(command)
@@ -294,9 +256,7 @@ def run_reply_commands_handler(action, ctx):
             transcript.append(f'$ {command}\n[refused: {refusal}]')
             continue
         output = execute(command, timeout, cwd=cwd, include_stderr=True).strip()
-        # The command and every line it printed go out as one event, together,
-        # so a front-end cannot show the command without its output or
-        # interleave two commands' output when they run back to back.
+        # Keep each command and its output in one event.
         logger.output(action, 'command', f'$ {command}', output)
         transcript.append(f'$ {command}\n{output}')
 
@@ -304,13 +264,7 @@ def run_reply_commands_handler(action, ctx):
 
 
 def _approved_commands(action, commands, cwd) -> set:
-    """Indices of the commands a human allowed. Every index when the gate is off.
-
-    A command already blocked by refusal_for() is shown as blocked in the
-    prompt rather than hidden, so nobody is asked to think about something that
-    was never going to run — and so the block itself is visible at the one
-    moment somebody is reading the list.
-    """
+    """Return approved command indices. Label commands that are already blocked."""
     items = []
     for command in commands:
         refusal = refusal_for(command)

@@ -23,9 +23,7 @@ from ...test_core import _EventLog
 
 
 class _ApprovingIO:
-    """Answers every prompt 'y'. A whitelisted command still reaches
-    approval.confirm() (required=True, 573aee4) even when the handler is
-    called directly, so it has to reach something other than the terminal."""
+    """Approve every test prompt."""
 
     def prompt(self, prompt_id, text):
         return 'y'
@@ -60,8 +58,7 @@ class TestShellActionsUnit(unittest.TestCase):
         )
         self.assertIn("world", result["data"])
 
-    def test_injection_chars_stripped_from_variable(self):
-        # Semicolons in AI-supplied values are stripped before substitution.
+    def test_injection_chars_are_quoted_as_one_argument(self):
         result = shell_actions.handler(
             {"id": "out", "command": "echo {msg}"},
             {"msg": "safe; echo HACKED"}
@@ -80,11 +77,11 @@ class TestShellActionsUnit(unittest.TestCase):
             )
         self.assertIsNone(result)
 
-    def test_compound_command_all_whitelisted(self):
-        result = shell_actions.handler(
-            {"id": "out", "command": "echo a && echo b"}, {}
-        )
-        self.assertIsNotNone(result)
+    def test_compound_command_is_refused_instead_of_fake_executed(self):
+        with patch('builtins.print'):
+            result = shell_actions.handler(
+                {"id": "out", "command": "echo a && echo b"}, {})
+        self.assertIsNone(result)
 
     def test_compound_command_one_blocked(self):
         with patch('builtins.print'):
@@ -107,32 +104,38 @@ class TestShellActionsUnit(unittest.TestCase):
         result = shell_actions.handler({"id": "my_out", "command": "echo x"}, {})
         self.assertEqual(result["id"], "my_out")
 
+    def test_rejected_approval_never_executes(self):
+        with patch.object(shell_actions.approval, 'confirm', return_value=False), \
+                patch.object(shell_actions, 'execute') as execute_command:
+            result = shell_actions.handler(
+                {"id": "out", "command": "echo no"}, {})
+        execute_command.assert_not_called()
+        self.assertEqual(result['error'], 'shell: command was not approved')
+
 
 class TestExecutablesIn(unittest.TestCase):
 
     def test_single_command(self):
         self.assertEqual(_executables_in("ping 8.8.8.8"), ["ping"])
 
-    def test_compound_and(self):
-        names = _executables_in("ifconfig && arp -a")
-        self.assertIn("ifconfig", names)
-        self.assertIn("arp", names)
+    def test_compound_and_is_not_an_argv(self):
+        self.assertEqual(_executables_in("ifconfig && arp -a"), [])
 
     def test_compound_semicolon(self):
-        names = _executables_in("echo a; echo b")
-        self.assertEqual(names.count("echo"), 2)
+        self.assertEqual(_executables_in("echo a; echo b"), [])
 
     def test_pipe(self):
-        names = _executables_in("cat /etc/hosts | grep local")
-        self.assertIn("cat", names)
-        self.assertIn("grep", names)
+        self.assertEqual(_executables_in("cat /etc/hosts | grep local"), [])
+
+    def test_quoted_semicolon_is_an_argument_not_an_operator(self):
+        self.assertEqual(_executables_in("echo 'safe; still one arg'"), ['echo'])
+
+    def test_malformed_quoting_has_no_executable(self):
+        self.assertEqual(_executables_in("echo 'unfinished"), [])
 
 
 class TestBlockedArguments(unittest.TestCase):
-    """`find` is whitelisted, so the flags that let it run other commands
-    must not be. _executables_in only inspects the first token of each
-    segment, so `find . -exec rm -rf {} ;` would otherwise present `find` and
-    hide `rm`."""
+    """Block `find` flags that execute commands or write files."""
 
     def setUp(self):
         self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
@@ -174,14 +177,15 @@ class TestBlockedArguments(unittest.TestCase):
         self.assertEqual(_blocked_arguments_in("find . -type f"), [])
         self.assertEqual(_blocked_arguments_in("find . -exec ls {} ;"), ["-exec"])
 
+    def test_malformed_input_does_not_use_approximate_tokenization(self):
+        self.assertEqual(_blocked_arguments_in("find 'broken -exec"), [])
+
     def test_blocked_arguments_is_frozenset(self):
         self.assertIsInstance(BLOCKED_ARGUMENTS, frozenset)
 
 
 class TestInterpolation(unittest.TestCase):
-    """Shell syntax is full of braces that are not placeholders. str.format_map
-    raises ValueError on `{}`, which would kill the run rather than refuse the
-    command — `find . -exec rm -rf {} ;` must reach the guard to be blocked."""
+    """Replace named placeholders without consuming shell braces."""
 
     def setUp(self):
         self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
@@ -201,6 +205,16 @@ class TestInterpolation(unittest.TestCase):
         self.assertEqual(_interpolate("echo {msg}", {"msg": "a b"}),
                          "echo 'a b'")
 
+    def test_operator_text_from_a_placeholder_remains_one_argv(self):
+        command = _interpolate('echo {msg}', {'msg': 'safe; echo HACKED'})
+        with patch.object(shell_actions.subprocess, 'run') as run:
+            run.return_value.stdout = ''
+            run.return_value.stderr = ''
+            run.return_value.returncode = 0
+            execute(command)
+        self.assertEqual(run.call_args.args[0],
+                         ['echo', 'safe; echo HACKED'])
+
     def test_unquoted_mode_passes_the_value_through(self):
         self.assertEqual(_interpolate("{dir}", {"dir": "out/x"}, quote=False),
                          "out/x")
@@ -216,8 +230,7 @@ class TestInterpolation(unittest.TestCase):
 
 
 class TestRefusalFor(unittest.TestCase):
-    """The single gate. Both the `shell` action and runReplyCommands go
-    through it, so a command refused for one is refused for the other."""
+    """Shared command checks for shell actions."""
 
     def test_whitelisted_command_is_allowed(self):
         self.assertIsNone(refusal_for("echo hello"))
@@ -236,6 +249,20 @@ class TestRefusalFor(unittest.TestCase):
                         "pytest -q", "npm test", "make build", "git status"):
             with self.subTest(command=command):
                 self.assertIsNone(refusal_for(command))
+
+    def test_every_unquoted_shell_operator_shape_is_refused(self):
+        for operator in ('&', '&&', '|', '||', ';', '>', '>>', '>>>', '<', '<<'):
+            with self.subTest(operator=operator):
+                self.assertIn('operator', refusal_for(f'echo left {operator} echo right'))
+
+    def test_quoted_operator_characters_are_plain_arguments(self):
+        for command in ("echo 'a && b > c'", "echo '&&'", 'echo ">"',
+                        r'echo escaped\;semicolon'):
+            with self.subTest(command=command):
+                self.assertIsNone(refusal_for(command))
+
+    def test_malformed_quoting_is_refused(self):
+        self.assertIn('parse', refusal_for("echo 'unfinished"))
 
 
 class TestExecute(unittest.TestCase):
@@ -332,13 +359,11 @@ class TestRunReplyCommands(unittest.TestCase):
                 {"id": "out", "reply": "r"},
                 {"r": "```bash\necho first\necho second\n```"})
 
-        # In the transcript, not dropped: the next pass reads this, and a
-        # command that vanished would have it conclude the check passed.
+        # The next workflow step must see skipped commands.
         self.assertIn("[skipped: not approved]", result["data"])
         self.assertNotIn("first\n", result["data"].replace("$ echo first", ""))
         self.assertIn("second", result["data"])
-        # A command already blocked is shown as blocked at the moment somebody
-        # is reading the list, rather than hidden.
+        # The approval prompt lists every command.
         self.assertIn("echo first", channel.prompts[0])
 
     def test_reply_without_commands_returns_empty(self):
@@ -390,8 +415,7 @@ class TestRunReplyCommands(unittest.TestCase):
         self.assertEqual(result["id"], "cmd_out")
 
     def test_command_and_every_output_line_reach_the_event_bus(self):
-        # The front-ends draw what they receive, so output that only lands in
-        # the returned data is output nobody watching the run ever sees.
+        # Front-ends receive every output line.
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, 'lines.txt'), 'w') as handle:
                 handle.write('one\ntwo\nthree\n')
@@ -404,8 +428,7 @@ class TestRunReplyCommands(unittest.TestCase):
             self.assertIn(line, logged)
 
     def test_a_command_and_its_output_arrive_as_one_event(self):
-        # Two commands back to back must not interleave, so each command and
-        # the lines it printed are a single message.
+        # Keep each command and its output in one event.
         reply = "```bash\necho first\necho second\n```"
         with _EventLog() as log:
             self._run({"id": "out", "reply": "r"}, {"r": reply})
@@ -413,7 +436,7 @@ class TestRunReplyCommands(unittest.TestCase):
                          ['$ echo first\nfirst', '$ echo second\nsecond'])
 
     def test_a_silent_command_logs_the_command_alone(self):
-        # No trailing blank line for a command that printed nothing.
+        # Silent commands have no trailing blank line.
         with _EventLog() as log:
             self._run({"id": "out", "reply": "r"}, {"r": "```bash\necho\n```"})
         self.assertEqual(log.outputs('command'), ['$ echo'])
@@ -425,6 +448,11 @@ class TestShellWorkflowLayer(unittest.TestCase):
         self._io_patch = patch.object(io, 'get', return_value=_ApprovingIO())
         self._io_patch.start()
         self.addCleanup(self._io_patch.stop)
+        # These local-only workflows do not need an LLM preflight.
+        self._preflight_patch = patch(
+            'clay.run.preflight.run_checks', return_value=None)
+        self._preflight_patch.start()
+        self.addCleanup(self._preflight_patch.stop)
 
     def test_output_stored_by_action_id(self):
         with tempfile.TemporaryDirectory() as d:

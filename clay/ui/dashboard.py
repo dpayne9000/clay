@@ -1,7 +1,6 @@
-"""Process Management Dashboard — hacker-style multi-agent control center.
+"""Display running workflow processes in a full-screen dashboard.
 
-Full-screen dashboard showing each running agent in its own card with
-live terminal output, metrics, status indicators, and controls.
+Each workflow has a card with live output, metrics, status, and controls.
 """
 import time
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QSize
@@ -19,7 +18,7 @@ from ..run.renderers.detail import payload_lines, skipped_reason
 # ── Metrics bar ──────────────────────────────────────────────────────────────
 
 class MetricsBar(QWidget):
-    """Top bar showing aggregate stats across all agents."""
+    """Display aggregate statistics across all workflows."""
 
     def __init__(self, manager):
         super().__init__()
@@ -102,7 +101,7 @@ class MetricsBar(QWidget):
 # ── Agent card ───────────────────────────────────────────────────────────────
 
 class AgentCard(QFrame):
-    """Single agent card with status, terminal, metrics, and controls."""
+    """Display one workflow's status, output, metrics, and controls."""
 
     stop_requested = Signal(str)
     input_submitted = Signal(str, str)  # wf_id, text
@@ -119,7 +118,7 @@ class AgentCard(QFrame):
         self._status = 'starting'
         self._started = time.time()
 
-        # Output buffer — flushed by timer to avoid per-line repaints
+        # Batch output to avoid repainting for every line.
         self._pending_lines = []
 
         self.setObjectName('agentCard')
@@ -175,7 +174,7 @@ class AgentCard(QFrame):
         sl.setContentsMargins(10, 2, 10, 2)
         sl.setSpacing(16)
 
-        # Cache value label references directly — no findChild on every update
+        # Retain label references to avoid repeated widget-tree searches.
         self._step_label,   self._step_val   = self._stat('STEP',   '-')
         self._action_label, self._action_val = self._stat('ACTION', '-')
         self._events_label, self._events_val = self._stat('EVTS',   '0')
@@ -255,7 +254,7 @@ class AgentCard(QFrame):
         self._flush_timer.start()
 
     def _stat(self, label, value):
-        """Return (container_widget, value_label) — caller stores both."""
+        """Return the metric container and its value label."""
         w = QWidget()
         w.setStyleSheet('border: none;')
         hl = QHBoxLayout(w)
@@ -279,7 +278,7 @@ class AgentCard(QFrame):
             'stopped':  ('#8e8e8e', '#121212'),
         }
         dot_color, bg_tint = _colors.get(status, ('#4a7fa5', '#0a1018'))
-        # Single batch stylesheet update — avoids double repaint
+        # Update the stylesheet once to avoid a second repaint.
         self._status_dot.setStyleSheet(f'color: {dot_color}; font-size: 10px; border: none;')
         self._status_bar.setStyleSheet(
             f'background: {bg_tint}; color: {dot_color};'
@@ -304,7 +303,7 @@ class AgentCard(QFrame):
     # ── Buffered terminal output ──────────────────────────────────────────
 
     def append_output(self, text):
-        """Queue a line — flushed in batch by the 50 ms timer."""
+        """Queue a line for the next batched terminal update."""
         self._pending_lines.append(text)
 
     def _flush_output(self):
@@ -334,7 +333,7 @@ class AgentCard(QFrame):
         self._workspace_bar.hide()
         self._input.clear()
 
-    # ── Stat updates (direct label reference — no findChild) ─────────────
+    # ── Statistic updates ────────────────────────────────────────────────
 
     def on_step(self, step):
         self._step = step
@@ -367,7 +366,7 @@ class AgentCard(QFrame):
 # ── Dashboard ────────────────────────────────────────────────────────────────
 
 class ProcessDashboard(QWidget):
-    """Full-screen process management dashboard."""
+    """Display the full-screen workflow process dashboard."""
 
     open_workflow_requested = Signal(str)
 
@@ -457,7 +456,7 @@ class ProcessDashboard(QWidget):
     # ── Sync with daemon state ───────────────────────────────────────────
 
     def _sync(self):
-        """Create cards for any existing agents."""
+        """Create cards for workflows already known to the manager."""
         for row in self._mgr.model._rows:
             self._ensure_card(row.wf_id, row.name)
             card = self._cards.get(row.wf_id)
@@ -477,7 +476,7 @@ class ProcessDashboard(QWidget):
         return card
 
     def _relayout(self):
-        """Reflow cards into a 1- or 2-column grid with minimal widget moves.
+        """Arrange cards in one or two columns with minimal widget moves.
 
         Only cards whose target position differs from their current position
         are touched, so existing cards never flicker when a new one is added.
@@ -486,13 +485,13 @@ class ProcessDashboard(QWidget):
         target_cols = 2 if len(cards) > 1 else 1
         desired = {card: (i // target_cols, i % target_cols) for i, card in enumerate(cards)}
 
-        # Remove cards that are displaced (gone from _cards or need to move)
+        # Remove cards that no longer exist or need a new grid position.
         for card, old_pos in list(self._card_positions.items()):
             if card not in desired or desired[card] != old_pos:
                 self._grid_layout.removeWidget(card)
                 del self._card_positions[card]
 
-        # Add / place cards at their target positions
+        # Place each card at its target grid position.
         for card, pos in desired.items():
             if self._card_positions.get(card) != pos:
                 self._grid_layout.addWidget(card, pos[0], pos[1])
@@ -501,7 +500,7 @@ class ProcessDashboard(QWidget):
 
         self._cols = target_cols
 
-        # Empty-state label
+        # Show the empty-state label only when no cards exist.
         if cards:
             if self._empty_in_grid:
                 self._grid_layout.removeWidget(self._empty)
@@ -561,8 +560,8 @@ class ProcessDashboard(QWidget):
             elif t in ('action.error', 'run.error'):
                 card.append_output(f'  !! {data.get("message", "")}')
             elif t == 'action.output':
-                # File contents, command output and model prompts used to
-                # arrive as log events and were drawn by the branch below.
+                # Structured output events now carry file, command, and prompt
+                # content that previously arrived through log events.
                 card.append_output(payload_lines(data))
             elif t == 'action.skipped':
                 card.append_output(f'  ▸ skipped  {data.get("id", "")}  '
@@ -600,9 +599,7 @@ class ProcessDashboard(QWidget):
         self._mgr._on_input(wf_id, text)
 
     def _launch_agent(self):
-        # Opens on the writable workflow folder — the workflows a person has.
-        # This walked up from __file__ to clay's own checkout, which is only
-        # the right directory when clay is run from source.
+        # Open the writable user workflow folder rather than the package source.
         from ..lib import paths as _paths
         path, _ = QFileDialog.getOpenFileName(
             self, 'Select workflow to launch', _paths.workflow_folder(),

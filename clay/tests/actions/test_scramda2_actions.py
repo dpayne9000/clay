@@ -127,6 +127,24 @@ class TestScramda2Handler(unittest.TestCase):
         )
         self.assertEqual(mock_fire.call_args.kwargs["max_tokens"], 512)
 
+    @patch.object(scramda2_actions.app_config, 'get_max_tokens', return_value=4096)
+    @patch.object(scramda2_actions.gopher, 'fire', return_value="ok")
+    def test_config_max_tokens_is_the_action_default(self, mock_fire, _):
+        scramda2_actions.handler(
+            {"id": "out", "prompt": "Go", "examples": []},
+            {}
+        )
+        self.assertEqual(mock_fire.call_args.kwargs["max_tokens"], 4096)
+
+    @patch.object(scramda2_actions.app_config, 'get_max_tokens', return_value=4096)
+    @patch.object(scramda2_actions.gopher, 'fire', return_value="ok")
+    def test_action_max_tokens_overrides_config_default(self, mock_fire, _):
+        scramda2_actions.handler(
+            {"id": "out", "prompt": "Go", "examples": [], "max_tokens": 512},
+            {}
+        )
+        self.assertEqual(mock_fire.call_args.kwargs["max_tokens"], 512)
+
 
 class TestScramda2WorkflowLayer(unittest.TestCase):
 

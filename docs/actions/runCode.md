@@ -19,6 +19,10 @@ One of `source` or `sourceKey` is required.
 
 The source is written to a temp file with the appropriate extension (`.py`, `.sh`, `.js`), executed with the matching interpreter, and the temp file is deleted afterward. Stdout is returned. Stderr is not captured to the result but non-zero exit codes append `\n[exit code: N]` to the output.
 
+Before writing or executing the source, the required `commands` gate displays
+the language and complete source for approval. An unattended daemon can proceed
+only when the project already has advance command permission.
+
 ## Examples
 
 ### Run inline Python
@@ -70,4 +74,5 @@ When using AI-generated code via `sourceKey`, the AI should output plain Python 
 
 - Code runs with full system access — there is no sandbox. Only run trusted, reviewed code
 - For AI-generated code that may contain markdown fences, use `writeCode` to write to disk first, then use `humanShell` to run it with human approval — this is safer than executing fenced output directly
-- The `python` action (`type: python`) runs inline code in an `exec()` sandbox with no builtins. `runCode` with `language: python` uses a real subprocess — prefer `runCode` when you need imports or access to the filesystem
+- The `python` action uses inline `exec()` with empty builtins after approval;
+  it is not a security sandbox. `runCode` uses a normal subprocess.

@@ -12,7 +12,7 @@ class Loop:
     file:        str = req("Path to the sub-workflow JSON file to run each iteration")
     iterations:  int = opt("Max iterations. 0 or absent = infinite (requires continueKey)", 0)
     continueKey: str = opt("Sub-workflow output key checked for stop signal (false/done/0/no/stop/empty)", None)
-    outputKey:   str = opt("Sub-workflow output key previewed in the run log each iteration; does not change stored context", "final")
+    outputKey:   str = opt("Secondary storage key for the complete final iteration context", "final")
     merge:      bool = opt("Publish the last iteration's action ids into the calling workflow instead of one nested dict", False)
 
 
@@ -28,9 +28,6 @@ def handler(action, ctx, auto=False, auto_context=None, engine_globals=None):
         on top of parent_seed so action IDs from the last run are available and
         overwrite stale values from earlier iterations (one iteration of memory)
       - iteration: current iteration number as a string
-    loop_history (the outputKey values from each iteration) is written to the
-    run log only — it is NOT injected into the iteration seed, keeping the
-    context window bounded.
     """
     log = logger.get()
     ref = action.get('file')
@@ -56,8 +53,6 @@ def handler(action, ctx, auto=False, auto_context=None, engine_globals=None):
         max_iterations = min(max_iterations, 10000)
 
     continue_key = action.get('continueKey')
-    output_key = action.get('outputKey', 'final')
-
     if infinite and not continue_key:
         logger.warn("loop: infinite mode requires 'continueKey' — defaulting to 1000 iterations")
         max_iterations = 1000
@@ -72,7 +67,6 @@ def handler(action, ctx, auto=False, auto_context=None, engine_globals=None):
     prev_result_data = {}
 
     result_data = {}
-    last_output = None
     i = 0
 
     while True:
@@ -102,12 +96,6 @@ def handler(action, ctx, auto=False, auto_context=None, engine_globals=None):
 
         # Keep one iteration of memory — next iteration sees this run's outputs.
         prev_result_data = result_data
-
-        last_output = result_data.get(output_key)
-        if last_output is not None and log:
-            # History is logged for observability but not passed into the seed,
-            # preventing the context window from growing with each iteration.
-            log.log(f'LOOP  history iter={i}  {output_key}="{str(last_output)[:120]}"')
 
         if continue_key:
             continue_val = result_data.get(continue_key, '')

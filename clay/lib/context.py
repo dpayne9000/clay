@@ -1,7 +1,7 @@
 """Context filtering utilities for action handlers."""
 
-# Kept as a public compatibility constant. Nothing is blocked: when
-# includedData is absent, every accumulated value is passed to the action.
+# Preserve this public compatibility constant. An absent includedData field
+# passes every accumulated value to the action.
 RESERVED_KEYS = frozenset()
 
 # Engine-seeded globals. Ordinary actions must list these in includedData to
@@ -11,7 +11,7 @@ PASSTHROUGH_KEYS = frozenset({'__config__', '__schema__', '__workflow_template__
 
 
 def _resolve_path(base: dict, path: str):
-    """Walk a dot-separated path into nested dicts. Returns (value, found)."""
+    """Resolve a dotted dictionary path and return (value, found)."""
     val = base
     for part in path.split('.'):
         if isinstance(val, dict) and part in val:
@@ -24,22 +24,17 @@ def _resolve_path(base: dict, path: str):
 def build_ctx(step_output: dict, action: dict) -> dict:
     """Build the context dict passed to an action handler.
 
-    When includedData is absent: returns everything minus RESERVED_KEYS
-    (backward-compatible, no change for existing actions).
+    Without includedData, return a shallow copy of all accumulated values.
 
-    When includedData is present: returns only the listed keys.
-    Engine-seeded globals (__config__, __schema__, __workflow_template__) are
-    only delivered when explicitly listed — the engine does NOT auto-inject
-    them.
-    Supports dot-paths and optional alias prefix:
+    With includedData, return only listed keys. Engine globals require explicit
+    inclusion. Entries support dotted paths and optional aliases:
       "key"          → ctx["key"] = step_output["key"]
       "a.b"          → ctx["b"]   = step_output["a"]["b"]   (leaf as key name)
       "alias=a.b.c"  → ctx["alias"] = step_output["a"]["b"]["c"]
     """
     included = action.get('includedData')
     if included is None:
-        # Return a shallow copy so handlers can add/remove input keys without
-        # mutating the engine's accumulated context.
+        # Isolate handler key changes from the accumulated engine context.
         return dict(step_output)
 
     ctx = {}

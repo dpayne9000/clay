@@ -1,0 +1,47 @@
+{
+  "autoContext": "Generates a complete, applyable Terraform repo for an ECS Fargate cluster/service/task-definition behind an ALB, scoped to an EXISTING VPC and subnets supplied at intake. CREATION pattern: intake -> render -> apply -> verify -> postread.",
+  "workflow": {
+    "steps": ["intake", "render", "apply", "verify", "postread"]
+  },
+  "actionSets": {
+    "intake": [
+      { "id": "workspace", "type": "humanDecision",
+        "prompt": "Workspace-relative output directory for the generated repo (e.g. infra/ecs-cluster):" },
+      { "id": "project_name", "type": "humanDecision",
+        "prompt": "Project/environment name to prefix resource names (e.g. acme-prod):" },
+      { "id": "aws_region", "type": "humanDecision",
+        "prompt": "AWS region (e.g. us-east-1):" },
+      { "id": "vpc_id", "type": "humanDecision",
+        "prompt": "Existing VPC id to deploy into (e.g. vpc-0abc123). This workflow does not create a VPC:" },
+      { "id": "subnet_ids", "type": "humanDecision",
+        "prompt": "Comma-separated existing subnet ids for the ALB and ECS tasks (at least two, in different AZs):" },
+      { "id": "container_image", "type": "humanDecision",
+        "prompt": "Container image to run, including tag (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/acme-api:latest):" },
+      { "id": "container_port", "type": "humanDecision",
+        "prompt": "Container port the app listens on (e.g. 8080):" },
+      { "id": "desired_count", "type": "humanDecision",
+        "prompt": "Desired task count (e.g. 2):" },
+      { "id": "cpu_memory", "type": "humanDecision",
+        "prompt": "Fargate task size as \"cpu,memory\" in the AWS-valid combinations (e.g. 256,512):" }
+    ],
+    "render": [
+      {
+        "id": "terraform_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["workspace", "project_name", "aws_region", "vpc_id", "subnet_ids", "container_image", "container_port", "desired_count", "cpu_memory"],
+        "prompt": "Generate a complete, self-contained Terraform repository for an ECS Fargate service behind an Application Load Balancer, deployed into an EXISTING VPC and existing subnets — do not create a VPC, subnets, NAT gateway, or internet gateway.\n\nSPECS:\n  output directory: {workspace}\n  project/environment prefix: {project_name}\n  AWS region: {aws_region}\n  existing VPC id: {vpc_id}\n  existing subnet ids: {subnet_ids}\n  container image: {container_image}\n  container port: {container_port}\n  desired task count: {desired_count}\n  task cpu,memory: {cpu_memory}\n\nEmit these files, each as its own path-bearing fence rooted at {workspace}/:\n  versions.tf       — terraform block, required_providers (hashicorp/aws, pinned major version), required_version\n  variables.tf       — one variable per SPEC above (subnet_ids as list(string)), with type and description, no hardcoded defaults for anything SPEC-supplied\n  main.tf            — aws_ecs_cluster, aws_ecs_task_definition (Fargate, awsvpc network mode, container definition built from container_image/container_port via jsonencode), aws_iam_role + aws_iam_role_policy_attachment for the task execution role (AmazonECSTaskExecutionRolePolicy), aws_security_group for the ECS tasks (ingress from the ALB security group only, on container_port), aws_security_group for the ALB (ingress 80 from 0.0.0.0/0), aws_lb, aws_lb_target_group (target_type = ip, health check on /), aws_lb_listener (port 80 forwarding to the target group), aws_ecs_service (Fargate launch type, network_configuration using the supplied subnet_ids and the task security group, load_balancer block wired to the target group, depends_on the listener), aws_cloudwatch_log_group for the task's awslogs driver\n  outputs.tf         — cluster name, service name, ALB DNS name, log group name\n  terraform.tfvars.example — one line per variable with a realistic placeholder value, no real secrets\n  README.md          — what this deploys, prerequisites (AWS credentials, an existing VPC with the subnets already routed appropriately — public for the ALB, private-with-NAT or public for the tasks depending on the subnets supplied), and the exact terraform init/plan/apply commands to run from {workspace}\n\nEvery resource name must incorporate {project_name} so this repo is safely deployable alongside others in the same account/VPC. Do not invent variables not listed in SPECS without also adding them to variables.tf with a sensible default. Do not include a provider \"aws\" block with a hardcoded profile or access key — region only, sourced from the aws_region variable.\n\nAfter the files, include ONE pathless bash fence that does exactly:\ncd {workspace} && terraform init -backend=false && terraform validate\nNo other commentary outside the fences."
+      }
+    ],
+    "apply": [
+      { "id": "files_written", "type": "applyFileWrites", "reply": "terraform_reply" }
+    ],
+    "verify": [
+      { "id": "validate_output", "type": "runReplyCommands", "reply": "terraform_reply", "when": "files_written" }
+    ],
+    "postread": [
+      { "id": "written_contents", "type": "serveFileReads", "reply": "terraform_reply",
+        "pathsKey": "files_written", "when": "files_written" }
+    ]
+  }
+}

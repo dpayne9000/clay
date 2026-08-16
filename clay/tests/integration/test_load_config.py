@@ -104,7 +104,7 @@ class TestLoadConfigSelfHealing(unittest.TestCase):
                 result = _load_config()
         self.assertEqual(result['__config__'], self._baked_in_defaults())
 
-    def test_valid_config_left_untouched(self):
+    def test_valid_config_gains_new_managed_defaults_without_losing_values(self):
         fake_config = {"models": {"fast": "llama-3-8b"}, "env": "test"}
         with tempfile.TemporaryDirectory() as d:
             cfg = os.path.join(d, 'config.json')
@@ -114,8 +114,22 @@ class TestLoadConfigSelfHealing(unittest.TestCase):
             with cfg_patch, schema_patch:
                 result = _load_config()
                 with open(cfg) as f:
-                    self.assertEqual(json.load(f), fake_config)
-        self.assertEqual(result['__config__'], fake_config)
+                    updated = json.load(f)
+        self.assertEqual(updated['models'], fake_config['models'])
+        self.assertEqual(updated['env'], 'test')
+        self.assertEqual(updated['maxTokens'], lib_config.DEFAULT_MAX_TOKENS)
+        self.assertEqual(result['__config__'], updated)
+
+    def test_existing_max_tokens_is_preserved(self):
+        fake_config = {"maxTokens": 12345, "models": {"default": "model"}}
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, 'config.json')
+            with open(cfg, 'w') as f:
+                json.dump(fake_config, f)
+            cfg_patch, schema_patch = self._patched_paths(d)
+            with cfg_patch, schema_patch:
+                result = _load_config()
+        self.assertEqual(result['__config__']['maxTokens'], 12345)
 
 
 class TestLoadConfigContent(unittest.TestCase):

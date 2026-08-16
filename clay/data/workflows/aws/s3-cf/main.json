@@ -1,0 +1,41 @@
+{
+  "autoContext": "Generates a complete, applyable Terraform repo for a private S3 bucket fronted by CloudFront (Origin Access Control, no public bucket ACLs). CREATION pattern: intake -> render -> apply -> verify -> postread.",
+  "workflow": {
+    "steps": ["intake", "render", "apply", "verify", "postread"]
+  },
+  "actionSets": {
+    "intake": [
+      { "id": "workspace", "type": "humanDecision",
+        "prompt": "Workspace-relative output directory for the generated repo (e.g. infra/s3-cf):" },
+      { "id": "project_name", "type": "humanDecision",
+        "prompt": "Project/environment name to prefix resource names (e.g. acme-prod):" },
+      { "id": "aws_region", "type": "humanDecision",
+        "prompt": "AWS region (e.g. us-east-1):" },
+      { "id": "bucket_name", "type": "humanDecision",
+        "prompt": "S3 bucket name (must be globally unique):" },
+      { "id": "domain_name", "type": "humanDecision",
+        "prompt": "Custom domain to serve via CloudFront + ACM + Route53, or NONE for the default *.cloudfront.net domain:" },
+      { "id": "enable_versioning", "type": "humanDecision",
+        "prompt": "Enable S3 bucket versioning? yes/no:" }
+    ],
+    "render": [
+      {
+        "id": "terraform_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["workspace", "project_name", "aws_region", "bucket_name", "domain_name", "enable_versioning"],
+        "prompt": "Generate a complete, self-contained Terraform repository for a private S3 bucket served through CloudFront using Origin Access Control (OAC) — no public bucket ACLs, no legacy Origin Access Identity.\n\nSPECS:\n  output directory: {workspace}\n  project/environment prefix: {project_name}\n  AWS region: {aws_region}\n  bucket name: {bucket_name}\n  custom domain: {domain_name}\n  versioning: {enable_versioning}\n\nEmit these files, each as its own path-bearing fence rooted at {workspace}/:\n  versions.tf       — terraform block, required_providers (hashicorp/aws, pinned major version), required_version\n  variables.tf       — one variable per SPEC above, with type and description, no hardcoded defaults for anything SPEC-supplied\n  main.tf            — aws_s3_bucket (private), aws_s3_bucket_public_access_block (block everything), aws_s3_bucket_versioning if requested, aws_cloudfront_origin_access_control, aws_cloudfront_distribution (OAC origin, viewer_certificate using ACM cert only if {domain_name} is not NONE, otherwise default CloudFront certificate), aws_s3_bucket_policy restricting GetObject to the CloudFront distribution's OAC via aws:SourceArn condition. If {domain_name} is not NONE, also emit aws_acm_certificate (us-east-1, DNS validation), aws_route53_record for validation and for the alias — assume the domain's hosted zone already exists and look it up with a data \"aws_route53_zone\" block by name, do not create the zone.\n  outputs.tf         — bucket name, bucket arn, distribution id, distribution domain name, and the custom domain if set\n  terraform.tfvars.example — one line per variable with a realistic placeholder value, no real secrets\n  README.md          — what this deploys, prerequisites (AWS credentials, existing Route53 zone if a domain is used), and the exact terraform init/plan/apply commands to run from {workspace}\n\nEvery resource name must incorporate {project_name} so this repo is safely deployable alongside others in the same account. Do not invent variables not listed in SPECS without also adding them to variables.tf with a sensible default. Do not include a provider \"aws\" block with a hardcoded profile or access key — region only, sourced from the aws_region variable.\n\nAfter the files, include ONE pathless bash fence that does exactly:\ncd {workspace} && terraform init -backend=false && terraform validate\nNo other commentary outside the fences."
+      }
+    ],
+    "apply": [
+      { "id": "files_written", "type": "applyFileWrites", "reply": "terraform_reply" }
+    ],
+    "verify": [
+      { "id": "validate_output", "type": "runReplyCommands", "reply": "terraform_reply", "when": "files_written" }
+    ],
+    "postread": [
+      { "id": "written_contents", "type": "serveFileReads", "reply": "terraform_reply",
+        "pathsKey": "files_written", "when": "files_written" }
+    ]
+  }
+}

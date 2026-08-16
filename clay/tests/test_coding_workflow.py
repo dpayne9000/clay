@@ -1,4 +1,4 @@
-"""Static contract tests for the shipped system/coding workflow."""
+"""Static contract tests for the shipped system/coding project builder."""
 
 import json
 import unittest
@@ -7,72 +7,87 @@ from pathlib import Path
 from ..lib import config
 
 
-WORKFLOW = Path(config.data_path('workflows', 'system', 'coding'))
+WORKFLOW = Path(config.data_path("workflows", "system", "coding"))
 
 
 def _load(name):
-    with (WORKFLOW / name).open(encoding='utf-8') as handle:
+    with (WORKFLOW / name).open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def _action(document, action_id):
-    for actions in document['actionSets'].values():
+    for actions in document["actionSets"].values():
         for action in actions:
-            if action.get('id') == action_id:
+            if action.get("id") == action_id:
                 return action
-    raise AssertionError(f'missing action {action_id!r}')
+    raise AssertionError(f"missing action {action_id!r}")
 
 
-class CodingFileContextTest(unittest.TestCase):
-    """serveFileReads returns '' when the evidence pass emitted NO_ACTION,
-    and process_steps stores that empty string over the declared default."""
+class CodingWorkflowTest(unittest.TestCase):
 
     def setUp(self):
-        self.iteration = _load('iteration.json')
+        self.main = _load("main.json")
+        self.iteration = _load("iteration.json")
+        self.file_iteration = _load("file-iteration.json")
+        self.training = _load("training.json")
 
-    def test_no_files_default_is_restored_after_the_read(self):
-        gate = _action(self.iteration, 'files_read')
-        self.assertEqual(gate['type'], 'matchText')
-        self.assertEqual(gate['source'], 'file_context')
-        self.assertEqual(gate['values'], [''])
-        self.assertEqual(gate['onMatch'], 'no')
+    def test_uses_editor_style_plan_and_construction_loops(self):
+        self.assertEqual(self.iteration["workflow"]["steps"], [
+            "context", "request", "route", "design", "write_plan",
+            "construct", "settle",
+        ])
+        construct = _action(self.iteration, "construction_result")
+        self.assertEqual(construct["type"], "loop")
+        self.assertEqual(construct["file"], "./file-iteration.json")
+        self.assertEqual(construct["continueKey"], "construction_decision")
+        self.assertTrue(construct["merge"])
 
-        restore = _action(self.iteration, 'no_files')
-        self.assertEqual(restore['whenNot'], 'files_read')
-        self.assertEqual(restore['file'], './no-files.json')
+    def test_design_creates_a_project_plan(self):
+        design = _action(self.iteration, "design_contract")
+        self.assertIn("```markdown PLAN.md", design["prompt"])
+        self.assertIn("source, tests, configuration", design["prompt"])
+        self.assertEqual(design["examples"],
+                         {"override": "plan_file_examples"})
+        self.assertEqual(_action(self.iteration, "plan_file_written")["reply"],
+                         "design_contract")
 
-    def test_restored_value_matches_the_declared_default(self):
-        self.assertEqual(_load('no-files.json')['file_context'],
-                         self.iteration['defaults']['file_context'])
+    def test_each_file_is_written_verified_read_back_and_reviewed(self):
+        steps = self.file_iteration["workflow"]["steps"]
+        for earlier, later in (("generate", "apply"), ("apply", "verify"),
+                               ("verify", "inspect"), ("inspect", "review"),
+                               ("review", "update_plan")):
+            self.assertLess(steps.index(earlier), steps.index(later))
+        self.assertEqual(_action(self.file_iteration, "files_written")["maxFiles"], 1)
+        self.assertEqual(_action(self.file_iteration, "verification_output")["type"],
+                         "runReplyCommands")
+        self.assertEqual(_action(self.file_iteration, "written_file_context")["type"],
+                         "serveFileReads")
+        review = _action(self.file_iteration, "construction_review")
+        self.assertIn("{files_written_error}", review["prompt"])
+        self.assertIn("{verification_output}", review["prompt"])
 
-    def test_the_gate_runs_after_the_read(self):
-        order = [action['id'] for action in
-                 self.iteration['actionSets']['read']]
-        self.assertEqual(order, ['file_context', 'files_read', 'no_files'])
-        steps = self.iteration['workflow']['steps']
-        self.assertLess(steps.index('read'), steps.index('act'))
+    def test_generation_uses_the_editor_file_fence_contract(self):
+        generation = _action(self.file_iteration, "file_reply")
+        prompt = generation["prompt"]
+        self.assertIn("actual filename from the PATH line", prompt)
+        self.assertIn("```python src/main.py", prompt)
+        self.assertIn("not the example filename and not the word PATH", prompt)
+        self.assertIn("Use no other fences or edit markers", prompt)
 
-    def test_the_no_evidence_training_shape_is_now_reachable(self):
-        """agent_examples taught a CURRENT FILES block the workflow could not
-        produce until the default was restored."""
-        restored = _load('no-files.json')['file_context']
-        examples = _load('training.json')['agent_examples']
-        self.assertTrue(
-            any(restored in example['input'] for example in examples),
-            'no agent example uses the restored no-evidence text',
-        )
+    def test_training_covers_multiple_project_ecosystems_and_file_types(self):
+        plan_text = json.dumps(self.training["plan_file_examples"])
+        generation_text = json.dumps(self.training["file_generation_examples"])
+        for expected in ("Python", "browser", "Go"):
+            self.assertIn(expected, plan_text)
+        for expected in ("```python", "```javascript", "```rust",
+                         "```json", "```html"):
+            self.assertIn(expected, generation_text)
 
-
-class CodingDeadDefaultTest(unittest.TestCase):
-
-    def test_command_output_carries_no_unreachable_default(self):
-        """runReplyCommands is ungated and returns '' with no bash fence, and
-        appendTranscript skips an empty entry, so the old default was never
-        read by anything."""
-        iteration = _load('iteration.json')
-        self.assertNotIn('command_output', iteration['defaults'])
-        self.assertIsNone(_action(iteration, 'command_output').get('when'))
+    def test_user_facing_summary_is_visible(self):
+        summary = _action(self.iteration, "turn_summary")
+        self.assertIs(summary["visible"], True)
+        self.assertIn("BUILD RECORD", summary["prompt"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,49 @@
+{
+  "autoContext": "One turn of an interactive story session: the player acts or speaks, the narrator/characters respond in the established voice, and the exchange is appended to the running transcript.",
+  "workflow": {
+    "steps": ["config", "ask", "narrate", "record", "continue_check"]
+  },
+  "actionSets": {
+    "config": [
+      { "id": "transcript_doc", "type": "readFile", "file": "transcript.md", "root": "{workspace}" }
+    ],
+    "ask": [
+      {
+        "id": "player_input",
+        "type": "humanDecision",
+        "prompt": "What do you do or say? Address a character by name for dialogue, describe an action, type LISTEN to let the story continue on its own, or type STOP to end the story:"
+      }
+    ],
+    "narrate": [
+      {
+        "id": "narration_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "includedData": ["story_doc", "transcript_doc", "player_input", "iteration"],
+        "prompt": "You are the narrator and every character's voice for this interactive story. This is turn {iteration}.\n\nSTORY BIBLE (canonical characters, motivations, and scenes — never invent a character or location beyond this bible):\n{story_doc}\n\nSTORY SO FAR (may say None if this is the opening turn — if so, open the story by setting the first scene from the bible):\n{transcript_doc}\n\nPLAYER INPUT:\n{player_input}\n\nWrite the next beat: narration and/or in-character dialogue, 2-6 sentences, staying strictly within the established characters, motivations, and scenes in the bible. If the player addresses a character or location not in the bible, have the narrator note that gently rather than inventing new canon. Format the output as a transcript entry, starting with the player's line quoted back, then the response:\n\n> {player_input}\n\n<your narration/dialogue here, character cues in CAPS before their lines, NARRATOR in caps for prose>\n\nOutput nothing else."
+      }
+    ],
+    "record": [
+      {
+        "id": "transcript_written",
+        "type": "writeFile",
+        "file": "transcript.md",
+        "root": "{workspace}",
+        "content": "narration_reply",
+        "append": true,
+        "ensureFinalNewline": true,
+        "stripCodeFence": false
+      }
+    ],
+    "continue_check": [
+      {
+        "id": "continue_story",
+        "type": "matchText",
+        "source": "player_input",
+        "values": ["stop"],
+        "onMatch": "no",
+        "onMiss": "yes"
+      }
+    ]
+  }
+}

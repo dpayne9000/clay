@@ -1,15 +1,11 @@
-"""Session commands — lines a human types that the workflow never sees.
+"""Handle session commands without passing them to the workflow.
 
-A prompt is the only moment a terminal user has the floor, so it is also the
-only place a session setting can be changed mid-run. That makes prompts do two
-jobs, and the two must not be confusable: `/manual on` changes a setting and
-re-asks the question, while `manual on` is an answer to whatever was asked.
-The leading slash is the whole distinction, and it is why a command is drawn
-differently from an answer rather than echoed back as one.
+A terminal accepts session commands while waiting at a prompt. A leading slash
+distinguishes `/manual on`, which changes a setting and repeats the prompt, from
+`manual on`, which answers the workflow's question.
 
-The grammar lives here, once, so the same words work at a terminal prompt and
-as a Telegram bot command. A setting that meant two things on two screens would
-be worse than no setting.
+The terminal and Telegram use this shared grammar so commands have consistent
+meaning across interfaces.
 """
 
 from . import approval
@@ -18,21 +14,19 @@ _HANDLERS = []
 
 
 def register(handler, *usages) -> None:
-    """Add a command. `handler(text) -> str | None`, None meaning "not mine".
+    """Register a command handler and its help entries.
 
-    `usages` are (form, summary) pairs for the help listing — several because
-    one handler can have more than one useful shape, and a help line per shape
-    is the point of having help at all.
+    A handler returns None for unrelated input. Each usage is a (form, summary)
+    pair, and one handler may advertise multiple forms.
     """
     _HANDLERS.append((handler, list(usages)))
 
 
 def handle(text: str):
-    """Apply `text` as a session command; return what to show, or None.
+    """Apply a session command and return its display message.
 
-    None means it was an ordinary answer and belongs to the workflow. A string
-    is always shown, including for a command that changed nothing — silence
-    after a typo would leave someone believing a gate is on when it is off.
+    Return None when `text` is an ordinary workflow answer. Commands always
+    return a message, including invalid commands that change no state.
     """
     raw = (text or '').strip()
     if not raw.startswith('/'):
@@ -48,7 +42,7 @@ def handle(text: str):
 
 
 def help_text() -> str:
-    """Every registered command, one per line."""
+    """List each registered command on a separate line."""
     return '\n'.join(f'  {form:<36} {summary}'
                      for _, usages in _HANDLERS for form, summary in usages)
 

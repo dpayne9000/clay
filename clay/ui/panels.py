@@ -38,11 +38,10 @@ QPlainTextEdit { background: #0a1018; color: #7fb3cc; border: 1px solid #1e2a3a;
 # ── Inspector ─────────────────────────────────────────────────────────────────
 
 class InspectorPanel(QWidget):
-    """Shows config, input, output, and timing for a selected node.
+    """Display configuration, data, and timing for the selected node.
 
-    For scramda2 action nodes an additional model/modelProfile editor is shown
-    below the property tree so the user can pick from the profiles defined in
-    configs/default.json without having to hand-edit the JSON.
+    scramda2 nodes also display model and modelProfile controls populated from
+    the effective configuration.
     """
 
     def __init__(self):
@@ -138,13 +137,13 @@ class InspectorPanel(QWidget):
         for k, v in meta.items():
             _add(root, k, v)
 
-        # Show/populate model section only for scramda2 action nodes
+        # Display model controls only for scramda2 actions.
         action_type = getattr(node, 'action_type', None)
         if action_type == 'scramda2':
             cfg = meta.get('config', {})
             current_profile = cfg.get('modelProfile') or ''
             current_model   = cfg.get('model') or ''
-            # Select profile in combo
+            # Select the action's configured profile.
             idx = 0
             for i in range(self._profile_combo.count()):
                 if self._profile_combo.itemData(i) == current_profile:
@@ -166,7 +165,7 @@ class InspectorPanel(QWidget):
         literal = self._model_edit.text().strip()
         cfg['modelProfile'] = profile or None
         cfg['model']        = literal or None
-        # Refresh tree display
+        # Refresh the property tree after applying changes.
         self.show_node(self._current_node)
 
     def clear(self):
@@ -178,13 +177,10 @@ class InspectorPanel(QWidget):
 # ── Log output ────────────────────────────────────────────────────────────────
 
 class LogPanel(QWidget):
-    """Live run output, and the row a workflow's questions are answered on.
+    """Display live run output and collect workflow answers.
 
-    Names every event through clay.run.events rather than string literals. The
-    literals here had drifted: `workflow.start`/`workflow.complete` are not in
-    the vocabulary — the events are `run.start`/`run.complete` — so neither
-    branch had ever fired, and there was no `log` branch at all, which is why
-    warnings and errors never reached this panel.
+    Event comparisons use clay.run.events constants so this panel remains
+    synchronized with the engine vocabulary.
     """
 
     input_submitted = Signal(str, str)   # prompt id, answer
@@ -259,17 +255,13 @@ class LogPanel(QWidget):
     # ── manual approval ──────────────────────────────────────────────────────
 
     def _approval_row(self) -> QWidget:
-        """The master switch and one box per gate, always visible.
+        """Build the persistent master switch and individual gate controls.
 
-        Four boxes rather than one, because the three gates are three different
-        propositions: approving every read in a workspace is routine where
-        approving every write is the thing manual mode exists to stop. A single
-        switch would force the noisiest setting on anyone who wanted the
-        strictest one.
+        Separate controls let users apply different approval policies to reads,
+        writes, and commands.
 
-        Wired straight to clay.run.approval because `clay ui` runs its workflow
-        on a worker thread of *this* process — there is no relay to cross, and
-        the setting a box shows is the setting the next write reads.
+        The UI and workflow share a process, so controls update
+        clay.run.approval directly.
         """
         row = QWidget()
         box_layout = QHBoxLayout(row)
@@ -297,22 +289,17 @@ class LogPanel(QWidget):
 
     # ── busy indicator ───────────────────────────────────────────────────────
 
-    #: Same frames and cadence as the CLI spinner, so the two surfaces of one
-    #: product do not each invent their own idea of "working".
+    #: Spinner frames and cadence shared with the CLI presentation.
     BUSY_FRAMES = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     BUSY_INTERVAL_MS = 80
-    #: The label sits on a row beside four checkboxes, so it is cut well below
-    #: logger.BUSY_PREVIEW_MAX_CHARS — a longer one stretches the whole panel.
+    #: Maximum label length that fits beside the approval controls.
     BUSY_LABEL_MAX = 40
 
     def _busy_label(self) -> QLabel:
-        """The 'working…' label, hidden until an action raises a busy event.
+        """Build the working label shown during active operations.
 
-        A label rather than a progress bar: it can say *what* is being waited
-        for, which is the whole reason the event carries a prompt preview, and
-        a bar cannot. Driven by a QTimer on the GUI thread. WorkflowManager
-        marshals clayd's EventSubscriber callback through a queued Qt signal
-        before this panel receives it, so nothing here needs marshalling.
+        A label can identify the active operation. A GUI-thread QTimer animates
+        it after WorkflowManager marshals events through a queued Qt signal.
         """
         self._busy = QLabel('')
         self._busy.setStyleSheet('color: #7fa8c9;')
@@ -325,7 +312,7 @@ class LogPanel(QWidget):
         return self._busy
 
     def _set_busy(self, event: dict) -> None:
-        """Raise, relabel or drop the indicator. `active` is a level."""
+        """Start, relabel, or stop the working indicator."""
         if not event.get('active'):
             self._clear_busy()
             return
@@ -335,7 +322,7 @@ class LogPanel(QWidget):
             self._busy_timer.start()
 
     def _clear_busy(self) -> None:
-        """Idempotent — the run-ending branches all call it unconditionally."""
+        """Clear the working indicator safely from any run-ending branch."""
         self._busy_timer.stop()
         self._busy.setVisible(False)
         self._busy.setText('')
@@ -355,11 +342,10 @@ class LogPanel(QWidget):
         self.append(f'\n»  {approval.summary()}')
 
     def _sync_approval_boxes(self) -> None:
-        """Grey the gates out when the master switch is off.
+        """Disable individual gate controls when manual approval is off.
 
-        Disabled rather than unchecked: the arrangement someone chose survives
-        turning manual mode off and comes back when they turn it on, and a box
-        that silently cleared itself would read as a setting that was lost.
+        Preserve checked states so re-enabling manual approval restores the
+        previous gate arrangement.
         """
         live = self._approval_boxes['manual'].isChecked()
         for key, box in self._approval_boxes.items():

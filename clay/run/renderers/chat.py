@@ -1,28 +1,19 @@
-"""Chat renderer — draws engine events for a message thread.
+"""Render engine events as text for a message thread.
 
-The counterpart to TerminalRenderer. Same event stream, same decisions about
-what is worth showing, drawn for a front-end whose only output is text. It
-exists so that "what the user sees" is one implementation with two skins
-rather than two front-ends that drift apart — which is exactly what happened
-before: the terminal drew action.start and INFO logs, the Telegram bot filtered
-both out, and a Telegram user could not see which action was running, which
-prompt went to the model, or which files were written.
+ChatRenderer and TerminalRenderer consume the same event stream and follow the
+same visibility policy. This prevents chat clients from silently omitting
+events that the terminal displays.
 
 Two deliberate differences from the terminal, both forced by the medium:
 
-  * render() returns text instead of printing it. Transport — which chat,
-    which id, whether to coalesce lines into one message — belongs to the
-    front-end, not here.
+  * render() returns text instead of printing. The front-end controls transport,
+    destination, and message grouping.
 
-  * It draws nothing for input.request. That question reaches the user through
-    the front-end's own prompt path, which has to handle it specially anyway:
-    it must hold the prompt id to route the reply back. Drawing it here too
-    would ask every question twice, the same reason TerminalRenderer stays out
-    of TerminalIO's way.
+  * It does not render input.request. The front-end's prompt path retains the
+    prompt ID for reply routing and displays the question itself.
 
-Nothing here touches the bus. The front-end owns its subscription and calls
-render() per event, so this class is pure formatting and tests need no
-network, no daemon and no bot.
+The front-end owns the event subscription and calls render() for each event.
+This class performs formatting without network or daemon dependencies.
 
 CHANGING WHAT A CHAT SEES
 -------------------------
@@ -76,10 +67,9 @@ from .detail import action_detail, payload_body, prompt_body, skipped_reason
 
 
 class ChatRenderer:
-    """Formats engine events as chat lines.
+    """Format engine events as chat lines.
 
-    Stateless. render() returns the text to send, or None when the event draws
-    nothing — the same set of "draws nothing" cases as the terminal.
+    render() returns text to send or None for events with no chat representation.
     """
 
     def render(self, event: dict):
@@ -102,16 +92,11 @@ class ChatRenderer:
         if kind == events.LOG:
             return self._log(event)
 
-        # run.start and run.complete draw nothing: the front-end announces the
-        # launch and the finish itself, with the label and id the user chose
-        # from. loop.iteration draws nothing for the terminal's reason — the
-        # actions inside the loop announce themselves.
+        # The front-end announces run start and completion. Actions inside loops
+        # provide sufficient progress without loop.iteration messages.
         #
-        # busy draws nothing either, and deliberately not by omission: a
-        # "working…" line per action would be the noisiest thing in the thread
-        # and would still be there after the wait ended. A chat front-end shows
-        # it as transport instead — the Telegram bot turns it into a typing
-        # indicator, which appears and disappears on its own.
+        # Front-ends represent busy events as transient transport indicators,
+        # such as Telegram typing status, rather than persistent messages.
         return None
 
     # ── per-event formatting ─────────────────────────────────────────────
@@ -136,11 +121,9 @@ class ChatRenderer:
         return line
 
     def _skipped(self, event: dict):
-        """An action a `when` gate closed, and the value that closed it.
+        """Render an action skipped by a gate and the deciding value.
 
-        Shown for the terminal's reason: a turn that skipped three actions
-        looks identical to a turn that never had them, and the difference is
-        exactly what a gated workflow is doing.
+        Detailed output distinguishes skipped actions from absent actions.
         """
         action_id = (event.get('id') or '').strip()
         if not action_id and not event.get('key'):
@@ -148,11 +131,9 @@ class ChatRenderer:
         return f'▸ skipped {action_id} ({skipped_reason(event)})'
 
     def _output(self, event: dict):
-        """A payload an action wants shown: a prompt, a file, command output.
+        """Render a user-facing action payload.
 
-        The one place to filter what the chat shows per action — `kind`, `id`
-        and `action_type` are all on the event. See the note at the top of this
-        file.
+        Use `kind`, `id`, and `action_type` for per-action filtering.
         """
         label = str(event.get('label') or '').strip()
         text = str(event.get('text') or '')
@@ -163,20 +144,16 @@ class ChatRenderer:
                 return None
             return f'prompt ({label}):\n{prompt}' if label else f'prompt:\n{prompt}'
 
-        # Cut by the same helper payload_lines uses, so a chat and a terminal
-        # watching one run see the same body. A model's answer is not routed
-        # through here — it arrives on action.complete and _action_done()
-        # returns all of it.
+        # Use the shared payload limit. Model answers arrive through
+        # action.complete and remain complete.
         text = payload_body(event).strip()
         if not label:
             return text or None
         return f'{label}\n{text}' if text else label
 
     def _action_done(self, event: dict):
-        # Only model answers are content. A writeFile's payload or a workspace
-        # listing is not something to paste into a chat, and the handlers that
-        # do have something to say say it with logger.info — which this
-        # renderer relays below, exactly as the terminal prints it.
+        # Only model completion data is conversational content. Other actions
+        # use action.output or log events when they have content to display.
         if event.get('action_type') != 'scramda2':
             return None
         text = str(event.get('data') or '').strip()

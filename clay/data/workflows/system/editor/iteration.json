@@ -1,95 +1,92 @@
 {
-  "workflow": {
-    "steps": ["input", "think", "generate", "review", "build", "save", "decide"]
+  "defaults": {
+    "turn_summary": "",
+    "build_progress": "(nothing has been built for this request)"
   },
-
+  "workflow": {
+    "steps": ["context", "request", "route", "design", "write_plan", "construct", "settle"]
+  },
   "actionSets": {
-
-    "input": [
+    "context": [
+      {
+        "id": "editor_context",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./protocol.json"
+      },
+      {
+        "id": "editor_training",
+        "type": "loadContext",
+        "visible": false,
+        "file": "./training.json"
+      }
+    ],
+    "request": [
       {
         "id": "user_request",
         "type": "humanDecision",
-        "_comment": "No rule lines around the question. A humanDecision prompt is printed by TerminalIO.prompt, not by a renderer, so any banner drawn here survives every display mode and is the one piece of chrome concise mode cannot take back. The question and the caret are the whole prompt.",
-        "prompt": "\nask me to make an agent\n> "
+        "prompt": "\nDescribe the workflow to create or modify: purpose, inputs, outputs, human decisions, effects, and completion condition.\n> "
       }
     ],
-
-    "think": [
+    "route": [
       {
-        "id": "build_plan",
+        "id": "keep_going",
+        "type": "matchText",
+        "visible": false,
+        "source": "user_request",
+        "values": ["quit", "exit", "bye", "done", "stop", "q", ":q", "goodbye"],
+        "onMatch": "no",
+        "onMiss": "yes",
+        "includedData": ["user_request"]
+      }
+    ],
+    "design": [
+      {
+        "id": "design_contract",
         "type": "scramda2",
+        "when": "keep_going",
         "modelProfile": "orchestrator",
-        "prompt": "{cwd} {tutorial} You are a workflow-building assistant for the clay platform.\n\nEnvironment:\n  cwd: {cwd}\n  user: {current_user}\n  date: {current_date}\n\nExisting workflows:\n{existing_workflows}\n\nExisting skills:\n{existing_skills}\n\nEditor skill reference:\n{editor_skills}\n\nRelevant workflow building tutorial:\n{tutorial}\n\nUser's request:\n{user_request}\n\nThink step by step:\n1. What does the user want to build?\n2. What files need to be created? List each with its full path.\n3. Are any new action types needed that don't exist yet?\n4. What should each workflow do at a high level?\n5. Are there any ambiguities — if so, state them and make a reasonable assumption.\n\nOutput a clear build plan. Be specific about file paths. Use workflows/{name}/main.json and workflows/{name}/iteration.json conventions. The schema of the workflows in json form {__schema__}",
-        "includedData": ["user_request", "cwd", "current_user", "current_date", "existing_workflows", "existing_skills", "editor_skills", "__schema__", "tutorial"]
+        "max_tokens": 4100,
+        "prompt": "Create a plan file for a workflow that satisfies these user requirements: {user_request}\n\nEach checklist item must state two things: which action(s) it adds or configures, and what it does for these specific requirements.\n\nDIRECTORY RULES:\n{directory_rules}\n\nEvery file path named in the checklist must obey DIRECTORY RULES and outline its requirements. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\". Do not output text or additional fences outside the PLAN.md fence.",
+        "examples": {
+          "override": "plan_file_examples"
+        },
+        "includedData": ["user_request", "design_rules", "directory_rules", "action_contracts", "file_gates", "__workflow_template__", "plan_file_examples"]
       }
     ],
-
-    "generate": [
+    "write_plan": [
       {
-        "id": "workflow_template",
-        "type": "scramda2",
-        "prompt": "You are generating a json scaffolding script for the clay workflow builder. Relevant workflow building tutorial:\n{tutorial}\n\nBuild plan:\n{build_plan}\n\nWorkflow schema and patterns:\n{editor_skills}\n\nWrite a a series of json files using provided vocabulart.\n\nRules:\n- \n- Print 'CREATED: <path>' after writing each file\n- For workflow JSON files: write valid, complete JSON (all strings properly escaped)\n- \nReturn ONLY the raw json workflow. No markdown fences. No explanation. No preamble.\n\nWorked example of a complete workflow tree, keyed by filename — follow these conventions:\n{__workflow_template__}",
-        "includedData": ["build_plan", "editor_skills", "__schema__", "tutorial", "__workflow_template__"]
-      },
-      {
-        "id": "write_workflow",
-        "type": "scramda2",
-        "prompt": "Write the workflow template based on the plan and schema, output nothing but code, without any markers around it. Relevant workflow building tutorial:\n{tutorial}\n\nWorked example of a complete workflow tree, keyed by filename — follow these conventions:\n{__workflow_template__}",
-        "includedData": ["__schema__","workflow_template", "tutorial", "__workflow_template__" ]
-      },
-      {
-        "id": "review_writes",
+        "id": "plan_file_written",
         "type": "applyFileWrites",
-        "reply": "write_workflow",
-        "root": "{workspace}",
-        "maxFiles": 20,
-        "includedData": ["write_workflow", "workspace"]
-      },
-      {
-        "id": "check save",
-        "type": "humanDecision",
-        "prompt": "\nCheck the file saved:\n\n{write_workflow}\n\n> ",
-        "includedData": ["write_workflow"]
+        "when": "keep_going",
+        "reply": "design_contract",
+        "maxFiles": 1,
+        "includedData": ["design_contract"]
       }
     ],
-
-    "review": [
+    "construct": [
       {
-        "id": "script_approved",
-        "type": "humanDecision",
-        "_comment": "The two labels stay, the rule lines go. They are not decoration here: this prompt interpolates two bodies of text and the labels are what tells them apart. A blank line separates them instead of a bar.",
-        "prompt": "\nBuild plan:\n\n{build_plan}\n\nScript to run:\n\n{scaffolding_script}\n\nType APPROVE to run, or enter changes / concerns:\n> "
+        "id": "construction_result",
+        "type": "loop",
+        "when": "plan_file_written",
+        "file": "./file-iteration.json",
+        "iterations": 20,
+        "continueKey": "construction_decision",
+        "outputKey": "build_progress",
+        "merge": true,
+        "includedData": ["user_request", "design_contract", "plan_file_written", "build_progress", "file_rules", "directory_rules", "workflow_rules", "action_contracts", "file_generation_examples", "plan_update_examples"]
       }
     ],
-
-    "build": [
-      {
-        "id": "build_result",
-        "type": "runCode",
-        "language": "python",
-        "sourceKey": "workflow_template",
-        "timeout": 30,
-        "includedData": ["workflow_template"]
-      }
-    ],
-
-    "save": [
+    "settle": [
       {
         "id": "turn_summary",
         "type": "scramda2",
-        "prompt": "Write a one-paragraph summary of what was just built.\n\nUser request: {user_request}\nBuild plan: {build_plan}\nFiles created: {build_result}\n\nBe specific: list the file paths created and what each workflow does.",
-        "includedData": ["user_request", "build_plan", "build_result"]
-      }
-    ],
-
-    "decide": [
-      {
-        "id": "keep_going",
-        "type": "scramda2",
-        "prompt": "The user said: {user_request}\n\nDid they say 'quit', 'exit', 'done', 'bye', or otherwise indicate they want to stop?\nReply YES to keep the session running, NO to end it. Did we do what was stated in : {build_plan}\n here: {turn_summary}",
-        "includedData": ["user_request", "build_plan", "turn_summary"]
+        "when": "keep_going",
+        "modelProfile": "orchestrator",
+        "max_tokens": 350,
+        "prompt": "REQUEST:\n{user_request}\n\nBUILD RECORD:\n{build_progress}\n\nReport files written, verification performed, and remaining work. Missing write or verification records mean they did not occur. Base the report only on the build record.",
+        "includedData": ["user_request", "build_progress"]
       }
     ]
-
   }
 }

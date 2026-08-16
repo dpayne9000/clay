@@ -14,28 +14,28 @@ class _JsonHighlighter(QSyntaxHighlighter):
         super().__init__(parent)
         self._rules = []
 
-        # Strings
+        # Highlight string values.
         fmt = QTextCharFormat()
         fmt.setForeground(QColor('#2ecc71'))
         self._rules.append((QRegularExpression(r'"[^"\\]*(\\.[^"\\]*)*"'), fmt))
 
-        # Numbers
+        # Highlight numbers.
         fmt = QTextCharFormat()
         fmt.setForeground(QColor('#f39c12'))
         self._rules.append((QRegularExpression(r'\b-?\d+\.?\d*\b'), fmt))
 
-        # Keywords
+        # Highlight JSON literals.
         fmt = QTextCharFormat()
         fmt.setForeground(QColor('#e74c3c'))
         self._rules.append((QRegularExpression(r'\b(true|false|null)\b'), fmt))
 
-        # Keys (string followed by colon)
+        # Highlight object keys.
         fmt = QTextCharFormat()
         fmt.setForeground(QColor('#4a7fa5'))
         fmt.setFontWeight(QFont.Bold)
         self._rules.append((QRegularExpression(r'"[^"]*"\s*(?=:)'), fmt))
 
-        # Braces
+        # Highlight object and array delimiters.
         fmt = QTextCharFormat()
         fmt.setForeground(QColor('#8ab4cc'))
         self._rules.append((QRegularExpression(r'[\{\}\[\]]'), fmt))

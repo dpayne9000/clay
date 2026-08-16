@@ -1,4 +1,4 @@
-"""Gopher adapter — run a chat completion and return the assistant text.
+"""Run chat completions through the vendored Gopher adapter.
 
 Clay imports the release snapshot from :mod:`clay.vendor.gopher`. The complete
 upstream project remains in ``connectors/gopher`` and is deliberately copied
@@ -30,9 +30,8 @@ __all__ = [
 def resolve_endpoint() -> str:
     """Resolve the endpoint used by both readiness checks and completions.
 
-    The environment override is evaluated at call time so tests, launchers and
-    daemon children do not inherit a value frozen when this module was first
-    imported.
+    Read the environment override at call time so tests and child processes do
+    not inherit a value captured during module import.
     """
     return (
         os.getenv("GOPHER_URL")

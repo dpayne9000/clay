@@ -16,6 +16,22 @@ def _config(display):
     return {} if display is None else {'display': display}
 
 
+class MaxTokensTest(unittest.TestCase):
+
+    def _get(self, value):
+        cfg = {} if value is None else {'maxTokens': value}
+        with patch.object(config, 'load_config', return_value=cfg):
+            return config.get_max_tokens()
+
+    def test_the_configured_number_is_used(self):
+        self.assertEqual(self._get(8192), 8192)
+
+    def test_missing_or_invalid_values_use_the_default(self):
+        for value in (None, 0, -1, True, '4096'):
+            with self.subTest(value=value):
+                self.assertEqual(self._get(value), config.DEFAULT_MAX_TOKENS)
+
+
 class PromptMaxCharsTest(unittest.TestCase):
 
     def _get(self, display):

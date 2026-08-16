@@ -1,5 +1,0 @@
-{
-  "target_name": "Workflow Editor",
-  "mission": "Create a workflow json directory and folder structure, or add to existing workflow and duplicate into /output/editor directory.",
-  "output_dir": "."
-}

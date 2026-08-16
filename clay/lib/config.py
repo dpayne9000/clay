@@ -1,12 +1,12 @@
-"""Safe, cached read-only access to platformCli/configs/default.json.
+"""Provide safe, cached access to Clay configuration.
 
-Any module can read app config through here without threading ``__config__``
-down the workflow context (which ``build_ctx`` only delivers when an action
-lists it in ``includedData``). Loading never raises: a missing or malformed
-config yields an empty dict, so callers can always rely on a mapping.
+Most functions read configuration. `clay configure` uses write_user_config()
+to persist provider and model changes.
 
-This module intentionally has no dependency on ``cli`` or ``run`` to avoid
-import cycles. ``cli._load_config`` remains the seeding path for the engine.
+Modules can read application configuration without placing it in workflow
+context. Loading returns an empty dictionary for missing or malformed data.
+
+This module avoids dependencies on cli and run to prevent import cycles.
 """
 
 
@@ -16,47 +16,18 @@ from functools import lru_cache
 from ..actions.registry import export_json as _schema_json
 
 
-#: Where clay keeps everything the user owns and edits. $CLAY_HOME wins so a
-#: test, a CI job or a second configuration can be pointed elsewhere without
-#: touching a real one; ~/.clay otherwise. expanduser() gives the right answer
-#: on Windows too, so there is no platform branch here.
-#:
-#: Read once, at import, and left a constant. Everything deriving a path from
-#: it does so at import as well (run/workspaces.py, daemon/client.py); making
-#: this a function would turn all of those into calls to buy an ability nobody
-#: needs — changing CLAY_HOME halfway through a process.
+#: Directory containing user-owned Clay data. CLAY_HOME overrides ~/.clay for
+#: tests, CI, and alternate configurations. The value is fixed at import time.
 clay_dir = os.path.expanduser(
     os.environ.get('CLAY_HOME') or os.path.join('~', '.clay'))
 
-#: The defaults shipped inside the package: clay/data.
-#:
-#: This is the one question ~/.clay cannot answer on its own. Seeding a machine
-#: that has never run clay means copying a file *out of the install*, and under
-#: a wheel there is no repository to find it in — clay/data ships as package
-#: data and is therefore always present. Read-only by contract: an installed
-#: clay may sit somewhere the user cannot write, and a wheel's contents are
-#: replaced wholesale on upgrade.
+#: Read-only defaults shipped as package data under clay/data.
 _DATA_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, 'data'))
 
-#: Subdirectories seeded from the package into the user directory on startup.
-#:
-#: Deliberately not `workflows/system`. Seeding copies a file once and never
-#: touches it again — right for content the user edits, wrong for clay's own
-#: operating logic, which has to update with the program. A seeded coding2
-#: would freeze on whatever shipped the day it was installed, and a later fix
-#: to its iteration loop would never reach anyone who had run clay before.
-#: That is the same trap as create_user_config() never back-filling new config
-#: keys, which is why DEFAULT_APPROVAL and the caps below are baked in as
-#: constants rather than read from a seeded file.
-#:
-#: So: system workflows are read from the package (see resource()), and only
-#: the things meant to be copied and edited are seeded.
-#: Nor `workflows/registry`, for the same reason. It is generated output — the
-#: example tree `clay build` renders from the action schemas — so a seeded copy
-#: would teach an LLM the action fields that existed at install time and go on
-#: doing it after the schema changed. It lives under workflows/system/ with the
-#: rest of clay's own operating content and is read from the package.
+#: User-editable directories copied from the package when files are absent.
+#: System workflows and generated registry data remain package resources so
+#: program upgrades can replace them.
 SEEDED_DIRS = (
     'skills',
     'memory',
@@ -66,38 +37,39 @@ SEEDED_DIRS = (
 _SCHEMA_PATH = os.path.join(clay_dir, 'schema.json')
 _CONFIG_PATH = os.path.join(clay_dir, 'config.json')
 _BASE_CONFIG_PATH = os.path.join(_DATA_DIR, 'configs', 'default.json')
+DEFAULT_MAX_TOKENS = 4096
 
-#: Which workflow bare `clay` starts is a user preference, not operating logic,
-#: so it lives beside config.json in the user directory and the packaged copy
-#: is only the initial value. The pair mirrors _CONFIG_PATH/_BASE_CONFIG_PATH
-#: exactly, including the create-if-missing rule: an installed clay may sit on
-#: a read-only path, and editing the copy inside site-packages is not something
-#: a user should have to do to change what starts.
+#: The user-owned startup selection and its packaged initial value.
 _STARTUP_PATH = os.path.join(clay_dir, 'startup.json')
 _BASE_STARTUP_PATH = os.path.join(_DATA_DIR, 'configs', 'startup.json')
 
+# Defaults shipped before startup files carried managed-state metadata. Only
+# these exact values may be upgraded automatically; every other legacy value is
+# treated as a user choice.
+_LEGACY_MANAGED_DEFAULTS = {
+    ('workflows/system/clay/main.json',),
+    ('workflows/system/coding/main.json',),
+    ('workflows/system/editor/main.json',),
+}
+
 
 def data_path(*parts) -> str:
-    """A path under the shipped defaults. Existence is not checked."""
+    """Return a path under shipped defaults without checking its existence."""
     return os.path.join(_DATA_DIR, *parts)
 
 
 def user_path(*parts) -> str:
-    """A path under the user directory. Existence is not checked."""
+    """Return a path under the user directory without checking its existence."""
     return os.path.join(clay_dir, *parts)
 
 
 def resource(*parts) -> str:
-    """The user's copy of a resource if it exists, else the shipped one.
+    """Return the user resource when present, otherwise the packaged resource.
 
-    Falling back rather than depending on a seed means editing one skill does
-    not fork all of them, and anything the user never touched keeps tracking
-    the packaged version across upgrades.
+    Per-resource fallback lets untouched files continue tracking package updates.
 
-    Returns the packaged path when neither exists, so a caller's "not found"
-    error names a path of the right shape — quoting somewhere under ~/.clay for
-    a file that only ever ships in the package sends the reader to the wrong
-    directory.
+    If neither exists, return the expected package path so errors name the
+    correct location.
     """
     candidate = user_path(*parts)
     if os.path.exists(candidate):
@@ -106,11 +78,10 @@ def resource(*parts) -> str:
 
 
 def ensure_user_dir() -> str:
-    """The user directory, created if it is not there yet.
+    """Create the user directory when necessary and return its path.
 
-    Called by the functions that write, never at import. Importing config to
-    read one value used to create directories as a side effect, which is how
-    every test that touched config came to reach into a real ~/.clay.
+    Only writing functions call this helper, keeping imports free of filesystem
+    side effects.
     """
     os.makedirs(clay_dir, exist_ok=True)
     return clay_dir
@@ -119,13 +90,10 @@ def ensure_user_dir() -> str:
 def seed_user_dir(*, skip: tuple[str, ...] = ()) -> list:
     """Copy shipped defaults into the user directory for anything absent.
 
-    Create-if-missing at the *file* level, never overwriting: this runs at
-    every startup, and an upgrade must not silently revert a skill someone
-    edited. A file deleted on purpose does come back — the alternative is a
-    tombstone file, which is more machinery than the problem deserves.
+    Copy at file granularity without overwriting user edits. A deleted packaged
+    file is restored at the next startup.
 
-    Returns the paths written, so a first run can say what it did instead of
-    creating a directory tree in silence.
+    Return written paths so callers can report created files.
     """
     ensure_user_dir()
     written = []
@@ -137,18 +105,15 @@ def seed_user_dir(*, skip: tuple[str, ...] = ()) -> list:
         os.makedirs(destination, exist_ok=True)
         if os.path.isdir(source):
             written.extend(_copy_missing(source, destination))
-        # A seeded directory with nothing shipped for it is normal: memory/
-        # starts empty and is filled by the run.
+        # Some seeded directories, such as memory, intentionally start empty.
     return written
 
 
 def _copy_missing(source: str, destination: str) -> list:
-    """Recursively copy files absent from `destination`. Returns what it wrote.
+    """Recursively copy missing files and return their destination paths.
 
-    The "xb" open is create-or-fail — the same idiom create_user_config() uses
-    below. The OS decides whether the file already existed, so two clay
-    processes starting at once cannot both conclude it was missing and race to
-    write it. The user's copy always wins.
+    Exclusive creation delegates race detection to the operating system, so
+    concurrent processes cannot overwrite the user's copy.
     """
     written = []
     for entry in sorted(os.listdir(source)):
@@ -170,7 +135,7 @@ def _copy_missing(source: str, destination: str) -> list:
 @lru_cache(maxsize=1)
 def load_config():
     """Return the parsed config dict. Never raises; returns ``{}`` on any error."""
-    # Create config file in user dir if it doesn't exist
+    # Create the user configuration when it is absent.
     create_user_config()
     try:
         with open(_CONFIG_PATH) as f:
@@ -187,18 +152,26 @@ def create_user_config():
     except FileExistsError:
         try:
             with open(_CONFIG_PATH) as f:
-                valid = isinstance(json.load(f), dict)
-        except ValueError:
-            valid = False
-        if not valid:
+                user_config = json.load(f)
+        except (OSError, ValueError):
+            user_config = None
+        if not isinstance(user_config, dict):
             print(f"config: {_CONFIG_PATH} is corrupt — recreating from defaults")
             with open(_BASE_CONFIG_PATH, "rb") as src, open(_CONFIG_PATH, "wb") as dst:
                 dst.write(src.read())
+        elif 'maxTokens' not in user_config:
+            # Release upgrades preserve CLAY_HOME. Add new managed defaults
+            # individually without replacing any existing user settings.
+            user_config['maxTokens'] = DEFAULT_MAX_TOKENS
+            try:
+                _write_json_atomic(_CONFIG_PATH, user_config)
+            except OSError:
+                # Reading config must still work when its directory is
+                # intentionally read-only; get_max_tokens supplies the default.
+                pass
 
-    # Create schema file if it doesn't exist. discover() populates the
-    # registry from the handler modules' @action declarations before the
-    # schema is serialised. lib/config.py has no dependency on cli/run, so
-    # it must trigger discovery itself when used standalone.
+    # Create the schema when absent. Discover handlers first because their
+    # @action declarations populate the serialized registry.
     from ..actions.registry import discover as _discover_actions
     _discover_actions()
     try:
@@ -235,28 +208,21 @@ def load_schema():
         return ''
 
 
-#: Used when config.json carries no display.promptMaxChars. An existing
-#: ~/.clay/config.json predates the key and create_user_config() only writes
-#: the file when it is missing, so the key is never back-filled — without a
-#: baked-in default the cap would silently be "off" for every existing install.
+#: Prompt display limit for configurations that predate promptMaxChars.
 DEFAULT_PROMPT_MAX_CHARS = 200
 
 _prompt_max_notice_shown = False
 
 
 def get_prompt_max_chars() -> int:
-    """Characters of an outgoing model prompt a front-end may draw. 0 = all.
+    """Return the prompt characters a front-end may display; zero means all.
 
-    This caps the prompt going *to* the model — for a coding workflow that is
-    the mission, protocol, workspace listing and whole transcript, resent on
-    every turn. The model's answer is never capped by this or anything else:
-    the answer is the result of the run, and a truncated one is unusable.
+    This limit applies only to outgoing prompts. Model answers remain complete.
     """
     global _prompt_max_notice_shown
     display = load_config().get("display")
     value = display.get("promptMaxChars") if isinstance(display, dict) else None
-    # bool is a subclass of int, so `"promptMaxChars": true` would otherwise
-    # read as a 1-character cap.
+    # Reject booleans because Python treats them as integers.
     if isinstance(value, bool) or not isinstance(value, int):
         if not _prompt_max_notice_shown:
             _prompt_max_notice_shown = True
@@ -266,16 +232,8 @@ def get_prompt_max_chars() -> int:
     return max(0, value)
 
 
-#: Per-action caps for a payload *body* — the file contents, memory entry or
-#: listing an action echoes to the screen. Keyed by action type, and an action
-#: that is not a key here is drawn whole: this is a named list of the actions
-#: that quote something already on disk back at you, not a cap on output in
-#: general. A turn's actual result — a file just written, a command's output —
-#: is deliberately absent, the same reasoning that leaves a model's answer
-#: uncapped.
-#:
-#: Baked in for the reason DEFAULT_PROMPT_MAX_CHARS is: an existing
-#: ~/.clay/config.json predates the key and is never back-filled.
+#: Default payload limits for actions that repeat existing stored content.
+#: Unlisted action types display their complete output.
 DEFAULT_PAYLOAD_MAX_CHARS = {
     'writeMemory':    800,
     'searchMemory':   800,
@@ -293,15 +251,10 @@ _payload_max_bad_values: set[str] = set()
 
 
 def get_payload_max_chars(action_type: str) -> int:
-    """Characters of one action's payload body a front-end may draw. 0 = all.
+    """Return the payload characters a front-end may display; zero means all.
 
-    Per action type rather than one number for everything, because these are
-    different sizes of thing: a memory entry is a paragraph, a set of files
-    served to a model is several screens. One knob would have to be wrong for
-    one of them.
-
-    An action type with no entry returns 0 and is drawn whole. That is the
-    scope decision, not an oversight — see DEFAULT_PAYLOAD_MAX_CHARS.
+    Per-action limits accommodate different payload sizes. An unlisted action
+    returns zero and displays its complete payload.
     """
     global _payload_max_notice_shown
     display = load_config().get("display")
@@ -318,11 +271,9 @@ def get_payload_max_chars(action_type: str) -> int:
     value = table.get(action_type)
     if value is None:
         return 0
-    # bool is a subclass of int, so `"writeMemory": true` would otherwise read
-    # as a 1-character cap.
+    # Reject booleans because Python treats them as integers.
     if isinstance(value, bool) or not isinstance(value, int):
-        # Once per action type: this is read for every payload event, and a
-        # line per event would bury the output it is complaining about.
+        # Report each invalid action setting once to avoid repeated warnings.
         if action_type not in _payload_max_bad_values:
             _payload_max_bad_values.add(action_type)
             print(f'config: display.payloadMaxChars["{action_type}"] is not a '
@@ -331,15 +282,11 @@ def get_payload_max_chars(action_type: str) -> int:
     return max(0, value)
 
 
-#: What a *new* session starts with when manual approval is asked about. The
-#: live setting is per session and lives in clay/run/approval.py — a toggle
-#: typed mid-run must not edit a file the user maintains by hand, and must not
-#: outlive the session that set it.
+#: Initial manual-approval settings for a new session. Runtime state lives in
+#: clay/run/approval.py and does not modify this configuration.
 #:
 #: `manual` is the master switch; the three gates say what manual mode covers.
-#: Reads are off because serveFileReads is read-only inside the workspace and
-#: serves up to 20 files in the review loop, so gating it would stop every turn
-#: twice before anything happened.
+#: Reads default off because serveFileReads is confined and read-only.
 DEFAULT_APPROVAL = {
     'manual':     False,
     'fileWrites': True,
@@ -351,13 +298,10 @@ _approval_bad_keys: set[str] = set()
 
 
 def get_approval_defaults() -> dict:
-    """The starting approval settings for a session. Always a complete dict.
+    """Return a complete set of initial session approval settings.
 
-    A missing `approval` block is normal rather than an error: an existing
-    ~/.clay/config.json predates the key and create_user_config() never
-    back-fills. It is silent for that reason — unlike a cap, the built-in
-    default here is "ask about nothing", which is exactly how clay behaved
-    before this existed, so there is no change to announce.
+    Configurations that predate the approval block use built-in defaults without
+    a warning because that preserves their previous behavior.
     """
     block = load_config().get('approval')
     settings = dict(DEFAULT_APPROVAL)
@@ -371,8 +315,7 @@ def get_approval_defaults() -> dict:
         if isinstance(value, bool):
             settings[key] = value
         elif key not in _approval_bad_keys:
-            # Never guessed. A truthy string here would silently decide
-            # whether a model may write to disk without asking.
+            # Do not coerce malformed values that control approval requirements.
             _approval_bad_keys.add(key)
             print(f'config: approval.{key} is not true or false '
                   f'— using {DEFAULT_APPROVAL[key]}')
@@ -390,6 +333,14 @@ def get_default_model():
     return get_models().get("default")
 
 
+def get_max_tokens() -> int:
+    """Return the default generation limit for model actions."""
+    value = load_config().get('maxTokens')
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return DEFAULT_MAX_TOKENS
+    return value
+
+
 def get_provider_url():
     """Return the configured model-provider URL, or ``None`` when invalid."""
     provider = load_config().get("provider")
@@ -403,17 +354,74 @@ def reload_config():
     """Clear the cached config so the next access re-reads the file."""
     load_config.cache_clear()
 
+
+def write_user_config(cfg: dict) -> None:
+    """Overwrite ~/.clay/config.json with ``cfg`` and drop the cached copy.
+
+    This is the module's only unconditional configuration writer. `clay
+    configure` uses it to persist provider and model changes.
+
+    Write a temporary file beside the target and replace it atomically so an
+    interrupted write leaves the previous configuration intact.
+    """
+    ensure_user_dir()
+    _write_json_atomic(_CONFIG_PATH, cfg)
+    reload_config()
+
+
+def _write_json_atomic(path: str, data: dict) -> None:
+    """Write JSON beside its destination and replace the target atomically."""
+    temporary = f'{path}.tmp.{os.getpid()}'
+    with open(temporary, 'w', encoding='utf-8') as output:
+        json.dump(data, output, indent=4)
+        output.write('\n')
+    os.replace(temporary, path)
+
+def _write_startup(path: str, startup: dict) -> None:
+    """Atomically write a startup configuration."""
+    temporary = f'{path}.tmp.{os.getpid()}'
+    with open(temporary, 'w', encoding='utf-8') as output:
+        json.dump(startup, output, indent=4)
+        output.write('\n')
+    os.replace(temporary, path)
+
+
+def write_user_startup(startup: dict) -> None:
+    """Persist a user-selected startup configuration."""
+    ensure_user_dir()
+    _write_startup(_STARTUP_PATH, startup)
+
+
+def _upgrade_managed_startup(user: dict, shipped: dict) -> dict | None:
+    """Return an upgraded managed startup, or None when no update is due."""
+    shipped_version = shipped.get('_startupVersion')
+    if not isinstance(shipped_version, int):
+        return None
+
+    managed = user.get('_defaultManaged') is True
+    if '_defaultManaged' not in user:
+        legacy_user = user.get('user')
+        managed = (isinstance(legacy_user, list)
+                   and tuple(legacy_user) in _LEGACY_MANAGED_DEFAULTS)
+    if not managed or user.get('_startupVersion', 0) >= shipped_version:
+        return None
+
+    upgraded = dict(user)
+    upgraded['user'] = list(shipped.get('user', []))
+    upgraded['_startupVersion'] = shipped_version
+    upgraded['_defaultManaged'] = True
+    return upgraded
+
+
 def create_user_startup():
     """Copy the shipped startup.json into the user directory if absent.
 
-    Create-or-fail ("xb"), the same idiom create_user_config() uses: the OS
-    decides whether the file already existed, so two clay processes starting at
-    once cannot both conclude it was missing. The user's copy always wins, and
-    an upgrade never reverts a choice someone made.
+    Exclusive creation preserves existing user files. Managed shipped defaults
+    advance during upgrades, while explicit and unrecognized legacy selections
+    remain user-owned.
 
-    A corrupt file is recreated and said so out loud rather than silently
-    ignored — a startup.json that will not parse means bare `clay` starts
-    nothing, and failing that quietly is how it stays broken.
+    Recreate and report corrupt files because invalid startup data prevents bare
+    `clay` from launching a workflow.
     """
     ensure_user_dir()
     try:
@@ -422,24 +430,33 @@ def create_user_startup():
             dst.write(src.read())
     except FileExistsError:
         try:
-            with open(_STARTUP_PATH) as f:
-                valid = isinstance(json.load(f), dict)
-        except ValueError:
-            valid = False
-        if not valid:
+            with open(_STARTUP_PATH, encoding='utf-8') as source:
+                user = json.load(source)
+            with open(_BASE_STARTUP_PATH, encoding='utf-8') as source:
+                shipped = json.load(source)
+        except (OSError, ValueError):
+            user = None
+            shipped = None
+        if not isinstance(user, dict):
             print(f"config: {_STARTUP_PATH} is corrupt — recreating from "
                   f"defaults")
             with open(_BASE_STARTUP_PATH, "rb") as src, \
                     open(_STARTUP_PATH, "wb") as dst:
                 dst.write(src.read())
+        elif isinstance(shipped, dict):
+            upgraded = _upgrade_managed_startup(user, shipped)
+            if upgraded is not None:
+                _write_startup(_STARTUP_PATH, upgraded)
+                print(f"config: updated managed default workflow in "
+                      f"{_STARTUP_PATH}")
 
 
 def load_startup():
     """Return the parsed startup dict. Never raises; returns ``{}`` on any error.
 
-    The user's copy is authoritative. The packaged copy is read only when the
-    user directory could not be written — an installed clay on a read-only home
-    still has to start something.
+    User-selected defaults are authoritative. Managed defaults are upgraded by
+    create_user_startup(). The packaged copy is the read-only fallback when the
+    user directory cannot be written.
     """
     try:
         create_user_startup()

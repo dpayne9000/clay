@@ -11,7 +11,7 @@ from ..registry import action, req, opt, handler_for
 @action('writeFile')
 class WriteFile:
     id:                 str  = req("Output key for the written file path")
-    file:               str  = req("Output path relative to root. Supports {placeholder} interpolation")
+    file:               str  = req("Output path, relative to root or absolute as long as it resolves inside root. Supports {placeholder} interpolation")
     content:            str  = req("Context key holding the content to write verbatim")
     root:               str  = opt("Directory the path resolves under; paths may not escape it", DEFAULT_ROOT)
     encoding:           str  = opt("Text encoding used to write the file", "utf-8")
@@ -98,14 +98,16 @@ def _resolve_path(
 
     requested_path = Path(formatted_path)
 
-    if requested_path.is_absolute():
-        return None, "writeFile: absolute paths are not allowed"
-
     try:
         root_path = workspaces.authorize(output_root)
     except workspaces.WorkspaceDenied as exc:
         return None, f'writeFile: {exc}'
 
+    # Path.__truediv__ discards root_path entirely when requested_path is
+    # already absolute (documented pathlib behavior, same as os.path.join),
+    # so an absolute file is resolved as itself here, then judged by the
+    # same containment check below as any relative path would be. Nothing
+    # weaker is enforced for absolute input than for relative input.
     output_path = (root_path / requested_path).resolve()
 
     try:

@@ -38,26 +38,32 @@ class DeploymentPlanTest(unittest.TestCase):
         }), encoding="utf-8")
 
     def test_existing_different_immutable_object_is_refused(self):
+        # TODO(F-50): _deployment_plan() takes no bucket argument, so
+        # nothing here checks the entry's key actually belongs to the
+        # intended bucket. Add bucket-name validation to _deployment_plan()
+        # (or its caller) and cover it here.
         entry = {"key": "releases/1.0/clay.tar.gz", "sha256": "new",
                  "mutable": False}
         with self.assertRaises(site.DeployError):
             site._deployment_plan(
-                _FakeAws({entry["key"]: "old"}), {"bucket": "clay"}, [entry]
+                _FakeAws({entry["key"]: "old"}), [entry]
             )
 
     def test_existing_different_mutable_object_is_replaced(self):
+        # TODO(F-50): see note above — no bucket-name check exercised here.
         entry = {"key": "index.html", "sha256": "new", "mutable": True}
         changes = site._deployment_plan(
-            _FakeAws({entry["key"]: "old"}), {"bucket": "clay"}, [entry]
+            _FakeAws({entry["key"]: "old"}), [entry]
         )
         self.assertEqual("replace", changes[0]["operation"])
 
     def test_existing_immutable_object_without_hash_is_refused(self):
+        # TODO(F-50): see note above — no bucket-name check exercised here.
         entry = {"key": "releases/1.0/clay.tar.gz", "sha256": "new",
                  "mutable": False}
         with self.assertRaises(site.DeployError):
             site._deployment_plan(
-                _MissingMetadataAws(), {"bucket": "clay"}, [entry]
+                _MissingMetadataAws(), [entry]
             )
 
     def test_entries_classify_release_binary_as_immutable(self):

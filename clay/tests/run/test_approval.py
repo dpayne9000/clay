@@ -196,12 +196,40 @@ class ConfirmTest(_ApprovalTestCase):
         self.assertEqual([], decision.approved)
         self.assertEqual([], self.channel.prompts)
 
-    def test_a_required_gate_cannot_be_disabled(self):
+    def test_a_disabled_gate_bypasses_even_when_required(self):
+        # "required" narrows the *unattended* case (see the docstring above
+        # confirm()); it is not a way for a call site to opt out of "the gate
+        # is off, so nothing asks" for an attended run. The gate being off is
+        # itself the configuration saying go — required or not.
         approval.set_manual(False)
-        with patch.object(io, 'get', return_value=_FakeIO('n')):
+        channel = _FakeIO('n')
+        with patch.object(io, 'get', return_value=channel):
+            decision = approval.confirm(
+                'fileWrites', 'do it', [('a', '')], required=True)
+        self.assertTrue(decision.all_approved)
+        self.assertEqual([], channel.prompts)
+
+    def test_a_disabled_required_gate_is_advance_daemon_approval(self):
+        # An unattended run cannot answer an enabled gate. A disabled gate is
+        # the persisted advance permission that lets the daemon act at all.
+        approval.set_manual(False)
+        approval.set_unattended(True)
+        with patch.object(io, 'get', return_value=_FakeIO('y')):
+            decision = approval.confirm(
+                'fileWrites', 'do it', [('a', '')], required=True)
+        self.assertTrue(decision.all_approved)
+
+    def test_an_enabled_gate_still_asks_when_required(self):
+        # required=True changes nothing about the gate-on path — the prompt
+        # still runs, same as any other gated item.
+        approval.set_manual(True)
+        approval.set_gate('fileWrites', True)
+        channel = _FakeIO('n')
+        with patch.object(io, 'get', return_value=channel):
             decision = approval.confirm(
                 'fileWrites', 'do it', [('a', '')], required=True)
         self.assertEqual([], decision.approved)
+        self.assertEqual(1, len(channel.prompts))
 
     def test_an_empty_item_list_asks_nothing(self):
         approval.set_manual(True)

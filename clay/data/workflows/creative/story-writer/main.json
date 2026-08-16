@@ -1,0 +1,73 @@
+{
+  "autoContext": "CREATION pipeline for a script: outline -> scene cards -> character/location bible -> full script, each stage writing to disk and the next stage reading that file back rather than trusting its own memory of the reply.",
+  "workflow": {
+    "steps": ["load_training", "intake", "outline", "scene_cards", "bible", "script"]
+  },
+  "actionSets": {
+    "load_training": [
+      { "id": "_training", "type": "loadContext", "file": "./training.json" }
+    ],
+    "intake": [
+      { "id": "workspace", "type": "humanDecision",
+        "prompt": "Output directory for this script project (e.g. heist-movie):" },
+      { "id": "title", "type": "humanDecision",
+        "prompt": "Working title:" },
+      { "id": "logline", "type": "humanDecision",
+        "prompt": "Logline — one or two sentences describing the premise:" },
+      { "id": "genre", "type": "humanDecision",
+        "prompt": "Genre and tone (e.g. dark comedy heist thriller):" }
+    ],
+    "outline": [
+      {
+        "id": "outline_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "examples": { "override": "training_outline" },
+        "includedData": ["workspace", "title", "logline", "genre"],
+        "prompt": "Write a script outline for:\n  title: {title}\n  logline: {logline}\n  genre/tone: {genre}\n\nStructure it as a three-act outline in Markdown: Act headings, then a numbered list of plot beats/scenes under each act, each beat one to three sentences stating what happens, who it happens to, and where. Number every beat sequentially across the whole document (Beat 1, Beat 2, ...) so later stages can reference them unambiguously.\n\nEmit as ONE path-bearing fence at {workspace}/outline.md. No other commentary outside the fence."
+      },
+      { "id": "outline_written", "type": "applyFileWrites", "reply": "outline_reply" },
+      { "id": "outline_doc", "type": "readFile", "file": "{workspace}/outline.md", "root": "." }
+    ],
+    "scene_cards": [
+      {
+        "id": "scene_cards_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "examples": { "override": "training_scene_cards" },
+        "includedData": ["workspace", "outline_doc"],
+        "prompt": "OUTLINE:\n{outline_doc}\n\nFor every numbered beat in the outline, write one scene card as its own Markdown file: {workspace}/scenes/scene-<NN>.md (NN zero-padded to the beat number). Each scene card must contain: a level-1 heading with the scene's slugline (INT./EXT. LOCATION - DAY/NIGHT), a Characters Present list, a Goal line (what the protagonist of the scene wants), a Conflict line (what opposes it), and a 2-4 sentence beat summary matching the outline.\n\nEmit each scene card as its own path-bearing fence. No other commentary outside the fences."
+      },
+      { "id": "scene_files_written", "type": "applyFileWrites", "reply": "scene_cards_reply", "maxFiles": 40 },
+      { "id": "scene_file_list", "type": "listWorkspace", "root": "{workspace}/scenes" },
+      { "id": "scene_cards_text", "type": "serveFileReads", "reply": "scene_file_list",
+        "pathsKey": "scene_file_list", "root": "{workspace}/scenes", "maxFiles": 40, "maxBytes": 4000 }
+    ],
+    "bible": [
+      {
+        "id": "bible_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "examples": { "override": "training_bible" },
+        "includedData": ["workspace", "outline_doc", "scene_cards_text"],
+        "prompt": "OUTLINE:\n{outline_doc}\n\nSCENE CARDS:\n{scene_cards_text}\n\nFrom the outline and scene cards above, produce two documents:\n\n1. {workspace}/characters.md — one section per named character appearing in the scene cards, each with: full name, one-line role (protagonist/antagonist/supporting), physical/voice description, motivation, and the scene numbers they appear in.\n2. {workspace}/locations.md — one section per distinct location named in the scene cards' subheadings, each with: a short physical description and the scene numbers set there.\n\nDo not invent characters or locations not already present in the scene cards. Emit each as its own path-bearing fence. No other commentary outside the fences."
+      },
+      { "id": "bible_files_written", "type": "applyFileWrites", "reply": "bible_reply" },
+      { "id": "characters_doc", "type": "readFile", "file": "{workspace}/characters.md", "root": "." },
+      { "id": "locations_doc", "type": "readFile", "file": "{workspace}/locations.md", "root": "." }
+    ],
+    "script": [
+      {
+        "id": "script_reply",
+        "type": "scramda2",
+        "modelProfile": "default",
+        "examples": { "override": "training_script" },
+        "includedData": ["workspace", "title", "outline_doc", "scene_cards_text", "characters_doc", "locations_doc"],
+        "prompt": "Write the full script for \"{title}\" in standard script format (scene headings in caps, action lines in present tense, character cues centered in caps above dialogue, parentheticals sparingly).\n\nOUTLINE:\n{outline_doc}\n\nSCENE CARDS (one scene per outline beat — cover every one, in order):\n{scene_cards_text}\n\nCHARACTER BIBLE (stay consistent with these voices and motivations):\n{characters_doc}\n\nLOCATIONS:\n{locations_doc}\n\nEmit the complete script as ONE path-bearing fence at {workspace}/script.md. No other commentary outside the fence."
+      },
+      { "id": "script_written", "type": "applyFileWrites", "reply": "script_reply" },
+      { "id": "final_script", "type": "serveFileReads", "reply": "script_reply",
+        "pathsKey": "script_written" }
+    ]
+  }
+}

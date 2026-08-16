@@ -71,12 +71,12 @@ new action type is added. There is a test for it.
 Two changes, both required before it could run at all.
 
 The `user_request` prompt in
-[`iteration.json`](../../clay/data/workflows/system/coding2/iteration.json) drew
+[`iteration.json`](../../clay/data/workflows/dev/system/coding2/iteration.json) drew
 a 44-character `────` bar above and below *"what can I do for you?"*. It is now
 the question and the caret, with a `_comment` recording why it must not come
 back.
 
-[`review.json`](../../clay/data/workflows/system/coding2/review.json) **was
+[`review.json`](../../clay/data/workflows/dev/system/coding2/review.json) **was
 invalid JSON** — a trailing comma after the `read` actionSet, line 62 column 3.
 Nothing that loads coding2 could parse it, so this was a hard blocker rather than
 a tidy-up.

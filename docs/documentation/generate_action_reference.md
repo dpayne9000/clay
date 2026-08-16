@@ -10,22 +10,23 @@
 ## Usage
 
 ```bash
-cd clay
-python3 docs/generate_action_reference.py
+clay docs
 ```
 
 Output:
 ```
 Generated: docs/documentation/action-reference.json
 Generated: docs/documentation/action-reference.html
-  29 action types included
+  40 action types included
 ```
 
 Run this whenever action schemas change (new action registered, field added, description updated).
 
 ## How it works
 
-The script imports `all_schemas()` from `clay.actions.registry`, which returns a live `oneOf` JSON Schema built from every `@_action()`-decorated dataclass. No manual maintenance — if you add a field to `Scramda2` in `registry.py`, it appears in both outputs automatically.
+The command discovers action modules and exports the live registry. Schemas are
+declared beside their handlers with `@action(...)`; changing a schema field is
+reflected in both generated outputs.
 
 ```python
 from clay.actions.registry import all_schemas
@@ -34,7 +35,7 @@ schema = all_schemas()   # { "$schema": ..., "title": "ClayAction", "oneOf": [..
 
 ## HTML reference features
 
-- **Sticky sidebar** — all 29 action types listed with colour-coded family badges; clicking scrolls to that card; active card highlights on scroll
+- **Sticky sidebar** — all action types listed with colour-coded family badges; clicking scrolls to that card; active card highlights on scroll
 - **Action cards** — type badge, one-line description, required fields (red dot) / optional fields (grey dot), field name / type / default / description columns, collapsible JSON example
 - **Aurora colour palette** — cyan `#00d4ff`, green `#00ff88`, magenta `#cc44ff` on dark `#0d1117` — matches the terminal theme
 - **No dependencies** — all CSS and JS inline; works as `file://` with no server
@@ -57,4 +58,4 @@ schema = all_schemas()   # { "$schema": ..., "title": "ClayAction", "oneOf": [..
 
 - Generator: `docs/generate_action_reference.py`
 - Registry (source of truth): `clay/actions/registry.py`
-- All 29 schemas defined as dataclasses decorated with `@_action('typeName')`
+- Schemas declared in action modules with `@action('typeName')`

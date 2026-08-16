@@ -23,9 +23,7 @@ from .dashboard import ProcessDashboard
 from ..lib import config
 from ..lib import paths as _paths
 
-#: The writable workflow folder. Via config so $CLAY_HOME is honoured — the
-#: hardcoded ~/.clay meant the UI and the CLI disagreed about where a user's
-#: workflows live whenever CLAY_HOME was set.
+#: Writable workflow folder resolved through config so CLAY_HOME is honored.
 _USER_WF_DIR = _paths.workflow_folder()
 
 
@@ -68,9 +66,7 @@ class WorkflowWindow(QMainWindow):
         self._current_wf_id = None
         self._active_step = ''
 
-        # Core paths. The packaged workflows are the fallback behind the user's
-        # own, not "the project's" — walking up from __file__ found them only
-        # while clay was run from its own checkout.
+        # User workflows take precedence over packaged fallback workflows.
         self._project_wf_dir = config.data_path('workflows')
         self._memory_root = config.user_path('memory')
         os.makedirs(_USER_WF_DIR, exist_ok=True)
@@ -159,7 +155,7 @@ class WorkflowWindow(QMainWindow):
         view_m.addSeparator()
         view_m.addAction(self.act_fit)
         view_m.addSeparator()
-        # Dock toggles added after docks are created
+        # Add dock toggles after creating the dock widgets.
         self._view_menu = view_m
 
     # ── Toolbars ──────────────────────────────────────────────────────────────
@@ -303,8 +299,7 @@ class WorkflowWindow(QMainWindow):
         self.act_delete.triggered.connect(self._delete_selected)
         self.act_fit.triggered.connect(self._fit_view)
         self.act_dashboard.triggered.connect(self._toggle_dashboard)
-        # Connected once, not per run: a connection made in _run_current would
-        # be remade on every run and the same answer delivered n times.
+        # Connect once so repeated runs do not deliver each answer multiple times.
         self._log_panel.input_submitted.connect(self._on_input_submitted)
         self._mgr.daemon_event.connect(self._on_daemon_event)
         self._mgr.daemon_finished.connect(self._on_daemon_finished)
@@ -340,12 +335,12 @@ class WorkflowWindow(QMainWindow):
             scene.load_workflow(data)
             editor.set_json(data)
 
-        # Sync: editor changes → reload graph
+        # Reload the graph after valid editor changes.
         def _on_editor_valid(d):
             scene.load_workflow(d)
         editor.valid_json.connect(_on_editor_valid)
 
-        # Sync: graph changes → update editor
+        # Update the editor after graph changes.
         def _on_graph_changed():
             d = scene.export_workflow()
             editor.set_json(d)
@@ -362,18 +357,18 @@ class WorkflowWindow(QMainWindow):
         self._open_files.pop(idx, None)
         self._tab_scenes.pop(idx, None)
         self._tabs.removeTab(idx)
-        # Re-index remaining tabs
+        # Re-index tabs after removing one.
         new_files = {}
         new_scenes = {}
         for i in range(self._tabs.count()):
             for old_idx, fp in list(self._open_files.items()):
                 w = self._tabs.widget(i)
-                # Just rebuild from scratch on close
+                # Rebuild the file-to-tab index after closing a tab.
                 pass
         self._open_files = {}
         self._tab_scenes = {}
         for i in range(self._tabs.count()):
-            # Lookup by widget identity is more reliable
+            # Identify tabs by widget identity.
             pass
 
     def _on_tab_changed(self, idx):
@@ -424,7 +419,7 @@ class WorkflowWindow(QMainWindow):
             self.load_workflow(path)
 
     def load_workflow(self, path):
-        # Check if already open
+        # Select the existing tab when the file is already open.
         for idx, fp in self._open_files.items():
             if fp == path:
                 self._tabs.setCurrentIndex(idx)
@@ -531,15 +526,14 @@ class WorkflowWindow(QMainWindow):
     def _on_run_event(self, event):
         self._log_panel.on_event(event)
 
-        # Animate graph nodes
+        # Update graph-node execution states.
         scene = self._current_scene()
         if not scene:
             return
         t = event.get('type', '')
         if t == events.STEP_START:
-            # There is no step.complete event — the branch that waited for one
-            # never fired, so every step stayed 'active' for the whole run. A
-            # step is finished when the next one starts, or when the run ends.
+            # The engine has no step.complete event. Finish the previous step
+            # when the next step starts or when the run ends.
             self._finish_step(scene)
             self._active_step = event.get('step', '')
             node = scene.step_node(self._active_step)

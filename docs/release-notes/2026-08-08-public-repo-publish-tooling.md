@@ -14,7 +14,7 @@ public surface: root project/config files, `docs/` install/example/action
 reference docs and `docs/release-notes/`, and the whole `clay/` tree except
 `clay/data/workflows/dev/`. Confirmed private: `docs/SIGNING.md`,
 `docs/RELEASE.md`, `docs/documentation/`, `docs/tasks/`, `docs/plans/`,
-`docs/planning/`, `docs/scratch_docs/`, `docs/bugs/`, `scripts/build/`,
+`docs/planning/`, the since-removed `docs/scratch_docs/`, `docs/bugs/`, `scripts/build/`,
 `scripts/deploy/`, `scripts/git_release/` itself, and `web/`.
 
 `connectors/gopher` is a git submodule, not a plain tracked file — copying

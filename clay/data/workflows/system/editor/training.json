@@ -1,0 +1,68 @@
+{
+  "plan_update_examples": [
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Text generator\n\n- [ ] Create `main.json` to collect a subject and generate text.\n- [ ] Create `protocol.json` to provide writing rules.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nCREATED: text-generator/main.json\n\nSAVED CONTENT:\n=== main.json ===\n{\"workflow\": {\"steps\": [\"ask\", \"generate\"]}}\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, and SAVED CONTENT contains that file. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+      "answer": "```markdown PLAN.md\n# Text generator\n\n- [x] Create `main.json` to collect a subject and generate text.\n- [ ] Create `protocol.json` to provide writing rules.\n```"
+    },
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Text generator\n\n- [x] Create `main.json` to collect a subject and generate text.\n- [ ] Create `protocol.json` to provide writing rules.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nCREATED: text-generator/protocol.json\n\nSAVED CONTENT:\n=== protocol.json ===\n{\"writing_rules\": \"Write concise text.\"}\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, and SAVED CONTENT contains that file. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+      "answer": "```markdown PLAN.md\n# Text generator\n\n- [x] Create `main.json` to collect a subject and generate text.\n- [x] Create `protocol.json` to provide writing rules.\n```"
+    },
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Approval loop\n\n- [ ] Create `main.json` as the entry workflow.\n- [ ] Create `iteration.json` to ask for approval.\n- [ ] Verify that the final decision is returned.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nUPDATED: approval-loop/iteration.json\n\nSAVED CONTENT:\n=== approval-loop/iteration.json ===\n{\"workflow\": {\"steps\": [\"ask\", \"decide\"]}}\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, and SAVED CONTENT contains that file. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+      "answer": "```markdown PLAN.md\n# Approval loop\n\n- [ ] Create `main.json` as the entry workflow.\n- [x] Create `iteration.json` to ask for approval.\n- [ ] Verify that the final decision is returned.\n```"
+    },
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# File explanation\n\n- [x] Create `main.json` to read and explain a file.\n- [ ] Create `training.json` with explanation examples.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nCREATED: file-explanation/training.json\n\nSAVED CONTENT:\n=== file-explanation/training.json ===\n{\"explanation_examples\": []}\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, and SAVED CONTENT contains that file. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+      "answer": "```markdown PLAN.md\n# File explanation\n\n- [x] Create `main.json` to read and explain a file.\n- [x] Create `training.json` with explanation examples.\n```"
+    },
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Summary workflow\n\n- [ ] Create `main.json` to generate a summary.\n- [ ] Verify that the summary is returned.\n\nWRITE ERROR:\napplyFileWrites refused the reply\n\nFILES WRITTEN:\n\nSAVED CONTENT:\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, and SAVED CONTENT contains that file. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+      "answer": "```markdown PLAN.md\n# Summary workflow\n\n- [ ] Create `main.json` to generate a summary.\n- [ ] Verify that the summary is returned.\n```"
+    },
+    {
+      "question": "SAVED PLAN:\n=== PLAN.md ===\n# Rules workflow\n\n- [x] Create `main.json` to load shared rules.\n- [ ] Create `protocol.json` containing the shared rules.\n- [ ] Verify that `main.json` consumes the loaded rules.\n\nWRITE ERROR:\n\nFILES WRITTEN:\nUPDATED: rules/protocol.json\n\nSAVED CONTENT:\n=== rules/protocol.json ===\n{\"rules\": \"Return one concise answer.\"}\n\nReturn the complete updated PLAN.md. Find the checklist item for the written file. Change its `[ ]` to `[x]` only when WRITE ERROR is empty, FILES WRITTEN names that file, and SAVED CONTENT contains that file. Otherwise leave it unchecked. Return only the PLAN.md file. The first line must be exactly \"```markdown PLAN.md\". The last line must be exactly \"```\".",
+      "answer": "```markdown PLAN.md\n# Rules workflow\n\n- [x] Create `main.json` to load shared rules.\n- [x] Create `protocol.json` containing the shared rules.\n- [ ] Verify that `main.json` consumes the loaded rules.\n```"
+    }
+  ],
+  "plan_file_examples": [
+    {
+      "question": "Create a plan file for a workflow structure that satisfies these user requirements: Create a workflow that asks for text and writes it to a file",
+      "answer": "```markdown PLAN.md\n# Text file writer\n\n- [ ] Create `main.json` with a `humanDecision` action that collects the text.\n- [ ] Add a `writeFile` action that writes the collected text to the configured output file.\n- [ ] Pass the collected text to `writeFile` through `includedData`.\n- [ ] Verify that the workflow reports the written file.\n```"
+    },
+    {
+      "question": "Create a plan file for a workflow structure that satisfies these user requirements: Create a workflow that generates text",
+      "answer": "```markdown PLAN.md\n# Text generator\n\n- [ ] Create `main.json` with a `humanDecision` action that collects the subject.\n- [ ] Add a `scramda2` action that generates text from the subject.\n- [ ] Pass the subject to `scramda2` through `includedData`.\n- [ ] Verify that the generated text is the workflow output.\n```"
+    },
+    {
+      "question": "Create a plan file for a workflow structure that satisfies these user requirements: Create a workflow that asks whether to continue and returns the decision",
+      "answer": "```markdown PLAN.md\n# Continue decision\n\n- [ ] Create `main.json` with a `humanDecision` action that asks whether to continue.\n- [ ] Add a `matchText` action that classifies the answer as yes or no.\n- [ ] Pass the decision to `matchText` through `includedData`.\n- [ ] Verify that the classified decision is the workflow output.\n```"
+    },
+    {
+      "question": "Create a plan file for a workflow structure that satisfies these user requirements: Create a workflow that generates three short summaries",
+      "answer": "```markdown PLAN.md\n# Repeated summary generator\n\n- [ ] Create `main.json` with a `loop` action that runs three iterations.\n- [ ] Create `iteration.json` with a `scramda2` action that generates one short summary.\n- [ ] Configure the loop path relative to `main.json`.\n- [ ] Verify that the loop returns the summaries produced by each iteration.\n```"
+    },
+    {
+      "question": "Create a plan file for a workflow structure that satisfies these user requirements: Create a workflow that loads writing rules and uses them to revise text",
+      "answer": "```markdown PLAN.md\n# Rule-based text revision\n\n- [ ] Create `protocol.json` containing the writing rules.\n- [ ] Create `main.json` with a `loadContext` action that loads `protocol.json`.\n- [ ] Add a `humanDecision` action that collects the text to revise.\n- [ ] Add a `scramda2` action that revises the text using the loaded rules.\n- [ ] Pass the text and rules to `scramda2` through `includedData`.\n```"
+    },
+    {
+      "question": "Create a plan file for a workflow structure that satisfies these user requirements: Create a workflow that reads one requested file and explains its contents",
+      "answer": "```markdown PLAN.md\n# File explanation workflow\n\n- [ ] Create `main.json` with a `humanDecision` action that collects the file path.\n- [ ] Add a `serveFileReads` action that reads the requested file.\n- [ ] Add a `scramda2` action that explains only the returned file contents.\n- [ ] Pass the file contents to `scramda2` through `includedData`.\n- [ ] Verify that the explanation is the workflow output.\n```"
+    }
+  ],
+  "file_generation_examples": [
+    {
+      "question": "CURRENT SINGLE-FILE PLAN:\nPATH: example/main.json\nRESPONSIBILITY: Ask the user what the workflow should do.\nINPUTS: none\nACTION TYPES: humanDecision\n\nGenerate only PATH. The filename must be on the opening fence line.",
+      "answer": "```json main.json\n{\n  \"workflow\": {\n    \"steps\": [\"ask\"]\n  },\n  \"actionSets\": {\n    \"ask\": [\n      {\n        \"id\": \"request\",\n        \"type\": \"humanDecision\",\n        \"prompt\": \"What should this workflow do?\\n> \"\n      }\n    ]\n  }\n}\n```"
+    },
+    {
+      "question": "CURRENT SINGLE-FILE PLAN:\nPATH: intake/context.json\nRESPONSIBILITY: Collect a topic and generate text from it.\nINPUTS: none\nACTION TYPES: humanDecision, scramda2\n\nGenerate only PATH. The filename must be on the opening fence line.",
+      "answer": "```json context.json\n{\n  \"workflow\": {\n    \"steps\": [\"ask\", \"generate\"]\n  },\n  \"actionSets\": {\n    \"ask\": [\n      {\n        \"id\": \"topic\",\n        \"type\": \"humanDecision\",\n        \"prompt\": \"Topic?\\n> \"\n      }\n    ],\n    \"generate\": [\n      {\n        \"id\": \"result\",\n        \"type\": \"scramda2\",\n        \"prompt\": \"Write about {topic}.\",\n        \"includedData\": [\"topic\"]\n      }\n    ]\n  }\n}\n```"
+    },
+    {
+      "question": "CURRENT SINGLE-FILE PLAN:\nPATH: main.json\nRESPONSIBILITY: Ask whether to proceed and report the decision.\nINPUTS: none\nACTION TYPES: humanDecision, matchText\n\nGenerate only PATH as one complete JSON file. The filename must be on the opening fence line.",
+      "answer": "```json main.json\n{\n  \"workflow\": {\n    \"steps\": [\"ask\", \"decide\"]\n  },\n  \"actionSets\": {\n    \"ask\": [\n      {\n        \"id\": \"approval\",\n        \"type\": \"humanDecision\",\n        \"prompt\": \"Proceed?\\n> \"\n      }\n    ],\n    \"decide\": [\n      {\n        \"id\": \"approved\",\n        \"type\": \"matchText\",\n        \"source\": \"approval\",\n        \"values\": [\"yes\"],\n        \"onMatch\": \"yes\",\n        \"onMiss\": \"no\",\n        \"includedData\": [\"approval\"]\n      }\n    ]\n  }\n}\n```"
+    }
+  ]
+}

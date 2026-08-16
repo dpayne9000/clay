@@ -1,10 +1,15 @@
-# Coding4 Reliable Final
+# Coding Project Builder
 
-Two semantic model calls:
+The coding workflow follows the same plan-and-construct pattern as the workflow
+editor:
 
-1. `evidence_request`: reads only. It outputs `<read_file>` markers or `NO_ACTION`. It cannot output commands.
-2. `agent_reply`: answers or writes the project. It may emit path-bearing file fences and optional pathless bash commands after seeing current files.
+`requirements -> PLAN.md -> one file per iteration -> write -> verify -> review -> update PLAN.md`
 
-The earlier preflight-command behavior was removed because a file-list-only model can invent runners or commands before it has read the project. Optional execution now happens only in the main agent after current files are available.
+It selects a suitable project structure and technology from the request, then
+generates source files, tests, manifests, configuration, documentation, and
+supporting assets as required. Existing files are read only when the request
+explicitly asks to modify them. Each successful construction step is recorded
+before the next planned file is selected.
 
-The main training set is intentionally compact: nine examples, each teaching a distinct consumed output behavior rather than many variants of the same edit format.
+The final response is derived from the build record and reports only observed
+writes and verification results.

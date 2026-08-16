@@ -1,31 +1,28 @@
-"""Whether a destructive action asks a human first, and how it asks.
+"""Control whether and how destructive actions require human approval.
 
-Three gates, switched independently, because they are three different risks:
+Three independent gates cover three distinct risks:
 
     fileWrites   applyFileWrites, before anything reaches disk
     fileReads    serveFileReads, before anything is opened
     commands     runReplyCommands, before anything is executed
 
-State is per process, and a process is a session: clayd spawns one subprocess
-per workflow, plain `clay run` is its own process, and `clay ui` runs its
-workflow on a worker thread of the app. So two sessions cannot share a setting
-by accident, there is no session id to plumb anywhere, and nothing is left
-behind when a run crashes.
+Approval state is process-local. Each clayd workflow and plain `clay run` uses
+its own process, while `clay ui` runs its workflow on an application worker
+thread. Sessions therefore cannot accidentally share settings, no session ID
+is required, and a crashed run leaves no approval state behind.
 
-config.json supplies only the settings a *new* session starts with and is never
-written by a toggle. A switch typed mid-run that edited a hand-maintained file
-would outlive the session that set it, and the next unrelated run would start
-gated because of something someone typed yesterday.
+config.json defines the initial settings for a new session. Runtime toggles do
+not modify it because a session-specific choice must not affect later runs.
 
-Three surfaces move the switch, and all of them land here:
+Three interfaces update approval state through this module:
 
     clay run    a command typed at any terminal prompt   → handle_command()
     clay ui     a toggle per gate in the run panel       → set_gate()
     Telegram    /manual …, relayed by clayd as option.set → set_gate()
 
-The gate itself is called from the *handlers*, never the dispatcher: the
-dispatcher has the action dict, but only the handler knows which files and
-which commands, and a prompt that cannot name them is not worth showing.
+Handlers invoke approval gates instead of the dispatcher. The dispatcher has
+the action dictionary, but only a handler knows the specific files or commands
+that the approval prompt must identify.
 """
 
 import threading
@@ -33,11 +30,10 @@ import threading
 from ..lib.config import get_approval_defaults
 from . import logger
 
-#: The gates, in the order a prompt or a status line should list them.
+#: Approval gates in display order.
 GATES = ('fileWrites', 'fileReads', 'commands')
 
-#: What each gate is called when a human types it. The canonical name works
-#: too; these are the short words a person actually reaches for.
+#: Short aliases accepted in addition to each gate's canonical name.
 _ALIASES = {
     'writes': 'fileWrites', 'write': 'fileWrites', 'filewrites': 'fileWrites',
     'reads': 'fileReads', 'read': 'fileReads', 'filereads': 'fileReads',
@@ -47,16 +43,15 @@ _ALIASES = {
 
 _LABELS = {'fileWrites': 'writes', 'fileReads': 'reads', 'commands': 'commands'}
 
-#: Every approval prompt's id ends with this, so a front-end can recognise one
-#: without parsing its text. A chat that cannot tell an approval apart from a
-#: humanDecision cannot offer buttons for one and not the other.
+#: This suffix lets front-ends identify approval prompts without parsing text.
+#: It also lets chat clients distinguish approvals from humanDecision prompts.
 PROMPT_SUFFIX = '.approve'
 
 _ON = frozenset({'on', 'true', 'yes', 'y', '1', 'enable', 'enabled'})
 _OFF = frozenset({'off', 'false', 'no', 'n', '0', 'disable', 'disabled'})
 
-#: Answers to an approval prompt, where a bare number means an item to skip and
-#: so cannot also mean yes or no. Kept apart from _ON/_OFF for that reason.
+#: Approval answers exclude numbers because a number identifies an item to skip.
+#: These values must therefore remain separate from _ON and _OFF.
 _APPROVE_ALL = frozenset({'y', 'yes', 'ok', 'approve', 'all'})
 _REJECT_ALL = frozenset({'n', 'no', 'none', 'reject', 'cancel', 'abort'})
 
@@ -66,11 +61,10 @@ _unattended = False
 
 
 def _load() -> dict:
-    """The session's settings, seeded from config on first use.
+    """Load the session settings from config on first use.
 
-    Lazy rather than imported at module load so a test — or a UI that changes
-    the config before starting a run — is not fighting a snapshot taken when
-    the interpreter started.
+    Lazy loading lets tests and the UI change configuration before a run starts
+    without retaining a snapshot created when the module was imported.
     """
     global _state
     with _lock:
@@ -101,37 +95,36 @@ def set_unattended(on: bool) -> None:
 # ── reading ──────────────────────────────────────────────────────────────
 
 def enabled(gate: str) -> bool:
-    """Whether `gate` should ask a human before acting.
+    """Return whether `gate` should ask a human before acting.
 
-    Two levels, deliberately: `/manual off` has to silence everything with one
-    word, while the gates stay independently set underneath so turning it back
-    on restores the arrangement someone chose rather than a blanket default.
+    The master switch can disable all prompts without changing individual gate
+    settings. Re-enabling it therefore restores the previous gate arrangement.
     """
     state = _load()
     return bool(state.get('manual')) and bool(state.get(gate))
 
 
 def manual() -> bool:
-    """Whether the master switch is on."""
+    """Return whether the master approval switch is on."""
     return bool(_load().get('manual'))
 
 
 def unattended() -> bool:
-    """Whether this run has nobody who could answer a prompt.
+    """Return whether this run has no human available to answer a prompt.
 
-    Read by workspaces.authorize(), which refuses rather than auto-approves —
-    the opposite of confirm()'s choice, and deliberately so. See its docstring.
+    workspaces.authorize() uses this value to refuse rather than automatically
+    approve access. See its docstring for the corresponding security policy.
     """
     return _unattended
 
 
 def state() -> dict:
-    """A copy of the session's settings. A copy so callers cannot poke it."""
+    """Return a copy of the session settings to prevent external mutation."""
     return dict(_load())
 
 
 def summary() -> str:
-    """One line naming the master switch and every gate under it."""
+    """Summarize the master switch and each approval gate on one line."""
     current = _load()
     if not current.get('manual'):
         return 'manual approval off — nothing asks before acting'
@@ -143,14 +136,14 @@ def summary() -> str:
 # ── writing ──────────────────────────────────────────────────────────────
 
 def set_manual(on: bool) -> None:
-    """Move the master switch. Leaves the individual gates as they were."""
+    """Set the master switch without changing individual gates."""
     _load()
     with _lock:
         _state['manual'] = bool(on)
 
 
 def set_gate(gate: str, on: bool) -> None:
-    """Turn one gate on or off. Unknown gate names raise rather than no-op."""
+    """Set one gate, raising ValueError for an unknown gate name."""
     if gate not in GATES:
         raise ValueError(f'unknown approval gate {gate!r}')
     _load()
@@ -159,7 +152,7 @@ def set_gate(gate: str, on: bool) -> None:
 
 
 def resolve_gate(word: str) -> str:
-    """The canonical gate name for what a human typed, or '' if it is not one."""
+    """Return the canonical gate name for user input, or '' if none matches."""
     return _ALIASES.get((word or '').strip().lower(), '')
 
 
@@ -169,14 +162,13 @@ USAGE = ('Try /manual on|off, or /manual writes|reads|commands on|off')
 
 
 class Command:
-    """A parsed /manual line: what it changes, and what to say about it.
+    """Represent the changes and response produced by a parsed /manual command.
 
-    Parsing is separated from applying because the two happen in different
-    processes. A terminal types the command in the process that holds the
-    setting; Telegram types it in the bot, and the setting lives in the
-    workflow clayd spawned. One grammar, two ways to deliver the result — and
-    `error` marks the lines that change nothing so a front-end does not relay a
-    typo to a workflow as though it were a setting.
+    Parsing and application are separate because they may occur in different
+    processes. Terminal commands run where the setting is stored, while a
+    Telegram command is parsed by the bot and applied by the clayd workflow
+    process. The `error` flag prevents a front-end from relaying invalid input
+    as a setting change.
     """
 
     def __init__(self, changes=(), message: str = '', error: bool = False):
@@ -186,10 +178,10 @@ class Command:
 
 
 def parse_command(text: str):
-    """Read `text` as a manual-mode command. None means it was not one.
+    """Parse `text` as a manual-mode command, or return None if it is unrelated.
 
-    One grammar for the terminal, Telegram and anything later, so `/manual reads
-    off` cannot come to mean two different things on two screens.
+    All interfaces share this grammar so a command has the same meaning on the
+    terminal, Telegram, and future clients.
 
         /manual                 show the current settings
         /manual on | off        the master switch
@@ -232,11 +224,11 @@ def parse_command(text: str):
 
 
 def handle_command(text: str):
-    """Parse `text`, apply it to *this* process, and return what to show.
+    """Parse `text`, apply it to this process, and return a response to display.
 
-    None means it was not a command and belongs to whoever asked the question.
-    A string is always shown, even when nothing changed: silence after a typo
-    would leave someone believing a gate is on when it is off.
+    None indicates that the text is not a command and should remain a response
+    to the original prompt. Commands always return a message so invalid input
+    cannot leave the user uncertain about the current approval state.
     """
     command = parse_command(text)
     if command is None:
@@ -254,10 +246,8 @@ def handle_command(text: str):
 
     changed_gate = next((k for k, _ in command.changes if k != 'manual'), '')
     if changed_gate and not manual():
-        # Said out loud rather than quietly turning the master switch on for
-        # them: someone arranging gates before enabling manual mode is doing
-        # something reasonable, and someone who thinks they just enabled a gate
-        # needs to know they did not.
+        # Do not enable the master switch implicitly. A user may configure gates
+        # before enabling manual mode and must be told that the gate is inactive.
         return (f'{summary()} — {_LABELS[changed_gate]} is set, and takes '
                 f'effect when you say /manual on')
     return summary()
@@ -266,12 +256,11 @@ def handle_command(text: str):
 # ── asking ───────────────────────────────────────────────────────────────
 
 class Decision:
-    """Which of a set of items a human allowed through.
+    """Record which items a human approved.
 
-    A class rather than a list of indices because every caller needs both
-    halves — what to do and what to say about the rest — and rebuilding the
-    rejected set from the approved one at three call sites is how they come to
-    disagree about what was skipped.
+    Callers need both approved and rejected items. Keeping that calculation in
+    one class prevents call sites from reporting a different rejected set than
+    the one they acted upon.
     """
 
     def __init__(self, items, approved):
@@ -300,14 +289,18 @@ def confirm(gate: str, heading: str, items, prompt_id: str = '', *,
             required: bool = False) -> Decision:
     """Ask a human which of `items` may go ahead.
 
-    `items` is a sequence of (label, detail) pairs — one file, one command. The
-    text is built here and handed to io.get().prompt(), which is why this works
-    unchanged on the terminal, in `clay ui` and in Telegram: those are three
-    implementations of one channel, not three approval systems.
+    `items` is a sequence of (label, detail) pairs representing files, commands,
+    or other operations. This function builds the prompt and passes it to
+    io.get().prompt(), whose channel implementations support the terminal,
+    `clay ui`, and Telegram through the same approval path.
 
-    When ``required`` is true, configuration cannot bypass the question and an
-    unattended run approves nothing. Generated code, commands and file changes
-    use this mode because absence of a human is not authorization.
+    When the gate is off, all items are approved without a prompt. For an
+    unattended daemon, this represents the advance authorization recorded in
+    its workspace grant; otherwise no persisted setting could authorize it.
+
+    When the gate is on during an unattended run, no items are approved because
+    no human can answer. `required` identifies security-sensitive call sites;
+    it does not override advance authorization or an unanswered enabled gate.
     """
     items = [(str(label), str(detail or '')) for label, detail in items]
     everything = Decision(items, range(len(items)))
@@ -315,7 +308,7 @@ def confirm(gate: str, heading: str, items, prompt_id: str = '', *,
     if not items:
         return everything
 
-    if not required and not enabled(gate):
+    if not enabled(gate):
         return everything
 
     if _unattended:
@@ -337,20 +330,15 @@ def confirm(gate: str, heading: str, items, prompt_id: str = '', *,
     try:
         answer = io.get().prompt(key, text)
     except io.ChannelClosed:
-        # A closed channel is not consent. The run has lost the human it was
-        # about to ask, and proceeding would do the exact thing manual mode
-        # exists to prevent.
+        # A closed channel cannot provide consent, so reject every item.
         logger.warn(f'approval: {heading} — input channel closed, '
                     f'nothing approved')
         return Decision(items, [])
 
-    # The prompt dropped every front-end's busy indicator (io._floor_to_human)
-    # to keep a spinner from eating the question. The question is answered
-    # now, and the handler is about to do the actual work — execute the
-    # source, write the files, run the command — so the indicator has to come
-    # back up here. logger.busy(True) is a relabel, not a second "started"
-    # event: this is the same level output() would raise the moment the next
-    # action.output payload comes in, just not stalled until then.
+    # io._floor_to_human() clears busy indicators before displaying a prompt.
+    # Restore the indicator now because the handler is resuming work.
+    # logger.busy(True) relabels the existing operation; it does not start a
+    # second one or wait for the next action.output event.
     logger.busy(True, gate)
 
     return _parse_answer(answer, items)
@@ -363,17 +351,15 @@ def _indent(text: str) -> str:
 def _parse_answer(answer, items) -> Decision:
     """Read a human's reply as a set of approvals.
 
-    Numbers are the items to *skip*, not the ones to keep: rejecting one bad
-    command out of five should not mean typing the other four, and that is the
-    direction a person reaches for when they say "not that one".
+    Numbers identify items to skip rather than items to keep. A user can reject
+    one item without listing every item that should proceed.
 
     A blank line approves everything, matching every other [Y/n] prompt in
     clay. Anything unrecognised approves nothing — a typo must not be read as
     consent to write files.
     """
-    # Deliberately not _ON/_OFF: those contain "1" and "0", and here a bare
-    # number is an item to skip. Reading "1" as "approve everything" would turn
-    # "don't write the first file" into "write all of them".
+    # Do not use _ON or _OFF here because they contain "1" and "0". In this
+    # prompt, a bare number identifies an item to skip.
     raw = str(answer or '').strip()
     if not raw or raw.lower() in _APPROVE_ALL:
         return Decision(items, range(len(items)))

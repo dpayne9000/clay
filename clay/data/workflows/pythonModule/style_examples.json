@@ -1,0 +1,8 @@
+{
+  "module_examples": [
+    {
+      "input": "MODULE SPEC:\nA module `retry.py` exposing one public function `with_retry(fn, attempts=3, delay_seconds=1.0)` that calls a zero-argument callable, retrying on any OSError up to `attempts` times with a fixed delay between tries, and one custom exception `RetryExhausted` raised if every attempt fails.",
+      "output": "```python retry.py\n\"\"\"Retry helper for callables that may raise OSError.\"\"\"\nfrom __future__ import annotations\n\nimport logging\nimport time\nfrom typing import Callable, TypeVar\n\nlogger = logging.getLogger(__name__)\n\n__all__ = [\"RetryExhausted\", \"with_retry\"]\n\nT = TypeVar(\"T\")\n\n\nclass RetryExhausted(Exception):\n    \"\"\"Raised when every retry attempt has failed.\"\"\"\n\n\ndef with_retry(\n    fn: Callable[[], T],\n    attempts: int = 3,\n    delay_seconds: float = 1.0,\n) -> T:\n    \"\"\"Call fn, retrying on OSError up to attempts times.\n\n    Args:\n        fn: Zero-argument callable to invoke.\n        attempts: Maximum number of attempts, at least 1.\n        delay_seconds: Fixed delay between attempts, in seconds.\n\n    Returns:\n        The return value of the first successful call.\n\n    Raises:\n        RetryExhausted: If every attempt raised OSError.\n    \"\"\"\n    last_error: OSError | None = None\n    for attempt in range(1, attempts + 1):\n        try:\n            return fn()\n        except OSError as exc:\n            last_error = exc\n            logger.warning(\"attempt %d/%d failed: %s\", attempt, attempts, exc)\n            if attempt < attempts:\n                time.sleep(delay_seconds)\n    raise RetryExhausted(f\"all {attempts} attempts failed\") from last_error\n```"
+    }
+  ]
+}

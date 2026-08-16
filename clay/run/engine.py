@@ -1,4 +1,4 @@
-"""Workflow engine — loads workflow JSON and runs its steps in order.
+"""Load workflow JSON and execute its steps in order.
 
 Public API: run() for a workflow file, run_from_data() for pre-parsed JSON,
 dry_run() to print a file without executing, process_steps() to run steps
@@ -19,7 +19,7 @@ from ..lib import paths
 
 
 def _note_cancelled(log):
-    """Log/emit that the run was cancelled so the UI and log record it."""
+    """Record cancellation in the event stream and run log."""
     logger.emit(events.RUN_CANCELLED)
     if log:
         log.log('!! CANCELLED  stopped by user')
@@ -56,11 +56,19 @@ def process_steps(steps: list, actions: dict, initial_data: dict | None = None, 
                     step_output.update(result["data"])
                 elif result.get("id"):
                     step_output[result["id"]] = result["data"]
+                    output_key = action.get("outputKey")
+                    if output_key:
+                        step_output[output_key] = result["data"]
+                    error_key = f'{result["id"]}_error'
+                    if result.get("error"):
+                        step_output[error_key] = result["error"]
+                    else:
+                        step_output.pop(error_key, None)
     return step_output
 
 
 def load_file(filename: str) -> dict | None:
-    """Load a workflow JSON file. Returns None (and reports) on any failure."""
+    """Load workflow JSON, reporting failures and returning None."""
     log = logger.get()
     try:
         with open(filename, 'r') as file:
@@ -86,7 +94,7 @@ def load_file(filename: str) -> dict | None:
 def _execute(data: dict, label: str, initial_data: dict | None = None, *,
              auto: bool = False, daemon: bool = False,
              inherited_auto_context=None) -> dict:
-    """Shared execution core. Runs pre-parsed workflow JSON — never reads from files.
+    """Run pre-parsed workflow data without reading a workflow file.
 
     The workflow's own directory is not a parameter and is not in the context.
     `run` pushes it onto the paths stack for the duration of the call, and the
@@ -96,7 +104,7 @@ def _execute(data: dict, label: str, initial_data: dict | None = None, *,
     owns_log = log is None
 
     if owns_log:
-        # Fresh run — discard any stale stop request from a previous run.
+        # A root run must not inherit a cancellation request from an earlier run.
         cancellation.clear_cancel()
         log = logger.start(label)
         divider = '═' * 56
@@ -114,8 +122,8 @@ def _execute(data: dict, label: str, initial_data: dict | None = None, *,
     seed = {**defaults, **(initial_data or {})}
 
     try:
-        # One root-only prerequisite pass. Nested workflows and loop bodies
-        # re-enter with an active logger, so they do not repeat these checks.
+        # Run prerequisites once. Nested workflows reuse the active logger and
+        # therefore skip this root-only check.
         if owns_log:
             preflight.run_checks(data)
         result = process_steps(workflow_steps, actions, seed, auto=auto,
@@ -126,16 +134,14 @@ def _execute(data: dict, label: str, initial_data: dict | None = None, *,
             log.log(divider)
             log.log(f'RUN COMPLETE  {label}')
             log.log(divider)
-            # Emit before stop() — the event must land in the log file as well
-            # as reach listeners. The finally below owns the actual teardown.
+            # Emit completion before finally closes the log.
             logger.emit(events.RUN_COMPLETE, label=label, log_path=log.path)
 
         return result
     except Exception as exc:
         if owns_log:
-            # One existing event reaches terminal, Qt, Telegram and daemon
-            # clients. Known WorkflowFailure is handled cleanly at the CLI;
-            # programming exceptions are still re-raised for their traceback.
+            # One event reports failures to every client. The CLI handles known
+            # WorkflowFailure exceptions; programming errors retain tracebacks.
             log.log(f'!! RUN FAILED  {label}: {exc}')
             logger.emit(events.RUN_ERROR, message=str(exc), label=label,
                         log_path=log.path)
@@ -147,12 +153,11 @@ def _execute(data: dict, label: str, initial_data: dict | None = None, *,
 
 def run_from_data(data: dict, label: str = 'api-run', initial_data: dict | None = None,
                   *, auto: bool = False) -> dict:
-    """Run a workflow from pre-parsed JSON. Used when JSON is sent directly
-    (e.g. from the API) instead of loaded from a file. Never touches disk.
+    """Run workflow data received directly instead of loading a workflow file.
 
-    Nothing is pushed onto the workflow stack: JSON that arrived over the wire
-    has no directory. An action reaching for a file beside the workflow reports
-    that there is none, rather than resolving against wherever clayd is running.
+    In-memory data has no workflow directory, so this function does not modify
+    the workflow path stack. Relative workflow assets therefore fail instead of
+    resolving against clayd's working directory.
     """
     return _execute(data, label=label, initial_data=initial_data, auto=auto)
 
@@ -160,17 +165,14 @@ def run_from_data(data: dict, label: str = 'api-run', initial_data: dict | None 
 def run(filename: str, initial_data: dict | None = None, *,
         auto: bool = False, daemon: bool = False,
         inherited_auto_context=None) -> dict | None:
-    """Run a resolved workflow file. Returns the final context, or None if the
-    file could not be loaded.
+    """Run a resolved workflow file and return its final context.
 
-    `filename` is already resolved — the CLI resolves what was typed, and the
-    workflow and loop actions resolve a sub-workflow reference through
-    `paths.workflow_asset`, which is where a directory becomes its main.json.
-    Resolving again here would mean two layers deciding what a name means.
+    The caller resolves `filename`. Workflow and loop actions resolve child
+    references through paths.workflow_asset(), including directory-to-main.json
+    conversion, so this function must not resolve the name again.
 
-    The file's directory is pushed for the duration of the run, so the assets
-    the workflow ships with resolve against it — including for a sub-workflow,
-    which pushes its own directory when it re-enters here.
+    The workflow's directory remains on the path stack during execution so its
+    relative assets resolve correctly. Each child workflow pushes its own path.
     """
     data = load_file(filename)
     if data is None:

@@ -1,4 +1,4 @@
-"""Workflow input channel — one bidirectional path for human prompts.
+"""Provide one bidirectional input path for workflow prompts.
 
 A workflow asks humans questions (humanDecision, humanShell approval) and must
 work in three situations:
@@ -7,17 +7,16 @@ work in three situations:
     clayd-managed run (--events-socket)     → SocketIO    (JSON lines)
     embedded/test in-process caller         → QueueIO     (thread to thread)
 
-Selection follows launch mode, never an env var: the launcher attaches the
-channel that matches how it started the run, and anything that attaches none
-prompts on the terminal.
+The launcher attaches the channel for its launch mode. Runs without an attached
+channel use the terminal; environment variables do not select the channel.
 
 Socket protocol (JSON lines, same framing as logger events):
 
     workflow → clayd    {"type": "input.request",  "id": ..., "prompt": ...}
     clayd → workflow    {"type": "input.response", "id": ..., "text": ...}
 
-Front-ends (clay ui, telegram, future channels) never speak to a workflow
-directly — clayd relays, so one implementation serves all of them.
+clayd relays messages between front-ends and workflows, allowing all remote
+front-ends to share one socket implementation.
 
 Usage from an action handler:
 
@@ -40,30 +39,23 @@ class ChannelClosed(RuntimeError):
 
 
 def _floor_to_human() -> None:
-    """Drop every front-end's busy indicator — a question is going out.
+    """Clear busy indicators before presenting a question.
 
-    Called by all three channels, not just the terminal, because each has its
-    own reason. A terminal spinner rewrites the line it lives on, so one still
-    running when builtins.input() draws the question eats the question. A
-    Telegram typing indicator left up beside a question the bot has already
-    asked claims the bot is still composing. A Qt "working" label next to a
-    live input row says the same.
+    A terminal spinner can overwrite a question. Telegram typing indicators and
+    Qt working labels also incorrectly imply that processing continues while
+    the workflow is waiting for input.
 
-    This is what keeps the dispatcher's busy honest under manual approval:
-    applyFileWrites is an ordinary action that raises an indicator and then
-    blocks here, and no list of action types in the dispatcher could know that.
+    Clearing indicators here also covers ordinary actions that pause for manual
+    approval, which the dispatcher cannot identify by action type.
     """
     logger.busy(False)
 
 
 class TerminalIO:
-    """Prompts the human on the local terminal.
+    """Prompt a human on the local terminal.
 
-    A terminal session has exactly one moment where the person has the floor —
-    a prompt — so that is where session commands are recognised. A line that
-    parses as one is answered, drawn as a command rather than echoed back as
-    though it were an answer, and the same question is asked again; the
-    workflow never sees it and never has to know the grammar exists.
+    Session commands are recognized at prompts. A command is handled and shown
+    locally before the question is repeated, so the workflow never receives it.
     """
 
     def prompt(self, prompt_id: str, text: str) -> str:
@@ -80,7 +72,7 @@ class TerminalIO:
 
 
 class SocketIO:
-    """Prompts a human through whichever front-end clayd is relaying to.
+    """Prompt a human through the front-end connected by clayd.
 
     Owns a reader thread for the workflow's end of the events socket. Writes
     share the logger's send lock so event lines and prompt lines cannot
@@ -105,8 +97,8 @@ class SocketIO:
     def prompt(self, prompt_id: str, text: str) -> str:
         """Send an input.request and block until the response arrives.
 
-        Raises ChannelClosed if the socket drops while waiting — a workflow
-        that can no longer reach its human must fail loudly, not guess.
+        Raise ChannelClosed if the socket closes while waiting. A workflow must
+        not infer an answer after losing its input channel.
         """
         _floor_to_human()
         if self._closed.is_set():
@@ -140,8 +132,8 @@ class SocketIO:
         with self._pending_lock:
             inbox = self._pending.get(key)
             if inbox is None and len(self._pending) == 1:
-                # Only one prompt can be outstanding per workflow, so an id
-                # mismatch is a relay quirk, not an ambiguity.
+                # One workflow can have only one pending prompt, so accept a
+                # mismatched relay ID when the intended recipient is unambiguous.
                 inbox = next(iter(self._pending.values()))
 
         if inbox is None:
@@ -212,11 +204,9 @@ class SocketIO:
         if kind == events.INPUT_RESPONSE:
             self.deliver(message.get('id', ''), message.get('text', ''))
         elif kind == events.OPTION_SET:
-            # A setting change from a front-end in another process. It arrives
-            # between prompts, not in answer to one, so it is handled here on
-            # the reader thread rather than by deliver(): there may be no
-            # pending prompt at all, and a workflow mid-model-call still has to
-            # be gated by the time it reaches the next write.
+            # Apply cross-process setting changes on the reader thread because
+            # they are independent of prompts. This ensures that a change made
+            # during a model call applies before the next gated operation.
             self._set_option(message.get('key', ''), message.get('value'))
 
     def _set_option(self, key: str, value) -> None:
@@ -233,19 +223,17 @@ class SocketIO:
 
 
 class QueueIO:
-    """Prompts a human in *this* process, from another thread.
+    """Prompt a human through another thread in the same process.
 
     The channel `clay ui` uses for an in-process run. There is no socket
     because there is no second process: the engine runs on a worker thread and
     the answer is typed on the GUI thread, so a queue is the whole transport.
 
-    Without it such a run falls through to TerminalIO, whose builtins.input()
-    reads the terminal the app was launched from — or raises EOFError when
-    there is no tty — never the window the person is looking at.
+    Without this channel, the run would use TerminalIO and read from the
+    launching terminal instead of the application window.
 
-    The request goes out on the event bus rather than down a private channel,
-    so it reaches every listener the run already has, the log file included,
-    and a front-end handles it in the same switch as every other event.
+    Requests use the event bus so existing listeners and the log receive them
+    through the same path as other workflow events.
     """
 
     def __init__(self):
@@ -257,9 +245,8 @@ class QueueIO:
     def prompt(self, prompt_id: str, text: str) -> str:
         """Ask, then block until deliver() supplies an answer.
 
-        Raises ChannelClosed if the channel closes while waiting — same
-        contract as SocketIO: a workflow that can no longer reach its human
-        must fail loudly, not guess.
+        Raise ChannelClosed if the channel closes while waiting. This matches
+        SocketIO and prevents the workflow from inferring an answer.
         """
         _floor_to_human()
         if self._closed.is_set():
@@ -321,7 +308,7 @@ _channel = None
 
 
 def get():
-    """Return the active input channel — socket when attached, else terminal."""
+    """Return the attached input channel, or the terminal channel by default."""
     return _channel or _terminal
 
 

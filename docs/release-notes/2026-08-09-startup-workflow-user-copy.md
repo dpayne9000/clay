@@ -21,15 +21,17 @@ three places that decide what ships: `pyproject.toml:51` (wheel),
 `pyproject.toml:79` (source archive), and
 `scripts/git_release/publish.py:94` (public repo).
 
-`startup.json` is now treated exactly as `config.json` already was. The
-packaged copy is the initial value; `~/.clay/startup.json` is authoritative:
+`startup.json` is stored beside `config.json`. The packaged copy supplies its
+initial value; explicit user selections in `~/.clay/startup.json` are
+authoritative:
 
 - `_STARTUP_PATH` names the user's copy, beside `config.json` and
   `schema.json`; `_BASE_STARTUP_PATH` names the packaged one.
 - `create_user_startup()` copies it in with `open(..., "xb")` — create-or-fail,
-  the idiom `create_user_config()` uses, so concurrent starts cannot race and
-  an upgrade never reverts a choice someone made. A file that will not parse,
-  or that is not a dict, is recreated and says so on stdout.
+  the idiom `create_user_config()` uses, so concurrent starts cannot race. The
+  current implementation advances versioned managed defaults on upgrade while
+  preserving explicit user choices. A file that will not parse, or that is not
+  a dict, is recreated and says so on stdout.
 - `load_startup()` falls back to the packaged copy only when the user directory
   could not be written, so an installed clay on a read-only home still starts
   something rather than nothing.

@@ -17,10 +17,10 @@ def request_cancel():
 
 
 def clear_cancel():
-    """Reset the cancellation flag. Called automatically at the start of a root run."""
+    """Reset the cancellation flag before a root run."""
     _cancel_event.clear()
 
 
 def is_cancelled():
-    """True when a stop has been requested for the current run."""
+    """Return whether the current run has received a stop request."""
     return _cancel_event.is_set()

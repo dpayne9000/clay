@@ -1,14 +1,14 @@
-"""Aurora rendering engine — all visual output for clay."""
+"""Render all themed terminal output for Clay."""
 import sys
 import threading
 import time
 
 
 def intro_effects(theme: dict):
-    """Non-blocking aurora intro sweep — called in a daemon thread on import.
+    """Render the short aurora intro animation.
 
-    Hides cursor, sweeps one line through the aurora colour palette, then
-    erases it cleanly so the banner can follow. Total duration ≤ 0.3s.
+    The caller runs this function on a daemon thread. It hides the cursor,
+    animates one line, erases that line, and restores the cursor.
     """
     if theme.get('FEATURE_CURSOR_HIDE', 'true') == 'true':
         sys.stdout.write('\033[?25l')
@@ -24,7 +24,7 @@ def intro_effects(theme: dict):
         sys.stdout.flush()
         time.sleep(ms)
 
-    # Erase the intro line so the banner prints cleanly on a fresh line
+    # Erase the animation before printing the startup banner.
     sys.stdout.write('\033[2K\r')
 
     if theme.get('FEATURE_CURSOR_HIDE', 'true') == 'true':
@@ -50,7 +50,7 @@ def _rst(rich: bool) -> str:
 def startup_banner(label: str, auto: bool, log_path: str, theme: dict, rich: bool):
     """Print (and optionally animate) the startup banner."""
     if not rich:
-        # Plain mode: reproduce the original pre-termui output exactly.
+        # Preserve the established plain-output format.
         divider = '═' * 56
         print(f'\n{divider}')
         print(f'  {label}' + ('  [auto]' if auto else ''))
@@ -96,7 +96,7 @@ def startup_banner(label: str, auto: bool, log_path: str, theme: dict, rich: boo
         if theme.get('FEATURE_CURSOR_HIDE', 'true') == 'true':
             sys.stdout.write('\033[?25l')
 
-        # Print initial frame
+        # Print the initial animation frame.
         initial_col = f'\033[{shimmer_codes[0]}m' if shimmer_codes else ''
         for line in _render(initial_col):
             print(line)
@@ -108,7 +108,7 @@ def startup_banner(label: str, auto: bool, log_path: str, theme: dict, rich: boo
                     time.sleep(frame_ms)
                     col = f'\033[{code}m'
                     rendered = _render(col)
-                    # Move cursor up n_lines lines and overwrite
+                    # Move upward and replace the previous animation frame.
                     sys.stdout.write(f'\033[{n_lines}A')
                     for line in rendered:
                         sys.stdout.write('\033[2K\r' + line + '\n')
@@ -120,7 +120,7 @@ def startup_banner(label: str, auto: bool, log_path: str, theme: dict, rich: boo
 
         t = threading.Thread(target=_shimmer, daemon=True)
         t.start()
-        t.join()  # wait for animation before workflow output starts
+        t.join()  # Finish the animation before workflow output begins.
     else:
         border_col = _c(theme, 'COLOR_BORDER', rich)
         for line in _render(border_col):
@@ -131,7 +131,7 @@ def startup_banner(label: str, auto: bool, log_path: str, theme: dict, rich: boo
 def step_header(name: str, theme: dict, rich: bool):
     """Print a step divider line."""
     if not rich:
-        # Plain mode: reproduce the original pre-termui output exactly.
+        # Preserve the established plain-output format.
         print(f'\n── {name} {"─" * max(1, 44 - len(name))}')
         return
     W = int(theme.get('STEP_RULE_WIDTH', '46'))
@@ -162,12 +162,8 @@ def scramda_input(prompt_text: str, theme: dict, rich: bool, model: str = ''):
     """Show the prompt being sent to the AI (rich mode only)."""
     if not rich or theme.get('FEATURE_SCRAMDA_INPUT_BOX', 'true') != 'true':
         return
-    # Printed as handed over, with its line breaks intact. The length limit is
-    # display.promptMaxChars in config.json, applied by the renderer before it
-    # calls here (clay/run/renderers/detail.py:prompt_body) — a theme styles,
-    # it does not decide how much of a prompt you are allowed to see, and one
-    # number in one file beats a theme key and a python constant that drift.
-    # To hide the box entirely, set FEATURE_SCRAMDA_INPUT_BOX=false.
+    # Preserve line breaks. The renderer applies display.promptMaxChars before
+    # this function; themes control presentation, not content limits.
     indent = theme.get('RESPONSE_INDENT', '  ')
     top_sym = theme.get('SYM_RESPONSE_TOP', '┄')
     aurora  = theme.get('SYM_AURORA', '◈')
@@ -225,13 +221,10 @@ def warn(msg: str, theme: dict, rich: bool):
 
 
 def command_echo(command: str, outcome: str, theme: dict, rich: bool):
-    """Draw a session command and what it did.
+    """Render a session command and its result.
 
-    Deliberately unlike every other line here: a command is neither the
-    workflow talking nor the human answering it, and drawing it in the response
-    style would make a setting change look like it had been sent somewhere. The
-    command is repeated so the transcript shows what was typed, and the outcome
-    is indented under it so a multi-line answer stays attached to its command.
+    Use a distinct style so setting changes cannot look like workflow answers.
+    Repeat the command and indent its result to preserve their association.
     """
     sym = theme.get('SYM_COMMAND', '»')
     cc = _c(theme, 'COLOR_COMMAND', rich)
@@ -249,24 +242,15 @@ def command_echo(command: str, outcome: str, theme: dict, rich: bool):
 
 # ── concise mode ─────────────────────────────────────────────────────────
 #
-# What a turn actually did, drawn for someone having a conversation rather
-# than someone reading a run. Every label arriving here is already a written
-# sentence — 'greet.py written (3 lines)', 'utils/text.py updated (+4 −1)',
-# '$ python3 greet.py' — composed by the action that did the work, which is
-# the only place that knew what it had done. These functions add a symbol, a
-# colour and the body worth seeing. They never rewrite the words, so an
-# action gaining a better label improves every surface at once.
+# Concise-mode functions style labels supplied by actions without rewriting
+# them. Actions remain responsible for describing what they did.
 
 
 def file_write(label: str, diff: str, theme: dict, rich: bool):
-    """A file an action wrote. `diff` is drawn under it when there is one.
+    """Render a written-file label and an optional diff.
 
-    A created file passes no diff and gets one line. Its whole content is the
-    least surprising thing in the turn — the model printed it moments ago —
-    and file_ops says the same thing from the other end (diff_body's
-    docstring): a diff of a new file is every line prefixed '+', which is
-    noisier than the file. An *edited* file is the opposite, and its diff is
-    the only part of it that is news.
+    New files use one line because their content was already displayed. Edited
+    files include a diff because only the changed lines are new information.
     """
     sym = theme.get('SYM_FILE', '✎')
     cf = _c(theme, 'COLOR_ACTION', rich)
@@ -277,12 +261,10 @@ def file_write(label: str, diff: str, theme: dict, rich: bool):
 
 
 def _diff_lines(diff: str, theme: dict, rich: bool):
-    """A unified diff, indented and coloured, without its file header.
+    """Render an indented, colored unified diff without file headers.
 
-    The `--- (before)` / `+++ (after)` pair is dropped: the line above already
-    named the file, and those two lines start with the same characters as a
-    real removal and a real addition, so keeping them would colour the header
-    as though it were a change.
+    Omit the before/after headers because the preceding label identifies the
+    file and the header prefixes resemble changed lines.
     """
     add = _c(theme, 'COLOR_DIFF_ADD', rich)
     rem = _c(theme, 'COLOR_DIFF_DEL', rich)
@@ -303,12 +285,9 @@ def _diff_lines(diff: str, theme: dict, rich: bool):
 
 
 def file_read(label: str, theme: dict, rich: bool):
-    """One line naming something an action loaded. Never its contents.
+    """Render one line naming content loaded by an action.
 
-    A read is context for the model, not news for the person watching: it is
-    text they already have on disk, quoted back at them. Which files were
-    opened is the part worth knowing, and it is the part a wrong answer is
-    later explained by.
+    Display the source name but not content that already exists on disk.
     """
     sym = theme.get('SYM_READ', '▪')
     cd = _c(theme, 'COLOR_DIM', rich)
@@ -317,12 +296,10 @@ def file_read(label: str, theme: dict, rich: bool):
 
 
 def shell_run(command: str, output: str, theme: dict, rich: bool):
-    """A command a workflow ran, with its output indented underneath.
+    """Render a workflow command with indented output.
 
-    Deliberately not command_echo, which draws a *session* command someone
-    typed at a prompt. This is the workflow running something on their
-    machine, which is a different event with a different weight, and the two
-    reading alike is how a run starts to look like it was asked for.
+    This style differs from command_echo(), which represents a session command
+    typed by the user rather than a command executed by the workflow.
     """
     cc = _c(theme, 'COLOR_COMMAND', rich)
     cd = _c(theme, 'COLOR_DIM', rich)

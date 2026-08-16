@@ -1,29 +1,22 @@
-"""One reading of "does this string mean yes".
+"""Interpret control-flow values consistently across the engine.
 
-Two places in the engine ask that question of a value that came out of a
-previous action: `loop`'s `continueKey`, which decides whether to go round
-again, and `when`, which decides whether an action runs at all. Both are
-usually answered by a model replying YES or NO in a single word, and both
-would be quietly wrong in different ways if they disagreed about `"0"` or
-`"done"`. They share this function so they cannot drift.
+Both loop continueKey and action `when` evaluate values from earlier actions.
+They share this function so values such as `"0"` and `"done"` have identical
+control-flow meaning.
 
-The vocabulary is deliberately small and literal. It is not a general truthy
-test: `"maybe"` is true here, because the only safe reading of a word we do
-not recognise is "not one of the ways of saying no".
+This is not a general truthiness test. Unrecognized values are true because
+only explicit false values should stop execution.
 """
 
-#: Values that mean no. Compared lower-cased and stripped. This is exactly the
-#: list `loop` has always used, moved here rather than rewritten — widening it
-#: would change when existing loops stop, which is not what this is for.
+#: Explicit false values after whitespace removal and lowercase conversion.
 FALSY_WORDS = ('false', 'done', '0', 'no', 'stop', '')
 
 
 def is_truthy(value) -> bool:
-    """True unless `value` is one of the recognised ways of saying no.
+    """Return false only for recognized false values.
 
-    `None`, a missing key's empty string, and whitespace are all no. A real
-    bool answers for itself — a JSON `false` must not be read as the truthy
-    string "False".
+    None, empty strings, and whitespace are false. Boolean values retain their
+    native meaning.
     """
     if value is None:
         return False

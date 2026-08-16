@@ -18,6 +18,11 @@ PASSTHROUGH_KEYS = frozenset({'__config__', '__schema__'})
 
 `RESERVED_KEYS` is currently empty, so all keys pass through the base filter. `PASSTHROUGH_KEYS` documents the globals that the engine seeds into `step_output` but that are only delivered to handlers when explicitly listed in `includedData`.
 
+Every action may set `outputKey`. For normally stored action results, the
+engine writes the identical value under both the action's `id` and its
+`outputKey`. Downstream actions can include either name. `outputKey` is an
+alias, not a nested-value selector.
+
 ---
 
 ## `build_ctx` (context.py:21–52)
@@ -104,17 +109,16 @@ iteration_seed = {
 }
 ```
 
-`loop_history` (the `outputKey` values from each iteration) is written to the log only — it is NOT injected into the iteration seed, keeping the context window bounded. (loop_actions.py:76–79)
-
 ---
 
 ## Sub-workflow context propagation (workflow_actions.py)
 
-The `workflow` action calls `runWorkflow.run(filename, initial_data=ctx, ...)`. The sub-workflow's `step_output` is initialised with `initial_data=ctx` from the parent, so all keys visible to the `workflow` action (after `build_ctx` filtering) are available as `step_output` defaults in the sub-workflow.
+The `workflow` action calls `engine.run(filename, initial_data=child_seed, ...)`.
+The child seed combines engine globals with the context visible to the action.
 
 The sub-workflow's full `step_output` is returned as the action result:
 ```python
-result_data = runWorkflow.run(filename, initial_data=ctx, auto=auto, model=model)
+result_data = engine.run(filename, initial_data=child_seed, auto=auto)
 action_id = action.get('id')
 return {"id": action_id, "data": result_data} if action_id else None
 ```

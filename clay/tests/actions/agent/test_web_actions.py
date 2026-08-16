@@ -79,7 +79,7 @@ class TestBrowseWeb(unittest.TestCase):
         payload = json.dumps({"key": "value"})
         mock_urlopen.return_value = self._response(payload, 'application/json')
         result = web_actions.browse_handler(
-            {"id": "out", "url": "https://api.example.com/data"}, {}
+            {"id": "out", "url": "https://example.com/data"}, {}
         )
         self.assertIn("key", result["data"])
         self.assertIn("value", result["data"])
@@ -460,73 +460,75 @@ class TestBrowseWebMultiPage(unittest.TestCase):
     """urlsKey: several pages read in one action, each under its own heading."""
 
     def _page(self, body):
-        return make_browse_response(f'<html><body><p>{body}</p></body></html>')
+        html = f'<html><body><p>{body}</p></body></html>'
+        return NetworkResponse(200, {'Content-Type': 'text/html; charset=utf-8'}, html.encode())
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_each_url_gets_its_own_labelled_block(self, mock_urlopen):
         mock_urlopen.side_effect = [self._page('alpha'), self._page('beta')]
         result = web_actions.browse_handler(
             {"id": "pages", "urlsKey": "picked"},
-            {"picked": "https://a.example.com\nhttps://b.example.com"}
+            {"picked": "https://example.com/a\nhttps://claycli.org/b"}
         )
-        self.assertIn('=== https://a.example.com ===', result["data"])
+        self.assertIn('=== https://example.com/a ===', result["data"])
         self.assertIn('alpha', result["data"])
-        self.assertIn('=== https://b.example.com ===', result["data"])
+        self.assertIn('=== https://claycli.org/b ===', result["data"])
         self.assertIn('beta', result["data"])
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_single_url_is_still_unlabelled(self, mock_urlopen):
         mock_urlopen.return_value = self._page('solo')
         result = web_actions.browse_handler(
-            {"id": "page", "url": "https://a.example.com"}, {}
+            {"id": "page", "url": "https://example.com/a"}, {}
         )
         self.assertNotIn('===', result["data"])
         self.assertIn('solo', result["data"])
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_maxpages_caps_how_many_are_fetched(self, mock_urlopen):
         mock_urlopen.side_effect = [self._page('one'), self._page('two')]
-        urls = '\n'.join(f'https://r{i}.example.com' for i in range(5))
+        domains = ['example.com', 'claycli.org']
+        urls = '\n'.join(f'https://{domains[i % 2]}/r{i}' for i in range(5))
         result = web_actions.browse_handler(
             {"id": "pages", "urlsKey": "picked", "maxPages": 2}, {"picked": urls}
         )
         self.assertEqual(mock_urlopen.call_count, 2)
-        self.assertNotIn('https://r2.example.com', result["data"])
+        self.assertNotIn('https://example.com/r2', result["data"])
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_blank_lines_are_ignored(self, mock_urlopen):
         mock_urlopen.return_value = self._page('only')
         web_actions.browse_handler(
             {"id": "pages", "urlsKey": "picked"},
-            {"picked": "\n  https://a.example.com  \n\n"}
+            {"picked": "\n  https://example.com/a  \n\n"}
         )
         self.assertEqual(mock_urlopen.call_count, 1)
-        self.assertEqual(mock_urlopen.call_args[0][0].full_url, 'https://a.example.com')
+        self.assertEqual(mock_urlopen.call_args.args[1], 'https://example.com/a')
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_one_refused_url_does_not_lose_the_others(self, mock_urlopen):
         mock_urlopen.return_value = self._page('good page')
         with patch('builtins.print'):
             result = web_actions.browse_handler(
                 {"id": "pages", "urlsKey": "picked"},
-                {"picked": "file:///etc/passwd\nhttps://good.example.com"}
+                {"picked": "file:///etc/passwd\nhttps://claycli.org/good"}
             )
         self.assertIn('[refused:', result["data"])
         self.assertIn('good page', result["data"])
         self.assertEqual(mock_urlopen.call_count, 1)
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_one_failing_fetch_does_not_lose_the_others(self, mock_urlopen):
         mock_urlopen.side_effect = [Exception("HTTP Error 403: Forbidden"), self._page('survivor')]
         with patch('builtins.print'):
             result = web_actions.browse_handler(
                 {"id": "pages", "urlsKey": "picked"},
-                {"picked": "https://blocked.example.com\nhttps://ok.example.com"}
+                {"picked": "https://example.com/blocked\nhttps://claycli.org/ok"}
             )
         self.assertIn('[error: HTTP Error 403: Forbidden]', result["data"])
         self.assertIn('survivor', result["data"])
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_a_NO_answer_comes_back_as_a_refusal_not_a_crash(self, mock_urlopen):
         # chosen_urls replies with exactly "NO" when nothing is worth opening.
         with patch('builtins.print'):
@@ -544,16 +546,16 @@ class TestBrowseWebMultiPage(unittest.TestCase):
             )
         self.assertIsNone(result)
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_urlskey_wins_over_url_when_both_are_set(self, mock_urlopen):
         mock_urlopen.return_value = self._page('from key')
         web_actions.browse_handler(
-            {"id": "pages", "url": "https://ignored.example.com", "urlsKey": "picked"},
-            {"picked": "https://used.example.com"}
+            {"id": "pages", "url": "https://example.com/ignored", "urlsKey": "picked"},
+            {"picked": "https://claycli.org/used"}
         )
-        self.assertEqual(mock_urlopen.call_args[0][0].full_url, 'https://used.example.com')
+        self.assertEqual(mock_urlopen.call_args.args[1], 'https://claycli.org/used')
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_sitekey_is_ignored_with_urlskey_and_writes_no_profile(self, mock_urlopen):
         # One siteKey names one file; several pages would each overwrite it, so
         # the pages are still returned and nothing is saved.
@@ -561,28 +563,32 @@ class TestBrowseWebMultiPage(unittest.TestCase):
         with temp_webactions_base(web_actions) as d, patch('builtins.print'):
             result = web_actions.browse_handler(
                 {"id": "pages", "urlsKey": "picked", "siteKey": "shared"},
-                {"picked": "https://a.example.com\nhttps://b.example.com"}
+                {"picked": "https://example.com/a\nhttps://claycli.org/b"}
             )
             written = os.listdir(d)
         self.assertEqual(written, [])
         self.assertIn('alpha', result["data"])
         self.assertIn('beta', result["data"])
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_sitekey_still_saves_on_the_single_url_path(self, mock_urlopen):
         mock_urlopen.return_value = self._page('profile body')
         with temp_webactions_base(web_actions) as d:
             web_actions.browse_handler(
-                {"id": "page", "url": "https://a.example.com", "siteKey": "mysite"}, {}
+                {"id": "page", "url": "https://example.com/a", "siteKey": "mysite"}, {}
             )
             self.assertIn('mysite.json', os.listdir(d))
 
 
 class TestBrowseWebWorkflowLayer(unittest.TestCase):
 
-    @patch('urllib.request.urlopen')
+    @staticmethod
+    def _response(body):
+        return NetworkResponse(200, {'Content-Type': 'text/html; charset=utf-8'}, body.encode())
+
+    @patch.object(web_actions, 'request')
     def test_result_stored_by_action_id(self, mock_urlopen):
-        mock_urlopen.return_value = make_browse_response(
+        mock_urlopen.return_value = self._response(
             '<html><body><p>Hello from web</p></body></html>'
         )
         with tempfile.TemporaryDirectory() as d:
@@ -593,9 +599,9 @@ class TestBrowseWebWorkflowLayer(unittest.TestCase):
         self.assertIn("page", data)
         self.assertIn("Hello from web", data["page"])
 
-    @patch('urllib.request.urlopen')
+    @patch.object(web_actions, 'request')
     def test_browse_sitekey_saves_profile_loadsite_retrieves(self, mock_urlopen):
-        mock_urlopen.return_value = make_browse_response(
+        mock_urlopen.return_value = self._response(
             '<html><body><p>Profile content</p></body></html>'
         )
         with temp_webactions_base(web_actions) as webdir, \
